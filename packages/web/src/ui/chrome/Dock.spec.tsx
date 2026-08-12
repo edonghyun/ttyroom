@@ -30,4 +30,31 @@ describe("Dock", () => {
     await userEvent.click(screen.getByRole("button", { name: "Restore backend" }));
     expect(restore).toHaveBeenCalledWith(11);
   });
+
+  it("keeps Add terminal first and separates participant presence from terminal items", () => {
+    const { container } = render(
+      <Dock
+        terminals={[
+          {
+            terminalId: 11,
+            title: "backend",
+            status: "You control",
+            activity: "npm run dev",
+            minimized: false,
+          },
+        ]}
+        participants={["You → backend", "Minsu → frontend"]}
+        activeTerminalId={11}
+        restore={vi.fn()}
+        addTerminal={vi.fn()}
+      />,
+    );
+
+    expect(container.querySelector(".dock-terminals")?.firstElementChild).toHaveAccessibleName(
+      "Add terminal",
+    );
+    expect(screen.getByRole("list", { name: "Participant presence" })).toHaveTextContent(
+      "You → backendMinsu → frontend",
+    );
+  });
 });

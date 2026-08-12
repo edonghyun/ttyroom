@@ -26,4 +26,24 @@ describe("TopBar", () => {
     expect(arrange).toHaveBeenCalledOnce();
     expect(overview).toHaveBeenCalledOnce();
   });
+
+  it("uses the terminal product mark and source command grouping", () => {
+    const { container } = render(
+      <TopBar
+        roomName="Payment Debug"
+        connection="connected"
+        invite={vi.fn()}
+        arrange={vi.fn()}
+        overview={vi.fn()}
+        openMenu={vi.fn()}
+        addHost={vi.fn()}
+      />,
+    );
+
+    expect(container.querySelector(".brand-mark")).toHaveAttribute("data-icon", "terminal");
+    expect(container.querySelector(".top-bar nav")?.firstElementChild).toHaveTextContent(
+      "Invite link",
+    );
+    expect(screen.getByRole("button", { name: "Open room menu" })).toHaveTextContent("Room menu");
+  });
 });

@@ -102,6 +102,18 @@
   font-weight: 750;
 }
 
+.brand-mark {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #b893e2;
+  border-radius: 5px;
+  color: white;
+  background: linear-gradient(145deg, #a36be0, #6e3cad);
+  box-shadow: inset 0 0 0 2px rgb(255 255 255 / 9%);
+}
+
 .top-bar .room-name {
   padding-left: 16px;
   border-left: 1px solid #3a3d43;
@@ -116,9 +128,9 @@
 .top-bar button {
   min-height: 34px;
   padding: 0 10px;
-  border: 0;
+  border: 1px solid #353a40;
   border-radius: 5px;
-  background: transparent;
+  background: #1d2126;
 }
 
 .top-bar button:hover {
@@ -162,23 +174,37 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  min-height: 28px;
+  padding: 0 9px;
+  border: 1px solid currentColor;
+  border-radius: 4px;
   font-size: 12px;
 }
 
 .status-mine {
   color: var(--mine);
+  background: rgb(87 200 122 / 12%);
 }
 
 .status-held-by-other {
   color: var(--other);
+  background: rgb(248 179 34 / 10%);
 }
 
 .status-read-only {
   color: var(--readonly);
+  background: rgb(142 166 192 / 10%);
 }
 
 .status-exited {
   color: var(--danger);
+  background: rgb(237 69 67 / 10%);
+}
+
+.status-available,
+.status-shared {
+  color: #cbd0d6;
+  background: rgb(203 208 214 / 7%);
 }
 
 .terminal-scene {
@@ -402,14 +428,14 @@
 }
 
 .dock-terminals .add-terminal {
-  min-width: 118px;
+  min-width: 142px;
   align-items: center;
   justify-content: center;
   border-style: dashed;
 }
 
 .participant-presence {
-  width: 190px;
+  width: 220px;
   display: grid;
   gap: 5px;
   margin: 0;
@@ -417,6 +443,8 @@
   color: var(--muted);
   font-size: 12px;
   list-style: none;
+  border-left: 1px solid #34383e;
+  padding-left: 20px;
 }
 
 @media (prefers-reduced-motion: reduce) {

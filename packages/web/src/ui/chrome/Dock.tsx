@@ -24,6 +24,9 @@ export function Dock({
   return (
     <aside className="dock" aria-label="Terminal Dock">
       <div className="dock-terminals">
+        <button type="button" className="add-terminal" onClick={addTerminal}>
+          <Plus size={16} strokeWidth={1.5} aria-hidden="true" /> Add terminal
+        </button>
         {terminals.map((terminal) => (
           <button
             type="button"
@@ -40,9 +43,6 @@ export function Dock({
             </span>
           </button>
         ))}
-        <button type="button" className="add-terminal" onClick={addTerminal}>
-          <Plus size={16} strokeWidth={1.5} aria-hidden="true" /> Add terminal
-        </button>
       </div>
       <ul className="participant-presence" aria-label="Participant presence">
         {participants.map((presence) => (
