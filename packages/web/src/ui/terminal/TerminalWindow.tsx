@@ -28,6 +28,7 @@ export interface TerminalWindowActions {
   readonly maximize: (terminalId: number) => void;
   readonly restore: (terminalId: number) => void;
   readonly requestClose: (terminalId: number) => void;
+  readonly openNew?: (host: string) => void;
 }
 
 export function TerminalWindow({
@@ -36,12 +37,14 @@ export function TerminalWindow({
   actions,
   active,
   overview,
+  inputBlocked = false,
 }: {
   readonly model: TerminalWindowModel;
   readonly controller: TerminalController;
   readonly actions: TerminalWindowActions;
   readonly active: boolean;
   readonly overview?: boolean;
+  readonly inputBlocked?: boolean;
 }) {
   const terminalRoot = useRef<HTMLDivElement>(null);
   const dragStart = useRef<{ x: number; y: number; rect: WindowRect } | null>(null);
@@ -53,9 +56,9 @@ export function TerminalWindow({
   }, [controller]);
 
   useEffect(() => {
-    controller.setInputAllowed(inputAllowed && !overview && !model.minimized);
+    controller.setInputAllowed(inputAllowed && !overview && !model.minimized && !inputBlocked);
     controller.setVisible(!model.minimized);
-  }, [controller, inputAllowed, model.minimized, overview]);
+  }, [controller, inputAllowed, inputBlocked, model.minimized, overview]);
 
   useEffect(() => {
     function pointerUp(event: PointerEvent) {
@@ -118,6 +121,16 @@ export function TerminalWindow({
             onClick={() => actions.takeControl(model.terminalId)}
           >
             Take control
+          </button>
+        )}
+        {model.status.kind === "exited" && actions.openNew && (
+          <button
+            type="button"
+            className="take-control"
+            aria-label={`Open a new terminal on ${model.host}`}
+            onClick={() => actions.openNew?.(model.host)}
+          >
+            New terminal
           </button>
         )}
         <div className="window-actions">

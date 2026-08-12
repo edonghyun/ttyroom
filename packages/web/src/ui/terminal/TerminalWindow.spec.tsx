@@ -28,6 +28,34 @@ describe("TerminalWindow", () => {
     expect(adapters.created).toHaveLength(1);
     expect(adapters.created[0]?.inputEnabled).toBe(false);
   });
+
+  it("blocks input while restoring and exposes exited recovery actions", async () => {
+    const adapters = new FakeTerminalAdapterFactory();
+    const controller = new TerminalController(
+      { adapterFactory: adapters, frameScheduler: { schedule: () => () => undefined } },
+      { terminalId: 11, sendInput: vi.fn(), resize: vi.fn() },
+    );
+    const actions = windowProps(controller, vi.fn(), vi.fn()).actions;
+    const openNew = vi.fn();
+    render(
+      <TerminalWindow
+        {...windowProps(controller, vi.fn(), vi.fn())}
+        model={{
+          ...windowProps(controller, vi.fn(), vi.fn()).model,
+          status: { kind: "exited", exitCode: 137 },
+        }}
+        actions={{ ...actions, openNew }}
+        inputBlocked
+      />,
+    );
+
+    expect(adapters.created[0]?.inputEnabled).toBe(false);
+    expect(screen.getByRole("status", { name: "Exited (137)" })).toBeVisible();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Open a new terminal on Donghyeon-Mac" }),
+    );
+    expect(openNew).toHaveBeenCalledWith("Donghyeon-Mac");
+  });
 });
 
 function windowProps(

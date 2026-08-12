@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { TopBar, type ConnectionLabel } from "../chrome/TopBar.js";
+import { ConnectionBanner } from "../overlays/ConnectionBanner.js";
 
 export interface TerminalSummary {
   readonly terminalId: number;
@@ -25,16 +26,26 @@ export function RoomWorkspace({
   commands,
   terminals,
   children,
+  narrowViewport = false,
 }: {
   readonly roomName: string;
   readonly connection: ConnectionLabel;
   readonly commands: RoomCommands;
   readonly terminals: readonly TerminalSummary[];
   readonly children?: ReactNode;
+  readonly narrowViewport?: boolean;
 }) {
   return (
     <main className="workspace-shell">
       <TopBar roomName={roomName} connection={connection} {...commands} />
+      {connection !== "connected" && (
+        <ConnectionBanner state={connection === "restoring" ? "restoring" : "reconnecting"} />
+      )}
+      {narrowViewport && (
+        <div className="narrow-viewport-state" role="status" aria-label="Desktop viewport required">
+          TTYRoom terminal input requires a desktop viewport. Widen this window to continue.
+        </div>
+      )}
       <section className="terminal-workspace" aria-label="Terminal workspace">
         {children ??
           terminals.map((terminal) => (

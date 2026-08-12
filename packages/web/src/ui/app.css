@@ -520,3 +520,51 @@
 .toast-error {
   border-color: var(--danger);
 }
+
+.connection-banner,
+.narrow-viewport-state {
+  position: fixed;
+  z-index: 25000;
+  top: calc(var(--topbar-height) + 10px);
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid var(--other);
+  border-radius: 6px;
+  background: #27241d;
+  transform: translateX(-50%);
+}
+
+.banner-restoring {
+  border-color: var(--readonly);
+  background: #1f252c;
+}
+
+.banner-live {
+  border-color: var(--mine);
+  background: #1d2822;
+}
+
+.narrow-viewport-state {
+  inset: var(--topbar-height) 0 var(--dock-height);
+  top: var(--topbar-height);
+  left: 0;
+  justify-content: center;
+  border: 0;
+  border-radius: 0;
+  background: rgb(15 18 21 / 96%);
+  transform: none;
+}
+
+@media (max-width: 1023px) {
+  .terminal-renderer {
+    pointer-events: none;
+  }
+
+  .top-bar nav {
+    overflow-x: auto;
+  }
+}

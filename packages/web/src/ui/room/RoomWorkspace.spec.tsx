@@ -26,6 +26,24 @@ describe("RoomWorkspace", () => {
     }
     expect(screen.getAllByText("Donghyeon-Mac · ~/projects/api · feature/payment")).toHaveLength(5);
   });
+
+  it("keeps the workspace while reconnecting and blocks narrow viewport input", () => {
+    render(
+      <RoomWorkspace
+        roomName="Payment Debug"
+        connection="reconnecting"
+        commands={{ invite: vi.fn(), arrange: vi.fn(), overview: vi.fn(), openMenu: vi.fn() }}
+        terminals={[]}
+        narrowViewport
+      />,
+    );
+
+    expect(screen.getByRole("region", { name: "Terminal workspace" })).toBeVisible();
+    expect(screen.getByRole("status", { name: "Desktop viewport required" })).toHaveTextContent(
+      "TTYRoom terminal input requires a desktop viewport",
+    );
+    expect(screen.getByText("Reconnecting… Processes keep running")).toBeVisible();
+  });
 });
 
 function terminal(id: number, title: string, statusLabel: string) {
