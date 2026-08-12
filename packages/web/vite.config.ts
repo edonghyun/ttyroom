@@ -6,6 +6,19 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    build: {
+      rolldownOptions: {
+        output: {
+          codeSplitting: {
+            groups: [
+              { name: "xterm", test: /node_modules\/@xterm\// },
+              { name: "react", test: /node_modules\/(?:react|react-dom|scheduler)\// },
+              { name: "icons", test: /node_modules\/react-feather\// },
+            ],
+          },
+        },
+      },
+    },
     server: {
       proxy: serverOrigin
         ? {

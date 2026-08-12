@@ -1,11 +1,13 @@
 import { createServer } from "node:http";
+import { fileURLToPath } from "node:url";
 import { LinkAuth } from "./adapters/link-auth/link-auth.js";
 import { NoopSnapshotStore } from "./adapters/memory/noop-snapshot-store.js";
 import { SystemClock } from "./adapters/system-clock/system-clock.js";
 import { WsTransport } from "./adapters/ws/ws-transport.js";
 import type { ServerConfig } from "./config.js";
 import { RoomRegistry } from "./domain/room-registry.js";
-import { HttpApi } from "./http.js";
+import { HttpApi } from "./http/http-api.js";
+import { StaticWebApp } from "./http/static-web-app.js";
 import { ConnectionRegistry } from "./usecases/connection-registry.js";
 import { ServerCore } from "./usecases/server-core.js";
 
@@ -15,12 +17,23 @@ export interface RunningServer {
   close(): Promise<void>;
 }
 
-export async function startServer(config: ServerConfig): Promise<RunningServer> {
+export async function startServer(
+  config: ServerConfig,
+  options: { readonly webRoot?: string } = {},
+): Promise<RunningServer> {
   const rooms = new RoomRegistry();
   const connections = new ConnectionRegistry();
   const api = new HttpApi(rooms);
+  const web = new StaticWebApp({
+    root: options.webRoot ?? fileURLToPath(new URL("./web", import.meta.url)),
+  });
   const httpServer = createServer((request, response) => {
-    void api.handle(request, response).catch(() => {
+    void (async () => {
+      if (await api.handle(request, response)) return;
+      if (await web.handle(request, response)) return;
+      response.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
+      response.end("not found");
+    })().catch(() => {
       if (response.headersSent) {
         response.destroy();
         return;
