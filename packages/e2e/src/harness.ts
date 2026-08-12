@@ -44,6 +44,7 @@ export interface ParticipantClient {
   syncedSeq(terminalId: number): number;
   lastMessages(): ServerMessage[];
   close(): void;
+  reconnect(): Promise<void>;
 }
 
 export interface TestServer {
@@ -111,7 +112,6 @@ class E2eServer implements TestServer {
   ): Promise<WsParticipant> {
     const participant = await WsParticipant.connect(room, name, clientId);
     this.participants.add(participant);
-    participant.onClosed(() => this.participants.delete(participant));
     return participant;
   }
 
@@ -133,36 +133,23 @@ class WsParticipant implements ParticipantClient {
   private readonly output = new Map<number, Uint8Array[]>();
   private readonly syncs = new Map<number, number>();
   private readonly leases = new Map<number, number>();
-  private readonly closedHandlers: Array<() => void> = [];
   private currentSnapshot: RoomSnapshot | undefined;
   private inputSeq = 0;
 
   private constructor(
     readonly clientId: string,
-    private readonly websocket: WebSocket,
+    private readonly room: TestRoom,
+    private readonly name: string,
+    private websocket: WebSocket,
   ) {
-    websocket.on("message", (raw, isBinary) => this.receive(raw, isBinary));
-    websocket.once("close", () => {
-      for (const handler of this.closedHandlers) handler();
-    });
+    this.attach(websocket);
   }
 
   static async connect(room: TestRoom, name: string, clientId: string): Promise<WsParticipant> {
     const websocket = new WebSocket(room.baseUrl.replace(/^http/, "ws") + "/ws");
     await waitForWebSocketOpen(websocket);
-    const participant = new WsParticipant(clientId, websocket);
-    websocket.send(
-      serializeClientMessage({
-        type: "hello",
-        protocolVersion: PROTOCOL_VERSION,
-        roomId: room.roomId,
-        token: room.token,
-        clientId,
-        name,
-        role: "participant",
-      }),
-    );
-    await participant.waitForMessage((message) => message.type === "welcome", 0);
+    const participant = new WsParticipant(clientId, room, name, websocket);
+    await participant.join();
     return participant;
   }
 
@@ -232,11 +219,23 @@ class WsParticipant implements ParticipantClient {
   }
 
   close(): void {
-    if (this.websocket.readyState === WebSocket.OPEN) this.websocket.close();
+    if (
+      this.websocket.readyState === WebSocket.OPEN ||
+      this.websocket.readyState === WebSocket.CONNECTING
+    ) {
+      this.websocket.close();
+    }
   }
 
-  onClosed(handler: () => void): void {
-    this.closedHandlers.push(handler);
+  async reconnect(): Promise<void> {
+    if (this.websocket.readyState !== WebSocket.CLOSED) {
+      await waitForWebSocketClose(this.websocket);
+    }
+    const websocket = new WebSocket(this.room.baseUrl.replace(/^http/, "ws") + "/ws");
+    await waitForWebSocketOpen(websocket);
+    this.websocket = websocket;
+    this.attach(websocket);
+    await this.join();
   }
 
   async waitForMessage(
@@ -258,6 +257,26 @@ class WsParticipant implements ParticipantClient {
 
   private send(message: Parameters<typeof serializeClientMessage>[0]): void {
     this.websocket.send(serializeClientMessage(message));
+  }
+
+  private async join(): Promise<void> {
+    const before = this.messages.length;
+    this.send({
+      type: "hello",
+      protocolVersion: PROTOCOL_VERSION,
+      roomId: this.room.roomId,
+      token: this.room.token,
+      clientId: this.clientId,
+      name: this.name,
+      role: "participant",
+    });
+    await this.waitForMessage((message) => message.type === "welcome", before);
+  }
+
+  private attach(websocket: WebSocket): void {
+    websocket.on("message", (raw, isBinary) => {
+      if (this.websocket === websocket) this.receive(raw, isBinary);
+    });
   }
 
   private receive(raw: RawData, isBinary: boolean): void {
@@ -343,6 +362,10 @@ function applyRoomEvent(snapshot: RoomSnapshot, event: RoomEvent): void {
     }
     case "host-removed":
       remove(snapshot.hosts, (item) => item.hostId === event.hostId);
+      for (const terminal of snapshot.terminals.filter((item) => item.hostId === event.hostId)) {
+        remove(snapshot.leases, (item) => item.terminalId === terminal.terminalId);
+      }
+      remove(snapshot.terminals, (item) => item.hostId === event.hostId, true);
       return;
     case "terminal-opened":
       upsert(
@@ -378,9 +401,13 @@ function upsert<T>(items: T[], matches: (item: T) => boolean, item: T): void {
   items.push(structuredClone(item));
 }
 
-function remove<T>(items: T[], matches: (item: T) => boolean): void {
-  const index = items.findIndex(matches);
-  if (index >= 0) items.splice(index, 1);
+function remove<T>(items: T[], matches: (item: T) => boolean, all = false): void {
+  let index = items.findIndex(matches);
+  while (index >= 0) {
+    items.splice(index, 1);
+    if (!all) return;
+    index = items.findIndex(matches);
+  }
 }
 
 function waitForWebSocketOpen(websocket: WebSocket): Promise<void> {
@@ -388,6 +415,11 @@ function waitForWebSocketOpen(websocket: WebSocket): Promise<void> {
     websocket.once("open", resolvePromise);
     websocket.once("error", reject);
   });
+}
+
+function waitForWebSocketClose(websocket: WebSocket): Promise<void> {
+  if (websocket.readyState === WebSocket.CLOSED) return Promise.resolve();
+  return new Promise((resolvePromise) => websocket.once("close", resolvePromise));
 }
 
 async function terminateChild(child: ChildProcess): Promise<void> {
