@@ -7,10 +7,12 @@ import type { SnapshotStore } from "../ports/snapshot-store.js";
 import type { Connection } from "../ports/transport.js";
 import type { ConnectionRegistry } from "./connection-registry.js";
 import { JoinRoom } from "./join-room.js";
+import { OpenTerminal } from "./open-terminal.js";
 
 // 어댑터가 아는 유일한 진입점 — 프레임을 유즈케이스로 라우팅한다
 export class ServerCore {
   private readonly joinRoom: JoinRoom;
+  private readonly openTerminal: OpenTerminal;
 
   constructor(
     private readonly deps: {
@@ -26,6 +28,10 @@ export class ServerCore {
       rooms: deps.rooms,
       connections: deps.connections,
       identity: deps.identity,
+    });
+    this.openTerminal = new OpenTerminal({
+      rooms: deps.rooms,
+      connections: deps.connections,
     });
   }
 
@@ -53,7 +59,27 @@ export class ServerCore {
       return;
     }
 
-    // 등록된 연결의 후속 메시지 — type별 라우팅은 Task 8~10에서 채워진다
+    if (parsed.message.type === "open-terminal-request" && session.role === "participant") {
+      this.openTerminal.request(conn, session, parsed.message.hostId);
+      return;
+    }
+
+    if (parsed.message.type === "terminal-opened" && session.role === "host") {
+      this.openTerminal.confirmOpened(conn, session, parsed.message.terminalId);
+      return;
+    }
+
+    if (parsed.message.type === "terminal-closed" && session.role === "host") {
+      this.openTerminal.close(conn, session, parsed.message.terminalId, parsed.message.exitCode);
+      return;
+    }
+
+    if (parsed.message.type === "terminal-meta" && session.role === "host") {
+      this.openTerminal.updateMeta(conn, session, parsed.message.terminalId, parsed.message.meta);
+      return;
+    }
+
+    // 등록된 연결의 후속 메시지 — 나머지 type별 라우팅은 Task 8~10에서 채워진다
     conn.send({
       type: "error",
       code: "bad-message",

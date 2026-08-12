@@ -134,7 +134,7 @@ export class RoomTestContext {
 
     const id = hostId ?? `h-${this.nextHostNumber}`;
     this.nextHostNumber += 1;
-    const clientId = `hc-${id}`;
+    const clientId = id;
 
     const send = (msg: ClientMessage): void => {
       this.core.handleMessage(conn, serializeClientMessage(msg));

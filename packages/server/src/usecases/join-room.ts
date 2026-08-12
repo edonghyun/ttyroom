@@ -3,15 +3,20 @@ import type { RoomRegistry } from "../domain/room-registry.js";
 import type { Identity } from "../ports/identity.js";
 import type { Connection } from "../ports/transport.js";
 import type { ConnectionRegistry } from "./connection-registry.js";
+import { ConnectHost } from "./connect-host.js";
 
 export class JoinRoom {
+  private readonly connectHost: ConnectHost;
+
   constructor(
     private readonly deps: {
       rooms: RoomRegistry;
       connections: ConnectionRegistry;
       identity: Identity;
     },
-  ) {}
+  ) {
+    this.connectHost = new ConnectHost({ connections: this.deps.connections });
+  }
 
   execute(conn: Connection, hello: HelloMessage): void {
     if (hello.protocolVersion !== PROTOCOL_VERSION) {
@@ -68,6 +73,11 @@ export class JoinRoom {
       return;
     }
 
-    // host 역할은 Task 7에서 확장
+    this.connectHost.execute({
+      connection: conn,
+      room: room!,
+      hostId: auth.clientId,
+      displayName: auth.displayName,
+    });
   }
 }

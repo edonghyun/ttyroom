@@ -39,6 +39,13 @@ export class ConnectionRegistry {
     );
   }
 
+  hostSession(roomId: string, hostId: string): Session | undefined {
+    return [...this.byConnectionId.values()].find(
+      (session) =>
+        session.roomId === roomId && session.role === "host" && session.hostId === hostId,
+    );
+  }
+
   broadcast(roomId: string, message: ServerMessage): void {
     for (const session of this.participantsOf(roomId)) {
       session.connection.send(message);
