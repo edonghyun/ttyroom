@@ -163,7 +163,20 @@ test("reference room renders five production terminal surfaces with stable colla
     await responsivePage.setViewportSize(viewport);
     await responsivePage.goto(referenceUrl);
     await expect(responsivePage.locator(".terminal-window .xterm")).toHaveCount(5);
+    await expect(responsivePage.getByLabel("backend output")).toContainText("Server listening");
+    await expect(responsivePage.getByText("Control acquired · backend")).toBeVisible();
     await responsivePage.evaluate(() => document.fonts.ready);
+    await expect
+      .poll(() =>
+        responsivePage.locator(".terminal-window .xterm").evaluateAll((terminals) =>
+          terminals.every((terminal) => {
+            const rows = terminal.querySelector(".xterm-rows");
+            const rect = terminal.getBoundingClientRect();
+            return rect.width > 0 && rect.height > 0 && (rows?.textContent?.length ?? 0) > 0;
+          }),
+        ),
+      )
+      .toBe(true);
     await expect
       .poll(() =>
         responsivePage.evaluate(() => ({
