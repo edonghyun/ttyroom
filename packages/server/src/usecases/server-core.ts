@@ -8,6 +8,7 @@ import type { Connection } from "../ports/transport.js";
 import type { ConnectionRegistry } from "./connection-registry.js";
 import { AcquireLease } from "./acquire-lease.js";
 import { BroadcastTerminalOutput } from "./broadcast-terminal-output.js";
+import { HandleDisconnect, PendingDisconnects } from "./handle-disconnect.js";
 import { JoinRoom } from "./join-room.js";
 import { OpenTerminal } from "./open-terminal.js";
 import { ReleaseLease } from "./release-lease.js";
@@ -21,6 +22,7 @@ export class ServerCore {
   private readonly releaseLease: ReleaseLease;
   private readonly routeTerminalInput: RouteTerminalInput;
   private readonly broadcastTerminalOutput: BroadcastTerminalOutput;
+  private readonly handleDisconnect: HandleDisconnect;
 
   constructor(
     private readonly deps: {
@@ -32,10 +34,12 @@ export class ServerCore {
     },
     private readonly options: { policy: Policy },
   ) {
+    const pending = new PendingDisconnects(deps.clock);
     this.joinRoom = new JoinRoom({
       rooms: deps.rooms,
       connections: deps.connections,
       identity: deps.identity,
+      pending,
     });
     this.openTerminal = new OpenTerminal({
       rooms: deps.rooms,
@@ -49,6 +53,10 @@ export class ServerCore {
     });
     this.broadcastTerminalOutput = new BroadcastTerminalOutput(
       { rooms: deps.rooms, connections: deps.connections },
+      { policy: options.policy },
+    );
+    this.handleDisconnect = new HandleDisconnect(
+      { rooms: deps.rooms, connections: deps.connections, pending },
       { policy: options.policy },
     );
   }
@@ -137,7 +145,6 @@ export class ServerCore {
   }
 
   handleClose(conn: Connection): void {
-    // 유예·복원은 Task 11 — 지금은 세션 등록 해제만
-    this.deps.connections.unregister(conn.connectionId);
+    this.handleDisconnect.execute(conn);
   }
 }

@@ -4,6 +4,7 @@ import type { Identity } from "../ports/identity.js";
 import type { Connection } from "../ports/transport.js";
 import type { ConnectionRegistry } from "./connection-registry.js";
 import { ConnectHost } from "./connect-host.js";
+import type { PendingDisconnects } from "./handle-disconnect.js";
 
 export class JoinRoom {
   private readonly connectHost: ConnectHost;
@@ -13,9 +14,13 @@ export class JoinRoom {
       rooms: RoomRegistry;
       connections: ConnectionRegistry;
       identity: Identity;
+      pending: PendingDisconnects;
     },
   ) {
-    this.connectHost = new ConnectHost({ connections: this.deps.connections });
+    this.connectHost = new ConnectHost({
+      connections: this.deps.connections,
+      pending: this.deps.pending,
+    });
   }
 
   execute(conn: Connection, hello: HelloMessage): void {
@@ -39,6 +44,7 @@ export class JoinRoom {
 
     // auth 성공 시 room은 반드시 존재 — LinkAuth가 room-not-found를 걸렀다
     if (hello.role === "participant") {
+      this.deps.pending.cancel(hello.roomId, "participant", auth.clientId);
       // 재접속은 대체(supersede) — 1 clientId = 1 세션 불변식. 이전 연결은 여기서 닫히며,
       // 그 close 통지는 새 세션을 건드리지 않아야 하고(connectionId 기준 unregister),
       // T2.9(handleDisconnect)에서 유예 타이머도 걸지 않아야 한다.

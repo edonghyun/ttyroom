@@ -1,9 +1,15 @@
 import type { Room } from "../domain/room.js";
 import type { Connection } from "../ports/transport.js";
 import type { ConnectionRegistry } from "./connection-registry.js";
+import type { PendingDisconnects } from "./handle-disconnect.js";
 
 export class ConnectHost {
-  constructor(private readonly deps: { connections: ConnectionRegistry }) {}
+  constructor(
+    private readonly deps: {
+      connections: ConnectionRegistry;
+      pending: PendingDisconnects;
+    },
+  ) {}
 
   execute(input: {
     connection: Connection;
@@ -12,6 +18,7 @@ export class ConnectHost {
     displayName: string;
   }): void {
     const { connection, room, hostId, displayName } = input;
+    this.deps.pending.cancel(room.roomId, "host", hostId);
     const existing = this.deps.connections.byClientId(room.roomId, hostId);
     if (existing) {
       this.deps.connections.unregister(existing.connection.connectionId);
