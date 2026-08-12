@@ -6,7 +6,12 @@
 
 ## 버전과 협상
 
-- 현재 버전: `PROTOCOL_VERSION = 1`. 버전은 1 이상의 정수만 유효하다 (0·음수는 hello 파싱 단계에서 거부).
+- 현재 버전: `PROTOCOL_VERSION = 2`. 버전은 1 이상의 정수만 유효하다 (0·음수는 hello 파싱 단계에서 거부).
+- v2는 participant close·terminal mode·output resync·host input state message variant를
+  추가했다. 구형 v1 서버가 이 요청을 `bad-message`로 거부하므로 협상 버전을 올렸다.
+- 새 reader는 구형 persisted v1
+  `RoomSnapshot.name` 누락을 `"Quick Room"`, `HostView.remoteInputAllowed` 누락을 `true`로
+  정규화하고, 구형 reader는 zod object의 알 수 없는 필드 제거 규칙으로 새 필드를 무시한다.
 - 클라이언트(참여자·호스트)는 연결 후 첫 메시지 `hello`에 `protocolVersion`을 싣는다.
 - 서버가 수용하지 못하는 버전이면 `error { code: "unsupported-protocol-version" }`를 보내고
   연결을 종료한다. 클라이언트는 업그레이드 안내를 표시한다
@@ -47,7 +52,7 @@
 
 - 입력 프레임은 반드시 발신자가 현재 보유한 `leaseId`를 지참한다. 서버는 터미널의
   유효 임대와 대조해 불일치 시 프레임을 폐기하고 발신자에게 `lease-invalid`를 보낸다.
-- 입력 프레임의 `seq`는 발신자가 터미널별로 증가시키는 카운터다. v1에서 수신 측
+- 입력 프레임의 `seq`는 발신자가 터미널별로 증가시키는 카운터다. v2에서 수신 측
   (서버·Agent)은 입력 `seq`를 해석하지 않는다 — 향후 확장을 위한 예약 필드.
 - 헤더보다 짧은 프레임, 알 수 없는 frameType은 malformed로 취급하고 연결을 죽이지 않는다.
 
@@ -74,7 +79,10 @@
 - `sync { terminalId, seq }` — "터미널 t의 seq n까지 방송 완료". 백프레셔 회복 시
   재동기화 지점이자 테스트의 명시적 동기화 지점.
 - `output-gap { terminalId, fromSeq, toSeq }` — 느린 참여자에게 드롭된 출력 구간의 통지.
-  수신자는 스크롤백 재동기화로 복구한다.
+  수신자는 해당 터미널 렌더링을 복원 상태로 전환하고 `resync-output-request`를 보낸다.
+- `resync-output-request { terminalId }`의 응답은 요청한 터미널의 현재 retained scrollback
+  출력 프레임 전부(오래된 순서부터)와 마지막 `sync`다. 다른 터미널 출력은 replay하지 않는다.
+  클라이언트는 요청 시 해당 터미널 표시 버퍼를 비우고 replay를 대체 상태로 적용한다.
 
 ## 제어 메시지
 
@@ -82,41 +90,49 @@
 
 | type    | 예시                                                                                                                |
 | ------- | ------------------------------------------------------------------------------------------------------------------- |
-| `hello` | `{"type":"hello","protocolVersion":1,"roomId":"r1","token":"t","clientId":"c1","name":"동현","role":"participant"}` |
+| `hello` | `{"type":"hello","protocolVersion":2,"roomId":"r1","token":"t","clientId":"c1","name":"동현","role":"participant"}` |
 
 `role`은 `"participant"` 또는 `"host"`. 호스트의 `clientId`는 `hostId`로도 쓰인다.
 
 ### 참여자 → 서버
 
-| type                    | 예시                                                            |
-| ----------------------- | --------------------------------------------------------------- |
-| `open-terminal-request` | `{"type":"open-terminal-request","hostId":"h1"}`                |
-| `acquire-lease`         | `{"type":"acquire-lease","terminalId":3}`                       |
-| `release-lease`         | `{"type":"release-lease","terminalId":3,"leaseId":7}`           |
-| `resize-request`        | `{"type":"resize-request","terminalId":3,"cols":120,"rows":40}` |
+| type                     | 예시                                                            |
+| ------------------------ | --------------------------------------------------------------- |
+| `open-terminal-request`  | `{"type":"open-terminal-request","hostId":"h1"}`                |
+| `close-terminal-request` | `{"type":"close-terminal-request","terminalId":3}`              |
+| `set-terminal-mode`      | `{"type":"set-terminal-mode","terminalId":3,"mode":"shared"}`   |
+| `resync-output-request`  | `{"type":"resync-output-request","terminalId":3}`               |
+| `acquire-lease`          | `{"type":"acquire-lease","terminalId":3}`                       |
+| `release-lease`          | `{"type":"release-lease","terminalId":3,"leaseId":7}`           |
+| `resize-request`         | `{"type":"resize-request","terminalId":3,"cols":120,"rows":40}` |
 
 ### 호스트 → 서버
 
-| type              | 예시                                                                                                      |
-| ----------------- | --------------------------------------------------------------------------------------------------------- |
-| `terminal-opened` | `{"type":"terminal-opened","terminalId":3}`                                                               |
-| `terminal-closed` | `{"type":"terminal-closed","terminalId":3,"exitCode":0}`                                                  |
-| `terminal-meta`   | `{"type":"terminal-meta","terminalId":3,"meta":{"cwd":"/home/kep","gitBranch":"main","fgProcess":"vim"}}` |
+| type               | 예시                                                                                                      |
+| ------------------ | --------------------------------------------------------------------------------------------------------- |
+| `terminal-opened`  | `{"type":"terminal-opened","terminalId":3}`                                                               |
+| `terminal-closed`  | `{"type":"terminal-closed","terminalId":3,"exitCode":0}`                                                  |
+| `terminal-meta`    | `{"type":"terminal-meta","terminalId":3,"meta":{"cwd":"/home/kep","gitBranch":"main","fgProcess":"vim"}}` |
+| `host-input-state` | `{"type":"host-input-state","remoteInputAllowed":false}`                                                  |
 
 ### 서버 → 클라이언트
 
-| type            | 예시                                                                                                                        |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `welcome`       | `{"type":"welcome","selfClientId":"c1","snapshot":{"roomId":"r1","participants":[],"hosts":[],"terminals":[],"leases":[]}}` |
-| `room-event`    | `{"type":"room-event","event":{"kind":"participant-joined","participant":{"clientId":"c2","name":"민수"}}}`                 |
-| `lease-result`  | `{"type":"lease-result","terminalId":3,"result":{"kind":"granted","leaseId":7}}`                                            |
-| `lease-invalid` | `{"type":"lease-invalid","terminalId":3,"reason":"stale lease"}`                                                            |
-| `sync`          | `{"type":"sync","terminalId":3,"seq":10}`                                                                                   |
-| `output-gap`    | `{"type":"output-gap","terminalId":3,"fromSeq":11,"toSeq":42}`                                                              |
-| `error`         | `{"type":"error","code":"invalid-token","message":"token mismatch"}`                                                        |
+| type                        | 예시                                                                                                                                               |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `welcome`                   | `{"type":"welcome","selfClientId":"c1","snapshot":{"roomId":"r1","name":"Payment Debug","participants":[],"hosts":[],"terminals":[],"leases":[]}}` |
+| `room-event`                | `{"type":"room-event","event":{"kind":"participant-joined","participant":{"clientId":"c2","name":"민수"}}}`                                        |
+| `lease-result`              | `{"type":"lease-result","terminalId":3,"result":{"kind":"granted","leaseId":7}}`                                                                   |
+| `lease-invalid`             | `{"type":"lease-invalid","terminalId":3,"reason":"remote-input-disabled"}`                                                                         |
+| `terminal-request-rejected` | `{"type":"terminal-request-rejected","request":"close","terminalId":3,"reason":"host-offline"}`                                                    |
+| `sync`                      | `{"type":"sync","terminalId":3,"seq":10}`                                                                                                          |
+| `output-gap`                | `{"type":"output-gap","terminalId":3,"fromSeq":11,"toSeq":42}`                                                                                     |
+| `error`                     | `{"type":"error","code":"invalid-token","message":"token mismatch"}`                                                                               |
 
 `lease-result.result`는 `{"kind":"granted","leaseId":n}` 또는
 `{"kind":"denied","holderClientId":"..."}`.
+`lease-invalid.reason`은 `not-holder` · `terminal-closed` · `remote-input-disabled`.
+`terminal-request-rejected.request`는 `close` · `set-mode` · `resync-output`, `reason`은
+`terminal-not-found` · `terminal-not-open` · `host-offline`이다.
 `error.code`는 `room-not-found` · `invalid-token` · `unsupported-protocol-version` · `bad-message`.
 
 ### 서버 → 호스트
@@ -131,29 +147,44 @@
 
 `room-event.event`에 실리는 형태. `kind`가 판별자다.
 
-| kind                 | 예시                                                                                                                                                                                                       |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `participant-joined` | `{"kind":"participant-joined","participant":{"clientId":"c2","name":"민수"}}`                                                                                                                              |
-| `participant-left`   | `{"kind":"participant-left","clientId":"c2"}`                                                                                                                                                              |
-| `host-connected`     | `{"kind":"host-connected","host":{"hostId":"h1","name":"dev-server","online":true}}`                                                                                                                       |
-| `host-offline`       | `{"kind":"host-offline","hostId":"h1"}`                                                                                                                                                                    |
-| `host-removed`       | `{"kind":"host-removed","hostId":"h1"}`                                                                                                                                                                    |
-| `terminal-opened`    | `{"kind":"terminal-opened","terminal":{"terminalId":3,"hostId":"h1","title":"term-3","mode":"exclusive","status":"open","exitCode":null,"meta":{"cwd":"/home/kep","gitBranch":"main","fgProcess":"vim"}}}` |
-| `terminal-closed`    | `{"kind":"terminal-closed","terminalId":3,"exitCode":0}`                                                                                                                                                   |
-| `lease-granted`      | `{"kind":"lease-granted","lease":{"terminalId":3,"leaseId":7,"holderClientId":"c1"}}`                                                                                                                      |
-| `lease-released`     | `{"kind":"lease-released","terminalId":3}`                                                                                                                                                                 |
-| `terminal-meta`      | `{"kind":"terminal-meta","terminalId":3,"meta":{"cwd":"/home/kep","gitBranch":null,"fgProcess":null}}`                                                                                                     |
+| kind                       | 예시                                                                                                                                                                                                       |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `participant-joined`       | `{"kind":"participant-joined","participant":{"clientId":"c2","name":"민수"}}`                                                                                                                              |
+| `participant-left`         | `{"kind":"participant-left","clientId":"c2"}`                                                                                                                                                              |
+| `host-connected`           | `{"kind":"host-connected","host":{"hostId":"h1","name":"dev-server","online":true,"remoteInputAllowed":true}}`                                                                                             |
+| `host-offline`             | `{"kind":"host-offline","hostId":"h1"}`                                                                                                                                                                    |
+| `host-removed`             | `{"kind":"host-removed","hostId":"h1"}`                                                                                                                                                                    |
+| `host-input-state-changed` | `{"kind":"host-input-state-changed","hostId":"h1","remoteInputAllowed":false}`                                                                                                                             |
+| `terminal-opened`          | `{"kind":"terminal-opened","terminal":{"terminalId":3,"hostId":"h1","title":"term-3","mode":"exclusive","status":"open","exitCode":null,"meta":{"cwd":"/home/kep","gitBranch":"main","fgProcess":"vim"}}}` |
+| `terminal-mode-changed`    | `{"kind":"terminal-mode-changed","terminalId":3,"mode":"shared"}`                                                                                                                                          |
+| `terminal-closed`          | `{"kind":"terminal-closed","terminalId":3,"exitCode":0}`                                                                                                                                                   |
+| `lease-granted`            | `{"kind":"lease-granted","lease":{"terminalId":3,"leaseId":7,"holderClientId":"c1"}}`                                                                                                                      |
+| `lease-released`           | `{"kind":"lease-released","terminalId":3}`                                                                                                                                                                 |
+| `terminal-meta`            | `{"kind":"terminal-meta","terminalId":3,"meta":{"cwd":"/home/kep","gitBranch":null,"fgProcess":null}}`                                                                                                     |
 
 ## 뷰 타입 형태
 
 RoomSnapshot과 room-event가 공유하는 객체 형태. 표기 `A | null`은 JSON null 허용.
 
 - **ParticipantView** — `clientId`: string, `name`: string
-- **HostView** — `hostId`: string, `name`: string, `online`: boolean
+- **HostView** — `hostId`: string, `name`: string, `online`: boolean,
+  `remoteInputAllowed`: boolean (구형 v1 payload 기본값 `true`)
 - **TerminalMeta** — `cwd`: string | null, `gitBranch`: string | null, `fgProcess`: string | null
 - **TerminalView** — `terminalId`: u32, `hostId`: string, `title`: string,
   `mode`: `"exclusive"` | `"shared"`, `status`: `"open"` | `"exited"`,
   `exitCode`: int | null, `meta`: TerminalMeta
 - **LeaseView** — `terminalId`: u32, `leaseId`: u32, `holderClientId`: string
-- **RoomSnapshot** — `roomId`: string, `participants`: ParticipantView[], `hosts`: HostView[],
+- **RoomSnapshot** — `roomId`: string, `name`: string (구형 v1 payload 기본값 `"Quick Room"`),
+  `participants`: ParticipantView[], `hosts`: HostView[],
   `terminals`: TerminalView[], `leases`: LeaseView[]
+
+## Web prerequisite 동작 계약
+
+- `close-terminal-request`는 열린 터미널의 owning online host에만 `close-terminal`로 전달한다.
+  서버는 요청만으로 터미널 상태를 바꾸지 않는다. 실제 PTY 종료 뒤 host가 보낸
+  `terminal-closed`가 상태 변경과 `terminal-closed` room event의 유일한 원인이다.
+- host는 최초 연결과 Kill Switch 토글마다 `host-input-state`를 보낸다. 서버는 snapshot과
+  `host-input-state-changed` event에 이를 반영하며, `false` 동안 모든 remote input frame을
+  폐기하고 요청자에게 `lease-invalid{reason:"remote-input-disabled"}`를 보낸다.
+- `set-terminal-mode`는 participant가 명시적으로 보낸다. 터미널이 열려 있고 owning host가
+  online일 때만 적용하며, 변경 시 `terminal-mode-changed`를 Room 전체에 방송한다.

@@ -16,6 +16,7 @@ export const hostViewSchema = z.object({
   hostId: z.string(),
   name: z.string(),
   online: z.boolean(),
+  remoteInputAllowed: z.boolean().default(true),
 });
 export const terminalViewSchema = z.object({
   terminalId: u32,
@@ -33,6 +34,7 @@ export const leaseViewSchema = z.object({
 });
 export const roomSnapshotSchema = z.object({
   roomId: z.string(),
+  name: z.string().default("Quick Room"),
   participants: z.array(participantViewSchema),
   hosts: z.array(hostViewSchema),
   terminals: z.array(terminalViewSchema),
@@ -62,6 +64,19 @@ const openTerminalRequestSchema = z.object({
   type: z.literal("open-terminal-request"),
   hostId: z.string(),
 });
+const closeTerminalRequestSchema = z.object({
+  type: z.literal("close-terminal-request"),
+  terminalId: u32,
+});
+const setTerminalModeSchema = z.object({
+  type: z.literal("set-terminal-mode"),
+  terminalId: u32,
+  mode: z.enum(["exclusive", "shared"]),
+});
+const resyncOutputRequestSchema = z.object({
+  type: z.literal("resync-output-request"),
+  terminalId: u32,
+});
 const acquireLeaseSchema = z.object({ type: z.literal("acquire-lease"), terminalId: u32 });
 const releaseLeaseSchema = z.object({
   type: z.literal("release-lease"),
@@ -85,16 +100,24 @@ const terminalMetaMessageSchema = z.object({
   terminalId: u32,
   meta: terminalMetaSchema,
 });
+const hostInputStateSchema = z.object({
+  type: z.literal("host-input-state"),
+  remoteInputAllowed: z.boolean(),
+});
 
 export const clientMessageSchema = z.discriminatedUnion("type", [
   helloSchema,
   openTerminalRequestSchema,
+  closeTerminalRequestSchema,
+  setTerminalModeSchema,
+  resyncOutputRequestSchema,
   acquireLeaseSchema,
   releaseLeaseSchema,
   resizeRequestSchema,
   terminalOpenedSchema,
   terminalClosedSchema,
   terminalMetaMessageSchema,
+  hostInputStateSchema,
 ]);
 export type ClientMessage = z.infer<typeof clientMessageSchema>;
 export type HelloMessage = z.infer<typeof helloSchema>;
@@ -107,7 +130,17 @@ export const roomEventSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("host-connected"), host: hostViewSchema }),
   z.object({ kind: z.literal("host-offline"), hostId: z.string() }),
   z.object({ kind: z.literal("host-removed"), hostId: z.string() }),
+  z.object({
+    kind: z.literal("host-input-state-changed"),
+    hostId: z.string(),
+    remoteInputAllowed: z.boolean(),
+  }),
   z.object({ kind: z.literal("terminal-opened"), terminal: terminalViewSchema }),
+  z.object({
+    kind: z.literal("terminal-mode-changed"),
+    terminalId: u32,
+    mode: z.enum(["exclusive", "shared"]),
+  }),
   z.object({
     kind: z.literal("terminal-closed"),
     terminalId: u32,
@@ -149,7 +182,13 @@ const leaseResultMessageSchema = z.object({
 const leaseInvalidSchema = z.object({
   type: z.literal("lease-invalid"),
   terminalId: u32,
-  reason: z.string(),
+  reason: z.enum(["not-holder", "terminal-closed", "remote-input-disabled"]),
+});
+const terminalRequestRejectedSchema = z.object({
+  type: z.literal("terminal-request-rejected"),
+  request: z.enum(["close", "set-mode", "resync-output"]),
+  terminalId: u32,
+  reason: z.enum(["terminal-not-found", "terminal-not-open", "host-offline"]),
 });
 const syncSchema = z.object({ type: z.literal("sync"), terminalId: u32, seq: u32 });
 const outputGapSchema = z.object({
@@ -182,6 +221,7 @@ export const serverMessageSchema = z.discriminatedUnion("type", [
   roomEventMessageSchema,
   leaseResultMessageSchema,
   leaseInvalidSchema,
+  terminalRequestRejectedSchema,
   syncSchema,
   outputGapSchema,
   errorMessageSchema,
