@@ -48,6 +48,16 @@ describe("Room — 역할: Room 라이브 상태와 불변식의 소유자", () 
     expect(room.snapshot().terminals).toEqual([]);
   });
 
+  it("removeHost 후 새로 연 터미널은 제거된 terminalId를 재사용하지 않는다 (lease·frame 라우팅 안전)", () => {
+    const room = makeRoom();
+    room.connectHost("h1", "h");
+    const t1 = room.openTerminal("h1");
+    room.removeHost("h1");
+    room.connectHost("h2", "h2");
+    const t2 = room.openTerminal("h2");
+    expect(t2.terminalId).toBeGreaterThan(t1.terminalId);
+  });
+
   it("markTerminalExited는 상태만 바꾸고 터미널을 제거하지 않는다", () => {
     const room = makeRoom();
     room.connectHost("h1", "h");
@@ -88,6 +98,15 @@ describe("Room — 역할: Room 라이브 상태와 불변식의 소유자", () 
     room.markHostOffline("h1");
     room.connectHost("h1", "동현-Mac-2");
     expect(room.snapshot().hosts).toEqual([{ hostId: "h1", name: "동현-Mac-2", online: true }]);
+  });
+
+  it("host 재접속(connectHost 재호출)은 그 host의 기존 터미널을 보존한다", () => {
+    const room = makeRoom();
+    room.connectHost("h1", "동현-Mac");
+    const t = room.openTerminal("h1");
+    room.markHostOffline("h1");
+    room.connectHost("h1", "동현-Mac");
+    expect(room.terminal(t.terminalId)).toMatchObject({ hostId: "h1", status: "open" });
   });
 
   it("setTerminalMode는 터미널 모드를 shared로 전환한다", () => {
