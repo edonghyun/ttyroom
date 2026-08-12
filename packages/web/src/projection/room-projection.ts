@@ -6,6 +6,7 @@ import type {
   RoomSnapshot,
   ServerMessage,
   TerminalView,
+  OutputFrame,
 } from "@ttyroom/protocol";
 
 export type RoomConnectionState =
@@ -35,20 +36,38 @@ export interface ProjectedTerminal {
   readonly lease: LeaseView | null;
   readonly holder: ParticipantView | null;
   readonly inputCapability: InputCapability;
+  readonly output: { status: "live" | "restoring"; lastSeq: number };
 }
 
-export type ProjectionEffect = {
-  kind: "diagnostic";
-  code: "unknown-terminal";
-  terminalId: number;
-};
+export type ProjectionEffect =
+  | {
+      kind: "diagnostic";
+      code: "unknown-terminal";
+      terminalId: number;
+    }
+  | {
+      kind: "terminal-output";
+      terminalId: number;
+      seq: number;
+      bytes: Uint8Array;
+      replace: boolean;
+    }
+  | { kind: "reset-terminal-output"; terminalId: number }
+  | { kind: "request-output-replay"; terminalId: number };
 type Subscriber = (view: RoomProjectionView) => void;
+
+interface OutputState {
+  mode: "live" | "replay";
+  lastSeq: number;
+  replayLastSeq: number | null;
+}
 
 export class RoomProjection {
   private connection: RoomConnectionState = "joining";
   private selfClientId: string | null = null;
   private room: RoomSnapshot | null = null;
   private readonly subscribers = new Set<Subscriber>();
+  private readonly outputByTerminal = new Map<number, OutputState>();
 
   view(): RoomProjectionView {
     return freezeView({
@@ -71,6 +90,11 @@ export class RoomProjection {
     const lease = this.room?.leases.find((item) => item.terminalId === terminalId) ?? null;
     const holder =
       this.room?.participants.find((item) => item.clientId === lease?.holderClientId) ?? null;
+    const output = this.outputByTerminal.get(terminalId) ?? {
+      mode: "live" as const,
+      lastSeq: 0,
+      replayLastSeq: null,
+    };
 
     return {
       terminal: { ...terminal, meta: { ...terminal.meta } },
@@ -78,7 +102,39 @@ export class RoomProjection {
       lease: lease && { ...lease },
       holder: holder && { ...holder },
       inputCapability: this.inputCapability(terminal, host, lease, holder),
+      output: {
+        status: output.mode === "live" ? "live" : "restoring",
+        lastSeq: output.mode === "live" ? output.lastSeq : (output.replayLastSeq ?? 0),
+      },
     };
+  }
+
+  applyOutput(frame: OutputFrame): readonly ProjectionEffect[] {
+    const state = this.outputByTerminal.get(frame.terminalId);
+    if (!state || !this.room?.terminals.some((item) => item.terminalId === frame.terminalId)) {
+      return [
+        { kind: "diagnostic", code: "unknown-terminal", terminalId: frame.terminalId },
+      ];
+    }
+
+    const previousSeq = state.mode === "live" ? state.lastSeq : state.replayLastSeq;
+    if (previousSeq !== null && frame.seq <= previousSeq) return [];
+    if (previousSeq !== null && frame.seq !== previousSeq + 1) return [];
+
+    const replace = state.mode === "replay" && state.replayLastSeq === null;
+    if (state.mode === "live") state.lastSeq = frame.seq;
+    else state.replayLastSeq = frame.seq;
+    this.publish();
+
+    return [
+      {
+        kind: "terminal-output",
+        terminalId: frame.terminalId,
+        seq: frame.seq,
+        bytes: frame.payload.slice(),
+        replace,
+      },
+    ];
   }
 
   applyServerMessage(message: ServerMessage): readonly ProjectionEffect[] {
@@ -95,11 +151,34 @@ export class RoomProjection {
       return [];
     }
 
+    if (message.type === "sync") {
+      const output = this.outputByTerminal.get(message.terminalId);
+      if (output?.mode === "replay" && (output.replayLastSeq ?? 0) === message.seq) {
+        output.mode = "live";
+        output.lastSeq = message.seq;
+        output.replayLastSeq = null;
+        this.publish();
+      }
+      return [];
+    }
+
+    if (message.type === "output-gap") {
+      return this.startReplay(message.terminalId);
+    }
+
     if (message.type !== "welcome") return [];
 
     this.connection = "live";
     this.selfClientId = message.selfClientId;
     this.room = copyRoom(message.snapshot);
+    this.outputByTerminal.clear();
+    for (const terminal of message.snapshot.terminals) {
+      this.outputByTerminal.set(terminal.terminalId, {
+        mode: "replay",
+        lastSeq: 0,
+        replayLastSeq: null,
+      });
+    }
     this.publish();
     return [];
   }
@@ -143,6 +222,11 @@ export class RoomProjection {
           (terminal) => terminal.terminalId === event.terminal.terminalId,
           event.terminal,
         );
+        this.outputByTerminal.set(event.terminal.terminalId, {
+          mode: "live",
+          lastSeq: 0,
+          replayLastSeq: null,
+        });
         return true;
       case "terminal-mode-changed":
         return this.updateTerminal(event.terminalId, (terminal) => ({
@@ -186,6 +270,21 @@ export class RoomProjection {
 
     this.room.hosts[index] = update(host);
     return true;
+  }
+
+  private startReplay(terminalId: number): readonly ProjectionEffect[] {
+    const output = this.outputByTerminal.get(terminalId);
+    if (!output) {
+      return [{ kind: "diagnostic", code: "unknown-terminal", terminalId }];
+    }
+
+    output.mode = "replay";
+    output.replayLastSeq = null;
+    this.publish();
+    return [
+      { kind: "reset-terminal-output", terminalId },
+      { kind: "request-output-replay", terminalId },
+    ];
   }
 
   private inputCapability(

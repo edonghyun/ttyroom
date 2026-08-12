@@ -255,6 +255,106 @@ describe("RoomProjection — authoritative Room state", () => {
     expect(Object.isFrozen(welcomeView.room.participants[0])).toBe(true);
     expect(welcomeView.room.participants).toEqual([{ clientId: "alice-id", name: "Alice" }]);
   });
+
+  it("publishes continuous output exactly once", () => {
+    const projection = welcomedProjection();
+    projection.applyServerMessage({ type: "sync", terminalId: 1, seq: 0 });
+
+    const frame = {
+      kind: "output" as const,
+      terminalId: 1,
+      seq: 1,
+      payload: new Uint8Array([65]),
+    };
+
+    expect(projection.applyOutput(frame)).toEqual([
+      {
+        kind: "terminal-output",
+        terminalId: 1,
+        seq: 1,
+        bytes: new Uint8Array([65]),
+        replace: false,
+      },
+    ]);
+    expect(projection.applyOutput(frame)).toEqual([]);
+    expect(projection.terminal(1)?.output).toEqual({ status: "live", lastSeq: 1 });
+  });
+
+  it("marks only the gapped terminal restoring and requests retained replay", () => {
+    const projection = welcomedProjection();
+    const firstTerminal = snapshot.terminals[0];
+    if (!firstTerminal) throw new Error("Expected terminal fixture");
+    projection.applyServerMessage({ type: "sync", terminalId: 1, seq: 0 });
+    projection.applyServerMessage({
+      type: "room-event",
+      event: {
+        kind: "terminal-opened",
+        terminal: {
+          ...firstTerminal,
+          terminalId: 2,
+          title: "frontend",
+        },
+      },
+    });
+
+    expect(
+      projection.applyServerMessage({
+        type: "output-gap",
+        terminalId: 1,
+        fromSeq: 2,
+        toSeq: 4,
+      }),
+    ).toEqual([
+      { kind: "reset-terminal-output", terminalId: 1 },
+      { kind: "request-output-replay", terminalId: 1 },
+    ]);
+    expect(projection.terminal(1)?.output.status).toBe("restoring");
+    expect(projection.terminal(2)?.output.status).toBe("live");
+  });
+
+  it("replaces output with contiguous retained replay and becomes live only at exact sync", () => {
+    const projection = welcomedProjection();
+    projection.applyServerMessage({ type: "sync", terminalId: 1, seq: 0 });
+    projection.applyOutput({
+      kind: "output",
+      terminalId: 1,
+      seq: 1,
+      payload: new Uint8Array([65]),
+    });
+    projection.applyServerMessage({
+      type: "output-gap",
+      terminalId: 1,
+      fromSeq: 2,
+      toSeq: 3,
+    });
+
+    expect(
+      projection.applyOutput({
+        kind: "output",
+        terminalId: 1,
+        seq: 1,
+        payload: new Uint8Array([65]),
+      }),
+    ).toMatchObject([{ kind: "terminal-output", seq: 1, replace: true }]);
+    projection.applyOutput({
+      kind: "output",
+      terminalId: 1,
+      seq: 2,
+      payload: new Uint8Array([66]),
+    });
+    projection.applyOutput({
+      kind: "output",
+      terminalId: 1,
+      seq: 3,
+      payload: new Uint8Array([67]),
+    });
+
+    projection.applyServerMessage({ type: "sync", terminalId: 1, seq: 2 });
+    expect(projection.terminal(1)?.output.status).toBe("restoring");
+
+    projection.applyServerMessage({ type: "sync", terminalId: 1, seq: 3 });
+    expect(projection.terminal(1)?.output).toEqual({ status: "live", lastSeq: 3 });
+  });
 });
 
 function welcomedProjection(): RoomProjection {
