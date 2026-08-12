@@ -18,7 +18,7 @@
 | 암호화 | TLS만. 터미널 페이로드는 서버가 해석하지 않는 불투명 blob으로 다뤄 E2E를 나중에 얹을 수 있게 함 |
 | 기술 스택 | 전부 TypeScript. Agent는 Node + node-pty, 배포는 npx/npm. 프로토콜은 언어 중립 명세로 유지해 Agent의 Rust/Go 재작성 경로를 열어둠 |
 | Host 연결 UX | CLI 즉석 연결. Room 화면의 복사 버튼으로 `npx ttyroom join <url>` 실행, Ctrl+C로 종료. 상주 데몬 없음 |
-| 입력권 UX | 빈 터미널 클릭 즉시 획득. 타인 소유 터미널 클릭은 포커스만 이동. 강한 시각 피드백으로 혼동 완화 |
+| 입력권 UX | 창 선택과 입력권 획득을 분리. Available Terminal의 `Take control`로 획득하고 타인 소유 Terminal은 포커스·관찰만 허용. 강한 시각 피드백으로 혼동 완화 |
 | 인증 | Room 링크가 초대권, 입장 시 닉네임 입력. 외부 노출은 Tailscale 네트워크 경계로 차단. 신원 체계는 포트로 추상화해 나중에 교체 가능 |
 | 기존 세션 attach | MVP 제외. 브라우저에서 만드는 새 PTY만 지원 |
 | 아키텍처 | 단일 서버 프로세스(Control Plane + Relay 겸임), 인메모리 상태, 클라이언트당 WebSocket 하나에 멀티플렉싱. 인프라는 포트/어댑터로 교체 가능하게 |
@@ -28,7 +28,7 @@
 
 ### 열린 질문에 대한 기본값 (설계에 포함된 결정)
 
-- 한 사용자의 동시 입력권은 **하나**. 다른 빈 터미널을 클릭하면 기존 입력권을 해제하고 새로 획득한다.
+- 한 사용자의 동시 입력권은 **하나**. 다른 Available Terminal의 `Take control`을 실행하면 기존 입력권을 해제하고 새로 획득한다.
 - 터미널 협업 모드의 기본값은 **Exclusive**. Shared는 터미널별 옵트인 모드로 제공한다.
 - Quick Room 종료 시 메타데이터는 남기지 않는다 (기록·타임라인은 후속 검토).
 - 복구는 clientId + Room 스냅샷 + 스크롤백 replay로 처리한다 (아래 참조).
@@ -165,7 +165,7 @@ packages/server/src/
 
 ### 입력권 임대
 
-- 빈 터미널 클릭 → `acquire-lease` → 단일 스레드 처리라 선착순이 명확
+- Available Terminal의 `Take control` → `acquire-lease` → 단일 스레드 처리라 선착순이 명확
   → 성공 시 Room 전체에 브로드캐스트, 실패 시 요청자에게 현재 소유자 정보 응답(UI는 포커스만 이동).
 - 연결 단절 시 Clock으로 유예 타이머(기본 15초). 같은 clientId 재접속이면 임대 복원, 아니면 해제 브로드캐스트.
 
@@ -202,13 +202,17 @@ Agent는 의도적으로 얇다. 판단은 서버에 있고 Agent는 수행만 �
 Web UI는 이번 구현 범위에서 분리한다. 예시 화면 설계를 먼저 진행한 뒤 별도 계획으로 착수한다.
 서버·Agent는 플로우 e2e(실제 ws 클라이언트)로 검증하므로 web 없이 완결적으로 개발할 수 있다.
 
+화면 설계 기준은 `2026-08-12-ttyroom-web-ui-design.md`를 따른다. 이 문서는 여러 Terminal을
+자유롭게 이동·겹치기·정렬할 수 있는 브라우저 데스크톱, 사용자별 창 배치, Dock과 Overview,
+입력권 상태 표현을 정의한다.
+
 Web 트랙에 승계되는 설계 결정:
 
 - 프레임워크: React + Vite, 터미널 렌더링은 xterm.js.
 - 서버가 보내는 스냅샷·이벤트가 유일한 진실이고 웹은 렌더링만 한다.
   낙관적 업데이트는 임대 획득 같은 지연 민감 지점에만 제한적으로 쓴다.
-- 입력권 시각 상태(내 소유 / 타인 소유 / 빈 터미널)의 강한 피드백,
-  Hosts 사이드바 · 터미널 탭/분할 · 참여자 패널 구조.
+- 입력권 시각 상태(내 소유 / 타인 소유 / 빈 Terminal / Read-only)의 강한 피드백,
+  Floating Terminal Window · Dock · Arrange · Overview 구조.
 - `packages/protocol`과 Transport 브라우저 어댑터를 통해서만 서버와 통신한다.
 
 ## 개발 규율
