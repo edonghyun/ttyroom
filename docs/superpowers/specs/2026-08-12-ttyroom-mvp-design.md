@@ -40,8 +40,8 @@
 ```text
 ┌──────────┐   Transport    ┌─────────────────────────┐   Transport    ┌──────────┐
 │  Web     │◀══════════════▶│         Server          │◀══════════════▶│  Agent   │
-│ (브라우저)│                │  역할 모듈 + 계약        │                │ (Node)   │
-└──────────┘                │  + 어댑터                │                └──────────┘
+│ (브라우저)│                │  domain / usecases      │                │ (Node)   │
+└──────────┘                │  ports / adapters       │                └──────────┘
                             └─────────────────────────┘
 ```
 
@@ -55,37 +55,38 @@
 ```text
 ttyroom/
 ├── packages/protocol   # 제어 메시지 zod 스키마, 데이터 프레임 인코더/디코더, PROTOCOL.md
-├── packages/server     # 역할 모듈 + 계약 + 어댑터, config, main(조립)
+├── packages/server     # domain / usecases / ports / adapters, config, main(조립)
 ├── packages/agent      # CLI, PTY 관리, Transport 클라이언트 어댑터
 └── packages/web        # Room UI, xterm.js — 별도 트랙 (화면 설계 후 착수)
 ```
 
 `protocol`이 유일한 공유 지점이다. TS 타입과 함께 언어 중립 명세(`PROTOCOL.md`)를 유지한다.
 
-## 서버 구조
+## 서버 레이어 구조
 
-폴더는 코딩 가이드라인 §3.1/3.2에 따라 **역할 우선**으로 가른다 (계층 이름 폴더 금지).
-헥사고날 계층 — 도메인 모델 / 유즈케이스 / 계약(포트) / 어댑터 — 은 **개념과 의존 방향
-규칙**으로 유지하며, 순환·방향 위반은 CI의 의존성 검사(dependency-cruiser)로 강제한다.
+의존 방향은 항상 안쪽으로: `adapters → usecases → domain`.
+순환·방향 위반은 CI의 의존성 검사(dependency-cruiser)로 강제한다.
 
 ```text
 packages/server/src/
-├── room/        # Room·Host·Terminal 모델과 불변식 + 참여·연결·터미널 유즈케이스
-├── lease/       # 입력권(Lease) 모델과 불변식 + 획득·해제·만료·복원 유즈케이스
-├── stream/      # 데이터 프레임 라우팅, 스크롤백 링버퍼, 백프레셔·sync 유즈케이스
-├── contracts/   # Transport·SnapshotStore·Identity·Clock 계약(소비자 관점) + Policy 타입
-├── transport/   # WebSocket Transport 어댑터 (송신 버퍼 감시 → 백프레셔 신호)
-├── identity/    # Room 토큰 + clientId 어댑터
-├── snapshot/    # no-op 어댑터 (후속: SQLite)
-├── clock/       # 시스템 시계 어댑터
+├── domain/      # Room·Host·Terminal·Lease 엔티티와 불변식. 순수 함수. 포트를 모름
+├── usecases/    # 실질적 플로우의 주인. 포트를 호출하는 유일한 레이어
+├── ports/       # Transport · SnapshotStore · Identity · Clock 인터페이스 + Policy 타입
+├── adapters/
+│   ├── ws/           # WebSocket Transport 어댑터 (송신 버퍼 감시 → 백프레셔 신호)
+│   ├── memory/       # SnapshotStore no-op 어댑터
+│   ├── link-auth/    # Room 토큰 + clientId Identity 어댑터
+│   └── system-clock/
 ├── config.ts    # zod 스키마 단일 진실 (아래 설정 계층 참조)
-└── main.ts      # 조립 지점. 어댑터 생성 → 역할 모듈에 주입. 웹 정적 파일 서빙
+└── main.ts      # 조립 지점. 어댑터 생성 → 유즈케이스 주입. 웹 정적 파일 서빙
 ```
 
-의존 방향 규칙: `room`·`lease`·`stream`(역할 모듈)은 `contracts`만 의존한다.
-어댑터(`transport`·`identity`·`snapshot`·`clock`)는 `contracts`를 구현하며 역할 모듈을 모른다.
-`main.ts`만 전부를 안다. 컴포넌트는 가이드라인대로 클래스 기본, 협력 객체(Deps)와
-설정값(Options)을 구분한 생성자 옵션 객체 주입으로 작성한다.
+컴포넌트는 가이드라인대로 클래스 기본, 협력 객체(Deps)와 설정값(Options)을 구분한
+생성자 옵션 객체 주입으로 작성한다.
+
+참고: 코딩 가이드라인 §3.1은 계층 이름 폴더 대신 역할 우선 폴더를 권장[SHOULD]하지만,
+이 프로젝트는 계층 폴더 구조를 명시적으로 선택했다 — 포트/어댑터 교체 가능성이 제품의
+핵심 요구라서 계층 경계가 폴더에 그대로 드러나는 쪽이 낫다고 판단.
 
 ### 도메인 (불변식)
 
@@ -98,13 +99,11 @@ packages/server/src/
 
 ### 유즈케이스 목록
 
-`joinRoom`, `connectHost`, `openTerminal`, `syncLateJoiner`, `handleDisconnect` (→ `room/`),
-`acquireLease`, `releaseLease` (→ `lease/`),
-`routeTerminalInput`, `broadcastTerminalOutput` (→ `stream/`).
-테스트도 이 단위로 작성한다. 유즈케이스는 별도 계층 폴더가 아니라
-자신이 조작하는 모델과 같은 역할 모듈에 소속된다.
+`joinRoom`, `connectHost`, `openTerminal`, `acquireLease`, `releaseLease`,
+`routeTerminalInput`, `broadcastTerminalOutput`, `handleDisconnect`, `syncLateJoiner`.
+테스트도 이 단위로 작성한다.
 
-### 계약 (포트)
+### 포트
 
 - **Transport** — 연결 하나의 프레임 송수신. 의미론 계약을 인터페이스에 명시한다:
   프레임 순서 보장, 연결별 백프레셔 신호(송신 버퍼 수위), 재연결은 전송이 숨기지 않고
@@ -221,7 +220,7 @@ Web 트랙에 승계되는 설계 결정:
   작성하며, 이는 본 문서의 테스트 배치 규칙과 일치한다.
 - **코딩 가이드라인** — `semantic-context-os/CODING-GUIDELINES.md`를 준수한다.
   이 설계에 특히 영향을 주는 항목: 컴포넌트는 클래스 기본(한 파일 한 역할),
-  Deps/Options를 구분한 생성자 옵션 객체 주입, 역할 우선 폴더(계층·방법론 이름 금지),
+  Deps/Options를 구분한 생성자 옵션 객체 주입,
   strict TS(`noUncheckedIndexedAccess` 등), 프로그래머 오류(throw)와 예상된 실패
   (discriminated union)의 구분, `cause` 보존, 시계·난수·ID 주입, 계약 스위트 공유,
   제약 코멘트만 허용, 매직 넘버는 근거 코멘트와 함께 상수화.
