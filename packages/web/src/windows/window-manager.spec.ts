@@ -108,6 +108,26 @@ describe("WindowManager — participant-local terminal windows", () => {
     ]);
   });
 
+  it.each([
+    ["left", { x: 0, y: 0, width: 600, height: 800 }],
+    ["right", { x: 600, y: 0, width: 600, height: 800 }],
+    ["top-left", { x: 0, y: 0, width: 600, height: 400 }],
+    ["top-right", { x: 600, y: 0, width: 600, height: 400 }],
+    ["bottom-left", { x: 0, y: 400, width: 600, height: 400 }],
+    ["bottom-right", { x: 600, y: 400, width: 600, height: 400 }],
+  ] as const)("snaps a floating window to the %s workspace region", (zone, expected) => {
+    const manager = new WindowManager({ viewport: { width: 1200, height: 800 } });
+    manager.reconcile([11]);
+
+    manager.snap(11, zone);
+
+    expect(manager.view().windows[0]).toMatchObject({
+      rect: expected,
+      minimized: false,
+      maximized: false,
+    });
+  });
+
   it("focuses one maximized window while leaving the others available for the Dock", () => {
     const manager = new WindowManager({ viewport: { width: 1280, height: 800 } });
     manager.reconcile([11, 12]);

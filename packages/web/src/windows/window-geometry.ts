@@ -10,6 +10,8 @@ export interface WindowRect {
   readonly height: number;
 }
 
+export type SnapZone = "left" | "right" | "top-left" | "top-right" | "bottom-left" | "bottom-right";
+
 export const DEFAULT_WINDOW_SIZE = { width: 640, height: 420 } as const;
 export const MIN_WINDOW_SIZE = { width: 360, height: 240 } as const;
 export const MIN_VISIBLE_TITLEBAR = 48;
@@ -60,4 +62,17 @@ export function tileRects(count: number, viewport: Viewport): readonly WindowRec
     width: cellWidth,
     height: cellHeight,
   }));
+}
+
+export function snapRect(zone: SnapZone, viewport: Viewport): WindowRect {
+  const width = viewport.width / 2;
+  const quadrant = zone.includes("top") || zone.includes("bottom");
+  const height = quadrant ? viewport.height / 2 : viewport.height;
+
+  return {
+    x: zone.includes("right") ? width : 0,
+    y: zone.includes("bottom") ? height : 0,
+    width,
+    height,
+  };
 }

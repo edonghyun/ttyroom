@@ -364,6 +364,19 @@
   cursor: nwse-resize;
 }
 
+.snap-preview {
+  position: fixed;
+  z-index: 19000;
+  pointer-events: none;
+  border: 2px solid #c9a7ef;
+  background: rgb(164 113 219 / 18%);
+  transition:
+    left 100ms ease,
+    top 100ms ease,
+    width 100ms ease,
+    height 100ms ease;
+}
+
 .terminal-scene.is-overview {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr));
@@ -485,6 +498,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .snap-preview,
   .terminal-scene.is-overview .terminal-window {
     transition: none;
   }

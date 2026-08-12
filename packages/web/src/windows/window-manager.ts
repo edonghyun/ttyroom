@@ -1,7 +1,9 @@
 import {
   clampRect,
   cascadeRect,
+  snapRect,
   tileRects,
+  type SnapZone,
   type Viewport,
   type WindowRect,
 } from "./window-geometry.js";
@@ -143,6 +145,21 @@ export class WindowManager {
       const rect = tileById.get(window.terminalId);
       return rect ? { ...window, rect, maximized: false, restoreRect: undefined } : window;
     });
+    this.#publish();
+  }
+
+  snap(terminalId: number, zone: SnapZone): void {
+    this.#windows = this.#windows.map((window) => {
+      if (window.terminalId !== terminalId) return window;
+      const { restoreRect: _restoreRect, ...rest } = window;
+      return {
+        ...rest,
+        rect: snapRect(zone, this.#viewport),
+        minimized: false,
+        maximized: false,
+      };
+    });
+    this.#raise(terminalId);
     this.#publish();
   }
 
