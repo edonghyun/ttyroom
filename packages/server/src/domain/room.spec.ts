@@ -179,3 +179,159 @@ describe("Room — 역할: Room 라이브 상태와 불변식의 소유자", () 
     });
   });
 });
+
+describe("Room 입력권 임대 — 역할: 터미널 입력 권한의 단일 진실", () => {
+  const withTerminal = () => {
+    const room = makeRoom();
+    room.addParticipant("alice", "A");
+    room.addParticipant("bob", "B");
+    room.connectHost("h1", "h");
+    return { room, t: room.openTerminal("h1") };
+  };
+
+  it("빈 exclusive 터미널의 임대 요청은 granted된다", () => {
+    const { room, t } = withTerminal();
+    expect(room.acquireLease("alice", t.terminalId)).toMatchObject({
+      kind: "granted",
+      lease: { terminalId: t.terminalId, holderClientId: "alice" },
+    });
+  });
+
+  it("이미 잡힌 터미널의 타인 요청은 denied되고 현재 소유자를 알려준다 (선착순)", () => {
+    const { room, t } = withTerminal();
+    room.acquireLease("alice", t.terminalId);
+    expect(room.acquireLease("bob", t.terminalId)).toEqual({
+      kind: "denied",
+      holderClientId: "alice",
+    });
+  });
+
+  it("소유자의 같은 요청 재도착은 already-held로 멱등하다 (재전송 안전)", () => {
+    const { room, t } = withTerminal();
+    const first = room.acquireLease("alice", t.terminalId);
+    const second = room.acquireLease("alice", t.terminalId);
+    expect(second.kind).toBe("already-held");
+    expect(room.snapshot().leases).toHaveLength(1);
+    if (first.kind === "granted" && second.kind === "already-held")
+      expect(second.lease.leaseId).toBe(first.lease.leaseId);
+  });
+
+  it("다른 터미널 획득 시 기존 임대는 자동 해제된다 (1인 1임대)", () => {
+    const { room, t } = withTerminal();
+    const t2 = room.openTerminal("h1");
+    room.acquireLease("alice", t.terminalId);
+    const d = room.acquireLease("alice", t2.terminalId);
+    expect(d).toMatchObject({ kind: "granted", autoReleased: { terminalId: t.terminalId } });
+    expect(room.leaseOf(t.terminalId)).toBeUndefined();
+  });
+
+  it("leaseOf가 돌려준 뷰를 변경해도 Room 내부 상태는 오염되지 않는다 (구조 복사 불변식)", () => {
+    const { room, t } = withTerminal();
+    room.acquireLease("alice", t.terminalId);
+
+    // 직전 acquireLease가 granted한 터미널 — 임대 존재가 보장된다
+    room.leaseOf(t.terminalId)!.holderClientId = "mallory";
+
+    expect(room.leaseOf(t.terminalId)).toMatchObject({ holderClientId: "alice" });
+  });
+
+  it("acquireLease가 돌려준 lease를 변경해도 Room 내부 상태는 오염되지 않는다 (구조 복사 불변식)", () => {
+    const { room, t } = withTerminal();
+    const d = room.acquireLease("alice", t.terminalId);
+
+    if (d.kind !== "granted") throw new Error("전제 실패: granted여야 한다");
+    d.lease.holderClientId = "mallory";
+
+    expect(room.leaseOf(t.terminalId)).toMatchObject({ holderClientId: "alice" });
+  });
+
+  it("exited 터미널의 임대 요청은 rejected된다", () => {
+    const { room, t } = withTerminal();
+    room.markTerminalExited(t.terminalId, 0);
+    expect(room.acquireLease("alice", t.terminalId)).toEqual({
+      kind: "rejected",
+      reason: "terminal-not-open",
+    });
+  });
+
+  it("없는 터미널의 임대 요청은 rejected된다", () => {
+    const { room } = withTerminal();
+    expect(room.acquireLease("alice", 999)).toEqual({
+      kind: "rejected",
+      reason: "terminal-not-open",
+    });
+  });
+
+  it("shared 터미널의 임대 요청은 rejected된다 (임대는 exclusive 전용)", () => {
+    const { room, t } = withTerminal();
+    room.setTerminalMode(t.terminalId, "shared");
+    expect(room.acquireLease("alice", t.terminalId)).toEqual({
+      kind: "rejected",
+      reason: "shared-terminal",
+    });
+  });
+
+  it("소유자가 아닌 release는 not-holder이고 상태를 바꾸지 않는다", () => {
+    const { room, t } = withTerminal();
+    room.acquireLease("alice", t.terminalId);
+    expect(room.releaseLease("bob", t.terminalId)).toEqual({ kind: "not-holder" });
+    expect(room.leaseOf(t.terminalId)).toMatchObject({ holderClientId: "alice" });
+  });
+
+  it("소유자의 release는 released로 임대를 해제한다", () => {
+    const { room, t } = withTerminal();
+    room.acquireLease("alice", t.terminalId);
+    expect(room.releaseLease("alice", t.terminalId)).toMatchObject({
+      kind: "released",
+      lease: { terminalId: t.terminalId, holderClientId: "alice" },
+    });
+    expect(room.leaseOf(t.terminalId)).toBeUndefined();
+    expect(room.snapshot().leases).toEqual([]);
+  });
+
+  it("releaseAllOf는 해당 사용자의 임대만 걷어 반환한다", () => {
+    const { room, t } = withTerminal();
+    const t2 = room.openTerminal("h1");
+    room.acquireLease("alice", t.terminalId);
+    room.acquireLease("bob", t2.terminalId);
+
+    expect(room.releaseAllOf("alice")).toMatchObject([{ terminalId: t.terminalId }]);
+
+    expect(room.leaseOf(t.terminalId)).toBeUndefined();
+    expect(room.leaseOf(t2.terminalId)).toMatchObject({ holderClientId: "bob" });
+  });
+
+  it("isInputAllowed: exclusive는 유효 leaseId 일치일 때만 참이다", () => {
+    const { room, t } = withTerminal();
+    const d = room.acquireLease("alice", t.terminalId);
+    const leaseId = d.kind === "granted" ? d.lease.leaseId : -1;
+    expect(room.isInputAllowed("alice", t.terminalId, leaseId)).toBe(true);
+    expect(room.isInputAllowed("alice", t.terminalId, leaseId + 99)).toBe(false); // 오래된 leaseId 우회 차단
+    expect(room.isInputAllowed("bob", t.terminalId, leaseId)).toBe(false);
+  });
+
+  it("isInputAllowed: shared 터미널은 참여자면 임대 없이 참이다", () => {
+    const { room, t } = withTerminal();
+    room.setTerminalMode(t.terminalId, "shared");
+    expect(room.isInputAllowed("bob", t.terminalId, 0)).toBe(true);
+    expect(room.isInputAllowed("stranger", t.terminalId, 0)).toBe(false);
+  });
+
+  it("isInputAllowed: exited 터미널은 유효 임대 소유자라도 거짓이다", () => {
+    const { room, t } = withTerminal();
+    const d = room.acquireLease("alice", t.terminalId);
+    const leaseId = d.kind === "granted" ? d.lease.leaseId : -1;
+    room.markTerminalExited(t.terminalId, 0);
+    expect(room.isInputAllowed("alice", t.terminalId, leaseId)).toBe(false);
+  });
+
+  it("removeHost는 제거된 터미널의 임대도 함께 걷는다 (stale lease 방지)", () => {
+    const { room, t } = withTerminal();
+    room.acquireLease("alice", t.terminalId);
+
+    room.removeHost("h1");
+
+    expect(room.leaseOf(t.terminalId)).toBeUndefined();
+    expect(room.snapshot().leases).toEqual([]);
+  });
+});
