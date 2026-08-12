@@ -213,6 +213,10 @@ export function serializeServerMessage(msg: ServerMessage): string {
   return JSON.stringify(msg);
 }
 
+export function serializeClientMessage(msg: ClientMessage): string {
+  return JSON.stringify(msg);
+}
+
 export type ServerParseResult =
   { kind: "ok"; message: ServerMessage } | { kind: "bad-message"; reason: string };
 

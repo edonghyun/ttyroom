@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { parseClientMessage, parseServerMessage, serializeServerMessage } from "./messages.js";
+import {
+  parseClientMessage,
+  parseServerMessage,
+  serializeClientMessage,
+  serializeServerMessage,
+} from "./messages.js";
 
 describe("제어 메시지 스키마 — 역할: JSON 제어 프레임의 검증과 유선 형태 고정", () => {
   it("정상 hello 메시지를 파싱해 타입을 부여한다", () => {
@@ -68,6 +73,11 @@ describe("제어 메시지 스키마 — 역할: JSON 제어 프레임의 검증
     expect(parseServerMessage(JSON.stringify({ type: "nope" }))).toMatchObject({
       kind: "bad-message",
     });
+  });
+
+  it("클라이언트 메시지를 직렬화해 서버 측에서 파싱할 수 있다 (라운드트립)", () => {
+    const msg = { type: "acquire-lease", terminalId: 3 } as const;
+    expect(parseClientMessage(serializeClientMessage(msg))).toEqual({ kind: "ok", message: msg });
   });
 
   it("서버 메시지를 클라이언트 측에서 파싱할 수 있다 (라운드트립)", () => {

@@ -47,11 +47,13 @@
 
 - 입력 프레임은 반드시 발신자가 현재 보유한 `leaseId`를 지참한다. 서버는 터미널의
   유효 임대와 대조해 불일치 시 프레임을 폐기하고 발신자에게 `lease-invalid`를 보낸다.
+- 입력 프레임의 `seq`는 발신자가 터미널별로 증가시키는 카운터다. v1에서 수신 측
+  (서버·Agent)은 입력 `seq`를 해석하지 않는다 — 향후 확장을 위한 예약 필드.
 - 헤더보다 짧은 프레임, 알 수 없는 frameType은 malformed로 취급하고 연결을 죽이지 않는다.
 
 ## 식별자
 
-`terminalId` / `leaseId` / `seq`는 u32 숫자(Room 단위 증가 카운터).
+`terminalId` / `leaseId`는 u32 숫자(Room 단위 증가 카운터). `seq`는 u32 숫자(터미널 단위 증가 카운터).
 `roomId` / `hostId` / `clientId`는 문자열.
 터미널 치수 `cols` / `rows`는 1..65535 (u16 범위 — pty가 u16으로 받는다).
 
