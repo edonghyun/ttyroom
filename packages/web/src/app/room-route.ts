@@ -1,6 +1,4 @@
-export type RoomRoute =
-  | { kind: "entry" }
-  | { kind: "room"; roomId: string; token: string };
+export type RoomRoute = { kind: "entry" } | { kind: "room"; roomId: string; token: string };
 
 export function parseRoomRoute(location: { pathname: string; hash: string }): RoomRoute {
   const match = /^\/r\/([^/]+)$/.exec(location.pathname);

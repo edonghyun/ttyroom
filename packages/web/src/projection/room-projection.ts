@@ -10,12 +10,7 @@ import type {
 } from "@ttyroom/protocol";
 
 export type RoomConnectionState =
-  | "joining"
-  | "live"
-  | "reconnecting"
-  | "restoring"
-  | "gone"
-  | "incompatible";
+  "joining" | "live" | "reconnecting" | "restoring" | "gone" | "incompatible";
 
 export interface RoomProjectionView {
   readonly connection: RoomConnectionState;
@@ -119,9 +114,7 @@ export class RoomProjection {
   applyOutput(frame: OutputFrame): readonly ProjectionEffect[] {
     const state = this.outputByTerminal.get(frame.terminalId);
     if (!state || !this.room?.terminals.some((item) => item.terminalId === frame.terminalId)) {
-      return [
-        { kind: "diagnostic", code: "unknown-terminal", terminalId: frame.terminalId },
-      ];
+      return [{ kind: "diagnostic", code: "unknown-terminal", terminalId: frame.terminalId }];
     }
 
     const previousSeq = state.mode === "live" ? state.lastSeq : state.replayLastSeq;

@@ -20,9 +20,7 @@ describe("LayoutRepository — participant-local window persistence", () => {
     repository.save(scope, [layout]);
 
     expect(repository.load(scope)).toEqual([layout]);
-    expect(
-      repository.load({ ...scope, clientId: "bob-id" }),
-    ).toEqual([]);
+    expect(repository.load({ ...scope, clientId: "bob-id" })).toEqual([]);
     expect(storage.keys()).toEqual(["ttyroom:layout:v1:room-1:alice-id:1280x800"]);
   });
 

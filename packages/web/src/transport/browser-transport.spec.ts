@@ -164,9 +164,7 @@ describe("BrowserTransport — browser protocol boundary", () => {
       payload: new Uint8Array([65]),
     });
 
-    expect(socket.sent[1]).toBe(
-      JSON.stringify({ type: "close-terminal-request", terminalId: 3 }),
-    );
+    expect(socket.sent[1]).toBe(JSON.stringify({ type: "close-terminal-request", terminalId: 3 }));
     const data = socket.sent[2];
     if (!(data instanceof ArrayBuffer)) throw new Error("Expected binary input frame");
     expect(decodeDataFrame(new Uint8Array(data))).toEqual({

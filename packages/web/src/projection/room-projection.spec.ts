@@ -224,9 +224,7 @@ describe("RoomProjection — authoritative Room state", () => {
       event: { kind: "terminal-mode-changed", terminalId: 999, mode: "shared" },
     });
 
-    expect(effects).toEqual([
-      { kind: "diagnostic", code: "unknown-terminal", terminalId: 999 },
-    ]);
+    expect(effects).toEqual([{ kind: "diagnostic", code: "unknown-terminal", terminalId: 999 }]);
     expect(projection.view()).toEqual(before);
     expect(subscriber).not.toHaveBeenCalled();
   });

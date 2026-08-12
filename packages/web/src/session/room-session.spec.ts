@@ -316,7 +316,10 @@ describe("RoomSession — collaborative Room lifecycle", () => {
     expect(transports.transports[0]?.disposeCount).toBe(1);
 
     const activeTransports = new FakeSessionTransportFactory();
-    const active = createSession({ projection: new RoomProjection(), transports: activeTransports });
+    const active = createSession({
+      projection: new RoomProjection(),
+      transports: activeTransports,
+    });
     active.start();
     active.stop();
     active.stop();

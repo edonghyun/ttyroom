@@ -212,9 +212,7 @@ export class RoomSession {
         const holderClientId = message.result.holderClientId;
         const holder = this.deps.projection
           .view()
-          .room?.participants.find(
-            (participant) => participant.clientId === holderClientId,
-          );
+          .room?.participants.find((participant) => participant.clientId === holderClientId);
         this.publish({
           kind: "lease-denied",
           terminalId: message.terminalId,
