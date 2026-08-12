@@ -6,7 +6,7 @@
 
 ## 버전과 협상
 
-- 현재 버전: `PROTOCOL_VERSION = 1`
+- 현재 버전: `PROTOCOL_VERSION = 1`. 버전은 1 이상의 정수만 유효하다 (0·음수는 hello 파싱 단계에서 거부).
 - 클라이언트(참여자·호스트)는 연결 후 첫 메시지 `hello`에 `protocolVersion`을 싣는다.
 - 서버가 수용하지 못하는 버전이면 `error { code: "unsupported-protocol-version" }`를 보내고
   연결을 종료한다. 클라이언트는 업그레이드 안내를 표시한다

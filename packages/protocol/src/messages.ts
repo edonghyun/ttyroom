@@ -48,7 +48,8 @@ export type RoomSnapshot = z.infer<typeof roomSnapshotSchema>;
 
 const helloSchema = z.object({
   type: z.literal("hello"),
-  protocolVersion: z.number().int(),
+  // PROTOCOL_VERSION은 1부터 시작 — 0·음수는 계약상 불법이라 파싱 단계에서 거른다
+  protocolVersion: z.number().int().positive(),
   roomId: z.string(),
   token: z.string(),
   clientId: z.string(),
