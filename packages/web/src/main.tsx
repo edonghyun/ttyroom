@@ -1,3 +1,7 @@
+import "@fontsource-variable/fira-code";
+import "@fontsource-variable/inter";
+import "@xterm/xterm/css/xterm.css";
+
 import { createWebApp } from "./app/create-web-app.js";
 
 const root = document.querySelector<HTMLElement>("#root");
