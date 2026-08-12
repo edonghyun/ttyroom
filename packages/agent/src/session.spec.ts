@@ -129,6 +129,41 @@ describe("AgentSession — 역할: 서버 연결 수명주기", () => {
     expect(transport.connectUrls).toHaveLength(1);
   });
 
+  it("서버 error 메시지를 받으면 세션이 연결 close를 완결한다", async () => {
+    const { transport, session } = makeSession();
+
+    session.start();
+    await transport.settle();
+    transport.lastConnection().emitMessage({
+      type: "error",
+      code: "invalid-token",
+      message: "token rejected",
+    });
+
+    expect(transport.lastConnection().closed).toBe(true);
+  });
+
+  it("rejected 이후 수신되는 메시지·데이터는 이벤트로 전달되지 않는다", async () => {
+    const { transport, session, events } = makeSession();
+
+    session.start();
+    await transport.settle();
+    transport.lastConnection().emitMessage({
+      type: "error",
+      code: "invalid-token",
+      message: "token rejected",
+    });
+
+    transport.lastConnection().emitMessage({ type: "sync", terminalId: 1, seq: 5 });
+    transport
+      .lastConnection()
+      .emitData({ kind: "input", terminalId: 1, seq: 1, leaseId: 1, payload: new Uint8Array() });
+
+    expect(events.filter((e) => e.kind === "server-message" || e.kind === "server-data")).toEqual(
+      [],
+    );
+  });
+
   it("stop하면 진행 중 백오프 타이머가 취소된다", async () => {
     const { transport, clock, session } = makeSession();
 
@@ -222,6 +257,27 @@ describe("AgentSession — 역할: 서버 연결 수명주기", () => {
     expect(events).toContainEqual({ kind: "server-data", frame });
   });
 
+  it("onEvent 콜백이 던져도 재접속 타이머는 이미 예약되어 있다 (상태 전이 완결 후 콜백)", async () => {
+    const transport = new FakeAgentTransport();
+    const clock = new FakeClock();
+    const session = new AgentSession(
+      { transport, clock },
+      {
+        wsUrl: "ws://server.test/ws",
+        hello: HELLO,
+        onEvent: (e) => {
+          if (e.kind === "reconnecting") throw new Error("listener bug");
+        },
+      },
+    );
+
+    session.start();
+    await transport.settle();
+
+    expect(() => transport.lastConnection().emitClose()).toThrow("listener bug");
+    expect(clock.pendingTimerCount()).toBe(1);
+  });
+
   it("stop 이후에 성립한 진행 중 연결 시도는 hello 없이 즉시 닫힌다", async () => {
     const { transport, session, events } = makeSession();
 
@@ -232,5 +288,26 @@ describe("AgentSession — 역할: 서버 연결 수명주기", () => {
     expect(transport.lastConnection().closed).toBe(true);
     expect(transport.lastConnection().sent).toEqual([]);
     expect(events).toEqual([]);
+  });
+
+  it("stop 이후에 실패(reject)로 끝난 진행 중 연결 시도는 재접속을 예약하지 않는다", async () => {
+    const { transport, clock, session, events } = makeSession();
+    transport.failNextConnect();
+
+    session.start();
+    session.stop();
+    await transport.settle();
+
+    expect(events.filter((e) => e.kind === "reconnecting")).toEqual([]);
+    expect(clock.pendingTimerCount()).toBe(0);
+    expect(transport.connectUrls).toHaveLength(1);
+  });
+
+  it("start를 두 번 호출하면 프로그래머 오류로 throw한다", () => {
+    const { session } = makeSession();
+
+    session.start();
+
+    expect(() => session.start()).toThrow();
   });
 });
