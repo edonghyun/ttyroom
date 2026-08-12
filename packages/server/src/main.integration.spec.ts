@@ -1,5 +1,8 @@
 import { PROTOCOL_VERSION, parseServerMessage, serializeClientMessage } from "@ttyroom/protocol";
 import WebSocket from "ws";
+import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { loadConfig } from "./config.js";
 import { startServer } from "./main.js";
@@ -76,14 +79,36 @@ describe("startServer — 역할: 조립과 HTTP 경계", () => {
     }
   });
 
-  it("GET /r/:roomId가 웹 트랙용 Room 자리표시를 제공한다", async () => {
-    const server = await startServer(loadConfig({}));
+  it("GET /와 /r/:roomId가 CSP와 no-store를 가진 동일한 SPA를 제공한다", async () => {
+    const webRoot = await webFixture();
+    const server = await startServer(loadConfig({}), { webRoot });
     try {
-      const response = await fetch(`${server.httpBaseUrl}/r/room-1`);
-      expect(response.status).toBe(200);
-      expect(await response.text()).toContain("room-1");
+      const root = await fetch(`${server.httpBaseUrl}/`);
+      const room = await fetch(`${server.httpBaseUrl}/r/room-1`);
+      expect(root.status).toBe(200);
+      expect(room.status).toBe(200);
+      expect(room.headers.get("cache-control")).toBe("no-store");
+      expect(room.headers.get("content-security-policy")).toContain("script-src 'self'");
+      expect(await root.text()).toBe(await room.text());
     } finally {
       await server.close();
+      await rm(webRoot, { recursive: true });
+    }
+  });
+
+  it("정적 fallback이 API 또는 없는 asset을 가로채지 않는다", async () => {
+    const webRoot = await webFixture();
+    const server = await startServer(loadConfig({}), { webRoot });
+    try {
+      const api = await fetch(`${server.httpBaseUrl}/api/missing`);
+      const asset = await fetch(`${server.httpBaseUrl}/assets/missing-Ab12.js`);
+      expect(api.status).toBe(404);
+      expect(asset.status).toBe(404);
+      expect(await api.text()).not.toContain("TTYRoom built app");
+      expect(await asset.text()).not.toContain("TTYRoom built app");
+    } finally {
+      await server.close();
+      await rm(webRoot, { recursive: true });
     }
   });
 
@@ -157,3 +182,10 @@ describe("startServer — 역할: 조립과 HTTP 경계", () => {
     }
   });
 });
+
+async function webFixture(): Promise<string> {
+  const root = await mkdtemp(join(tmpdir(), "ttyroom-main-web-"));
+  await mkdir(join(root, "assets"));
+  await writeFile(join(root, "index.html"), "<!doctype html><main>TTYRoom built app</main>");
+  return root;
+}

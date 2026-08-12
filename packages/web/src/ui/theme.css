@@ -1,0 +1,42 @@
+:root {
+  color-scheme: dark;
+  font-family: "Inter Variable", Inter, system-ui, sans-serif;
+  font-size: 15px;
+  color: #eff1f3;
+  background: #0f1215;
+  --page: #0f1215;
+  --terminal: #111417;
+  --dock: #171a1f;
+  --surface: #20242a;
+  --surface-raised: #282c33;
+  --border: #55585a;
+  --muted: #a8adb5;
+  --purple: #9964d4;
+  --mine: #57c87a;
+  --other: #f8b322;
+  --readonly: #8ea6c0;
+  --danger: #ed4543;
+  --topbar-height: 50px;
+  --dock-height: 144px;
+  --window-radius: 8px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: var(--page);
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  color: inherit;
+}

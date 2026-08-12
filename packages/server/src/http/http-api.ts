@@ -1,7 +1,8 @@
-import type { IncomingMessage, ServerResponse } from "node:http";
 import { randomBytes, randomUUID } from "node:crypto";
+import type { IncomingMessage, ServerResponse } from "node:http";
 import { z } from "zod";
-import type { RoomRegistry } from "./domain/room-registry.js";
+
+import type { RoomRegistry } from "../domain/room-registry.js";
 
 const createRoomBodySchema = z.object({ name: z.string().trim().min(1).max(80).optional() });
 const MAX_CREATE_ROOM_BODY_BYTES = 16 * 1024;
@@ -9,12 +10,12 @@ const MAX_CREATE_ROOM_BODY_BYTES = 16 * 1024;
 export class HttpApi {
   constructor(private readonly rooms: RoomRegistry) {}
 
-  async handle(request: IncomingMessage, response: ServerResponse): Promise<void> {
+  async handle(request: IncomingMessage, response: ServerResponse): Promise<boolean> {
     const url = new URL(request.url ?? "/", "http://localhost");
     if (request.method === "GET" && url.pathname === "/healthz") {
       response.writeHead(200, { "content-type": "text/plain; charset=utf-8" });
       response.end("ok");
-      return;
+      return true;
     }
 
     if (request.method === "POST" && url.pathname === "/api/rooms") {
@@ -22,13 +23,13 @@ export class HttpApi {
       if (!host) {
         response.writeHead(400, { "content-type": "text/plain; charset=utf-8" });
         response.end("host header required");
-        return;
+        return true;
       }
       const body = await this.readCreateRoomBody(request);
       if (body.kind === "invalid") {
         response.writeHead(400, { "content-type": "application/json; charset=utf-8" });
         response.end(JSON.stringify({ error: body.reason }));
-        return;
+        return true;
       }
 
       const roomId = randomUUID();
@@ -40,18 +41,16 @@ export class HttpApi {
         token,
         joinUrl: `http://${host}/r/${roomId}#${token}`,
       });
-      return;
+      return true;
     }
 
-    const roomPath = /^\/r\/([^/]+)$/.exec(url.pathname);
-    if (request.method === "GET" && roomPath?.[1]) {
-      response.writeHead(200, { "content-type": "text/plain; charset=utf-8" });
-      response.end(`TTYRoom ${roomPath[1]}`);
-      return;
+    if (url.pathname === "/api" || url.pathname.startsWith("/api/")) {
+      response.writeHead(404, { "content-type": "application/json; charset=utf-8" });
+      response.end(JSON.stringify({ error: "not found" }));
+      return true;
     }
 
-    response.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
-    response.end("not found");
+    return false;
   }
 
   private sendJson(response: ServerResponse, status: number, body: unknown): void {
