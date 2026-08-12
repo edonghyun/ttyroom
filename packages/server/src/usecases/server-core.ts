@@ -13,6 +13,7 @@ import { JoinRoom } from "./join-room.js";
 import { OpenTerminal } from "./open-terminal.js";
 import { ReleaseLease } from "./release-lease.js";
 import { RouteTerminalInput } from "./route-terminal-input.js";
+import { SyncLateJoiner } from "./sync-late-joiner.js";
 
 // 어댑터가 아는 유일한 진입점 — 프레임을 유즈케이스로 라우팅한다
 export class ServerCore {
@@ -35,11 +36,16 @@ export class ServerCore {
     private readonly options: { policy: Policy },
   ) {
     const pending = new PendingDisconnects(deps.clock);
+    this.broadcastTerminalOutput = new BroadcastTerminalOutput(
+      { rooms: deps.rooms, connections: deps.connections },
+      { policy: options.policy },
+    );
     this.joinRoom = new JoinRoom({
       rooms: deps.rooms,
       connections: deps.connections,
       identity: deps.identity,
       pending,
+      syncLateJoiner: new SyncLateJoiner(this.broadcastTerminalOutput),
     });
     this.openTerminal = new OpenTerminal({
       rooms: deps.rooms,
@@ -51,10 +57,6 @@ export class ServerCore {
       rooms: deps.rooms,
       connections: deps.connections,
     });
-    this.broadcastTerminalOutput = new BroadcastTerminalOutput(
-      { rooms: deps.rooms, connections: deps.connections },
-      { policy: options.policy },
-    );
     this.handleDisconnect = new HandleDisconnect(
       { rooms: deps.rooms, connections: deps.connections, pending },
       { policy: options.policy },

@@ -17,6 +17,10 @@ describe("RecordingConnection — 역할: 유즈케이스가 보낸 프레임의
     conn.sendData(outputFrame);
     expect(conn.messages).toEqual([syncMessage]);
     expect(conn.dataFrames).toEqual([outputFrame]);
+    expect(conn.arrivalOrder).toEqual([
+      { kind: "message", message: syncMessage },
+      { kind: "data", frame: outputFrame },
+    ]);
     expect(conn.connectionId).toBe("c1");
   });
 

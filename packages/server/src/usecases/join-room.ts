@@ -5,6 +5,7 @@ import type { Connection } from "../ports/transport.js";
 import type { ConnectionRegistry } from "./connection-registry.js";
 import { ConnectHost } from "./connect-host.js";
 import type { PendingDisconnects } from "./handle-disconnect.js";
+import type { SyncLateJoiner } from "./sync-late-joiner.js";
 
 export class JoinRoom {
   private readonly connectHost: ConnectHost;
@@ -15,6 +16,7 @@ export class JoinRoom {
       connections: ConnectionRegistry;
       identity: Identity;
       pending: PendingDisconnects;
+      syncLateJoiner: SyncLateJoiner;
     },
   ) {
     this.connectHost = new ConnectHost({
@@ -76,6 +78,7 @@ export class JoinRoom {
         role: "participant",
       });
       conn.send({ type: "welcome", selfClientId: auth.clientId, snapshot: room!.snapshot() });
+      this.deps.syncLateJoiner.execute(conn, room!);
       return;
     }
 

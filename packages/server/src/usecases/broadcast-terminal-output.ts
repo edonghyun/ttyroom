@@ -68,6 +68,14 @@ export class BroadcastTerminalOutput {
     }
   }
 
+  framesFor(terminalId: number): OutputFrame[] {
+    return this.buffers.get(terminalId)?.frames() ?? [];
+  }
+
+  lastSeqFor(terminalId: number): number {
+    return this.lastSequenceByTerminal.get(terminalId) ?? 0;
+  }
+
   private bufferFor(terminalId: number): ScrollbackBuffer {
     let buffer = this.buffers.get(terminalId);
     if (!buffer) {
