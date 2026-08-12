@@ -12,6 +12,7 @@ export function TerminalScene({
   terminals,
   controllers,
   participants,
+  hosts,
   activeTerminalId,
   actions,
   overview,
@@ -20,10 +21,11 @@ export function TerminalScene({
   readonly terminals: readonly TerminalWindowModel[];
   readonly controllers: ReadonlyMap<number, TerminalControllerPort>;
   readonly participants: readonly string[];
+  readonly hosts: readonly { readonly hostId: string; readonly name: string }[];
   readonly activeTerminalId: number | null;
   readonly actions: TerminalWindowActions & {
     readonly exitOverview: () => void;
-    readonly addTerminal: () => void;
+    readonly addTerminal: (hostId: string) => void;
   };
   readonly overview: boolean;
   readonly inputBlocked?: boolean;
@@ -57,6 +59,7 @@ export function TerminalScene({
           minimized: terminal.minimized,
         }))}
         participants={participants}
+        hosts={hosts}
         activeTerminalId={activeTerminalId}
         restore={(terminalId) => {
           actions.restore(terminalId);

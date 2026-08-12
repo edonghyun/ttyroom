@@ -81,6 +81,7 @@ export interface RoomAppView {
   readonly activeTerminalId: number | null;
   readonly overview: boolean;
   readonly participants: readonly string[];
+  readonly hosts: readonly { readonly hostId: string; readonly name: string }[];
   readonly connection: "connected" | "reconnecting" | "restoring";
   readonly toasts: readonly ToastMessage[];
 }
@@ -207,6 +208,10 @@ export class RoomAppRuntime {
           const name = participant.clientId === projection.selfClientId ? "You" : participant.name;
           return terminal ? `${name} → ${terminal.title}` : name;
         }) ?? [],
+      hosts:
+        room?.hosts
+          .filter((host) => host.online)
+          .map((host) => ({ hostId: host.hostId, name: host.name })) ?? [],
       connection:
         projection.connection === "reconnecting"
           ? "reconnecting"
@@ -331,8 +336,10 @@ export class RoomAppRuntime {
     this.session?.setMode(terminalId, mode);
   }
 
-  openTerminal(): void {
-    const host = this.deps.projection.view().room?.hosts.find((candidate) => candidate.online);
+  openTerminal(hostId: string): void {
+    const host = this.deps.projection
+      .view()
+      .room?.hosts.find((candidate) => candidate.hostId === hostId && candidate.online);
     if (host) this.session?.openTerminal(host.hostId);
   }
 
@@ -456,6 +463,7 @@ export function RoomApp({ runtime }: { readonly runtime: RoomAppRuntime }) {
         terminals={view.terminals}
         controllers={runtime.controllersForScene()}
         participants={view.participants}
+        hosts={view.hosts}
         activeTerminalId={view.activeTerminalId}
         overview={view.overview}
         inputBlocked={runtime.inputBlocked()}
@@ -470,7 +478,7 @@ export function RoomApp({ runtime }: { readonly runtime: RoomAppRuntime }) {
           requestClose: (id) => setClosingTerminalId(id),
           setMode: (id, mode) => runtime.setMode(id, mode),
           exitOverview: () => runtime.exitOverview(),
-          addTerminal: () => runtime.openTerminal(),
+          addTerminal: (hostId) => runtime.openTerminal(hostId),
           openNew: (host) => runtime.openNew(host),
         }}
       />

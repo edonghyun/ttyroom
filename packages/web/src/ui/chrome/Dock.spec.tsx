@@ -21,6 +21,7 @@ describe("Dock", () => {
         participants={["You → backend"]}
         activeTerminalId={11}
         restore={restore}
+        hosts={[{ hostId: "host-1", name: "Donghyeon-Mac" }]}
         addTerminal={vi.fn()}
       />,
     );
@@ -46,6 +47,7 @@ describe("Dock", () => {
         participants={["You → backend", "Minsu → frontend"]}
         activeTerminalId={11}
         restore={vi.fn()}
+        hosts={[{ hostId: "host-1", name: "Donghyeon-Mac" }]}
         addTerminal={vi.fn()}
       />,
     );
@@ -56,5 +58,27 @@ describe("Dock", () => {
     expect(screen.getByRole("list", { name: "Participant presence" })).toHaveTextContent(
       "You → backendMinsu → frontend",
     );
+  });
+
+  it("asks which online host should open a terminal", async () => {
+    const addTerminal = vi.fn();
+    render(
+      <Dock
+        terminals={[]}
+        participants={[]}
+        activeTerminalId={null}
+        restore={vi.fn()}
+        hosts={[
+          { hostId: "host-1", name: "Donghyeon-Mac" },
+          { hostId: "host-2", name: "Minsu-Mac" },
+        ]}
+        addTerminal={addTerminal}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Add terminal" }));
+    expect(screen.getByRole("menu", { name: "Choose host" })).toBeVisible();
+    await userEvent.click(screen.getByRole("menuitem", { name: "Minsu-Mac" }));
+    expect(addTerminal).toHaveBeenCalledWith("host-2");
   });
 });

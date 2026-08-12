@@ -43,6 +43,7 @@ function sceneProps(controller: TerminalController) {
     ],
     controllers: new Map([[11, controller]]),
     participants: ["You → backend"],
+    hosts: [{ hostId: "host-1", name: "Donghyeon-Mac" }],
     activeTerminalId: 11,
     actions: {
       activate: vi.fn(),

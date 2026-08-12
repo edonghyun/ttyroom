@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Plus, Terminal } from "react-feather";
 
 export interface DockTerminal {
@@ -8,25 +9,64 @@ export interface DockTerminal {
   readonly minimized: boolean;
 }
 
+export interface DockHost {
+  readonly hostId: string;
+  readonly name: string;
+}
+
 export function Dock({
   terminals,
   participants,
   activeTerminalId,
   restore,
+  hosts,
   addTerminal,
 }: {
   readonly terminals: readonly DockTerminal[];
   readonly participants: readonly string[];
   readonly activeTerminalId: number | null;
   readonly restore: (terminalId: number) => void;
-  readonly addTerminal: () => void;
+  readonly hosts: readonly DockHost[];
+  readonly addTerminal: (hostId: string) => void;
 }) {
+  const [hostMenuOpen, setHostMenuOpen] = useState(false);
+
+  function requestTerminal(): void {
+    if (hosts.length === 1) {
+      addTerminal(hosts[0]!.hostId);
+      return;
+    }
+    setHostMenuOpen(true);
+  }
+
   return (
     <aside className="dock" aria-label="Terminal Dock">
       <div className="dock-terminals">
-        <button type="button" className="add-terminal" onClick={addTerminal}>
+        <button
+          type="button"
+          className="add-terminal"
+          aria-expanded={hostMenuOpen}
+          onClick={requestTerminal}
+        >
           <Plus size={16} strokeWidth={1.5} aria-hidden="true" /> Add terminal
         </button>
+        {hostMenuOpen && (
+          <div className="host-menu" role="menu" aria-label="Choose host">
+            {hosts.map((host) => (
+              <button
+                key={host.hostId}
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  addTerminal(host.hostId);
+                  setHostMenuOpen(false);
+                }}
+              >
+                {host.name}
+              </button>
+            ))}
+          </div>
+        )}
         {terminals.map((terminal) => (
           <button
             type="button"
