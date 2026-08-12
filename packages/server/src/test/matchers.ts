@@ -1,5 +1,4 @@
 import type { ServerMessage } from "@ttyroom/protocol";
-import { expect } from "vitest";
 
 export function expectMessageToMatch(
   received: ServerMessage[],
@@ -7,7 +6,7 @@ export function expectMessageToMatch(
   partial: object,
 ): void {
   const sameType = received.filter((m) => m.type === type);
-  const matched = sameType.some((m) => !failsPartialMatch(m, partial));
+  const matched = sameType.some((m) => matchesPartial(m, partial));
   if (matched) return;
 
   throw new Error(
@@ -23,11 +22,26 @@ export function expectNoMessage(received: ServerMessage[], type: ServerMessage["
   throw new Error(`금지된 type "${type}" 메시지가 수신됨: ${JSON.stringify(found)}`);
 }
 
-function failsPartialMatch(message: ServerMessage, partial: object): boolean {
-  try {
-    expect(message).toEqual(expect.objectContaining(partial));
-    return false;
-  } catch {
-    return true;
+// vitest 무의존 — 킷이 테스트 러너에 묶이지 않게 순수 비교로 구현한다.
+// 의미론은 expect.objectContaining과 동일: 최상위 키는 부분 집합, 값은 깊은 동등.
+function matchesPartial(message: ServerMessage, partial: object): boolean {
+  const record = message as Record<string, unknown>;
+  return Object.entries(partial).every(([key, want]) => deepEquals(record[key], want));
+}
+
+function deepEquals(a: unknown, b: unknown): boolean {
+  if (Object.is(a, b)) return true;
+  if (typeof a !== "object" || typeof b !== "object" || a === null || b === null) return false;
+
+  if (Array.isArray(a) || Array.isArray(b)) {
+    if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+    return a.every((item, i) => deepEquals(item, b[i]));
   }
+
+  const aRecord = a as Record<string, unknown>;
+  const bRecord = b as Record<string, unknown>;
+  const aKeys = Object.keys(aRecord);
+  const bKeys = Object.keys(bRecord);
+  if (aKeys.length !== bKeys.length) return false;
+  return aKeys.every((key) => deepEquals(aRecord[key], bRecord[key]));
 }
