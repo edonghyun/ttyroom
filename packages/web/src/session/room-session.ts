@@ -36,6 +36,7 @@ export interface SessionClock {
 }
 
 export type RoomSessionEvent =
+  | { kind: "lease-acquired"; terminalId: number }
   | { kind: "lease-denied"; terminalId: number; holderName: string }
   | {
       kind: "lease-invalid";
@@ -216,6 +217,9 @@ export class RoomSession {
         return;
       }
       if (message.type === "lease-result") this.pendingControl = null;
+      if (message.type === "lease-result" && message.result.kind === "granted") {
+        this.publish({ kind: "lease-acquired", terminalId: message.terminalId });
+      }
       if (message.type === "lease-result" && message.result.kind === "denied") {
         const holderClientId = message.result.holderClientId;
         const holder = this.deps.projection

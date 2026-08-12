@@ -83,6 +83,8 @@ describe("RoomApp production composition", () => {
       projection.applyServerMessage({ type: "sync", terminalId: 1, seq: 0 });
       projection.applyServerMessage({ type: "sync", terminalId: 2, seq: 0 });
     });
+    act(() => sessionEvent?.({ kind: "lease-acquired", terminalId: 1 }));
+    expect(screen.getByText("Control acquired · terminal-1")).toBeVisible();
     await userEvent.click(screen.getByRole("button", { name: "Close terminal-1" }));
     expect(session.closeTerminal).not.toHaveBeenCalled();
     await userEvent.click(screen.getByRole("button", { name: "Close terminal" }));

@@ -221,6 +221,18 @@ export class RoomAppRuntime {
         this.controllers.get(event.terminalId)?.acceptOutput(event);
       if (event.kind === "reset-terminal-output")
         this.controllers.get(event.terminalId)?.resetOutput();
+      if (event.kind === "lease-acquired") {
+        const title = this.deps.projection.terminal(event.terminalId)?.terminal.title ?? "terminal";
+        this.toasts = [
+          ...this.toasts,
+          {
+            id: `lease-acquired-${event.terminalId}-${this.toasts.length}`,
+            severity: "success",
+            message: `Control acquired · ${title}`,
+          },
+        ];
+        this.publish();
+      }
       if (event.kind === "lease-denied") {
         const title = this.deps.projection.terminal(event.terminalId)?.terminal.title ?? "terminal";
         this.toasts = [

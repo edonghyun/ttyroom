@@ -216,6 +216,26 @@ describe("RoomSession — collaborative Room lifecycle", () => {
     ]);
   });
 
+  it("publishes successful explicit control acquisition for user feedback", () => {
+    const projection = new RoomProjection();
+    const transports = new FakeSessionTransportFactory();
+    const session = createSession({ projection, transports });
+    const subscriber = vi.fn();
+    session.subscribe(subscriber);
+    session.start();
+
+    transports.latest().emit({
+      kind: "server-message",
+      message: { type: "welcome", selfClientId: "alice-id", snapshot: roomSnapshot() },
+    });
+    transports.latest().emit({
+      kind: "server-message",
+      message: { type: "lease-result", terminalId: 1, result: { kind: "granted", leaseId: 9 } },
+    });
+
+    expect(subscriber).toHaveBeenCalledWith({ kind: "lease-acquired", terminalId: 1 });
+  });
+
   it("requests replay on output gap and replaces the terminal buffer with retained output", () => {
     const projection = new RoomProjection();
     const transports = new FakeSessionTransportFactory();
