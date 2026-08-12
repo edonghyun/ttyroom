@@ -120,6 +120,37 @@ describe("joinRoom — 역할: hello 검증과 Room 입장", () => {
     expect(joinedCount()).toBe(1);
   });
 
+  it("틀린 토큰의 hello는 기존 세션을 supersede하지 못한다 — supersede는 auth 성공 이후에만", () => {
+    const ctx = new RoomTestContext();
+    const room = ctx.createRoom();
+    const alice = ctx.connectParticipant(room, "alice", "c-alice");
+    const attacker = ctx.connectParticipant({ ...room, token: "wrong" }, "alice", "c-alice");
+
+    expect(attacker.conn.closed).toBe(true);
+    expect(alice.conn.closed).toBe(false);
+    ctx.connectParticipant(room, "bob");
+    expectMessageToMatch(alice.conn.messages, "room-event", {
+      event: { kind: "participant-joined", participant: { name: "bob" } },
+    });
+  });
+
+  it("clientId는 Room 스코프다 — 같은 clientId의 다른 Room 조인은 supersede가 아니다", () => {
+    const ctx = new RoomTestContext();
+    const room1 = ctx.createRoom();
+    const room2 = ctx.createRoom();
+    const inRoom1 = ctx.connectParticipant(room1, "alice", "c-alice");
+    const inRoom2 = ctx.connectParticipant(room2, "alice", "c-alice");
+
+    expect(inRoom1.conn.closed).toBe(false);
+    expect(inRoom2.conn.closed).toBe(false);
+
+    ctx.connectParticipant(room1, "bob");
+    expectMessageToMatch(inRoom1.conn.messages, "room-event", {
+      event: { kind: "participant-joined", participant: { name: "bob" } },
+    });
+    expect(inRoom2.conn.messages.filter((m) => m.type === "room-event")).toHaveLength(0);
+  });
+
   it("supersede된 이전 연결의 close 통지는 새 세션을 건드리지 않는다", () => {
     const ctx = new RoomTestContext();
     const room = ctx.createRoom();
@@ -140,5 +171,19 @@ describe("joinRoom — 역할: hello 검증과 Room 입장", () => {
     const conn = ctx.rawConnection();
     ctx.core.handleMessage(conn, JSON.stringify({ type: "acquire-lease", terminalId: 1 }));
     expectMessageToMatch(conn.messages, "error", { code: "bad-message" });
+  });
+
+  it("JSON이 아닌 프레임은 error(bad-message)이고 연결은 유지된다", () => {
+    const ctx = new RoomTestContext();
+    const conn = ctx.rawConnection();
+    ctx.core.handleMessage(conn, "not json {{{");
+    expectMessageToMatch(conn.messages, "error", { code: "bad-message" });
+    expect(conn.closed).toBe(false);
+  });
+
+  it("hello 전에 끊긴 미등록 연결의 close 통지는 안전하다", () => {
+    const ctx = new RoomTestContext();
+    const conn = ctx.rawConnection();
+    expect(() => ctx.core.handleClose(conn)).not.toThrow();
   });
 });
