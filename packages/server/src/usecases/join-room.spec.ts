@@ -40,11 +40,11 @@ describe("joinRoom — 역할: hello 검증과 Room 입장", () => {
   it("프로토콜 버전 불일치는 error(unsupported-protocol-version)로 거부된다", () => {
     const ctx = new RoomTestContext();
     const room = ctx.createRoom();
-    const alice = ctx.connectParticipant(room, "alice");
-    alice.conn.messages.length = 0;
-    // RoomTestContext.connectParticipant는 PROTOCOL_VERSION을 쓰므로, 버전만 다른 hello를 직접 주입
+    // 등록된 연결의 재hello는 bad-message로 먼저 걸리므로(승인 계약),
+    // 버전 검사는 미등록 생 연결에서 검증한다 — connectParticipant는 PROTOCOL_VERSION을 쓰기 때문
+    const conn = ctx.rawConnection();
     ctx.core.handleMessage(
-      alice.conn,
+      conn,
       JSON.stringify({
         type: "hello",
         protocolVersion: 999,
@@ -55,7 +55,84 @@ describe("joinRoom — 역할: hello 검증과 Room 입장", () => {
         role: "participant",
       }),
     );
-    expectMessageToMatch(alice.conn.messages, "error", { code: "unsupported-protocol-version" });
+    expectMessageToMatch(conn.messages, "error", { code: "unsupported-protocol-version" });
+  });
+
+  it("등록된 연결의 재hello는 error(bad-message)이고 연결과 기존 세션은 유지된다", () => {
+    const ctx = new RoomTestContext();
+    const room = ctx.createRoom();
+    const alice = ctx.connectParticipant(room, "alice");
+    alice.send({
+      type: "hello",
+      protocolVersion: 1,
+      roomId: room.roomId,
+      token: room.token,
+      clientId: alice.clientId,
+      name: "alice-again",
+      role: "participant",
+    });
+
+    expectMessageToMatch(alice.conn.messages, "error", { code: "bad-message" });
+    expect(alice.conn.messages.filter((m) => m.type === "welcome")).toHaveLength(1);
+    expect(alice.conn.closed).toBe(false);
+
+    // 기존 세션이 유효하게 유지 — 이후 브로드캐스트를 계속 받는다
+    ctx.connectParticipant(room, "bob");
+    expectMessageToMatch(alice.conn.messages, "room-event", {
+      event: { kind: "participant-joined", participant: { name: "bob" } },
+    });
+  });
+
+  it("같은 clientId의 재접속은 이전 세션을 대체한다 — 이전 연결은 닫히고 브로드캐스트에서 빠진다", () => {
+    const ctx = new RoomTestContext();
+    const room = ctx.createRoom();
+    const stale = ctx.connectParticipant(room, "alice", "c-alice");
+    const fresh = ctx.connectParticipant(room, "alice", "c-alice");
+    const staleEventCount = stale.conn.messages.filter((m) => m.type === "room-event").length;
+
+    ctx.connectParticipant(room, "bob");
+
+    expect(stale.conn.closed).toBe(true);
+    expect(stale.conn.messages.filter((m) => m.type === "room-event")).toHaveLength(
+      staleEventCount,
+    );
+    expectMessageToMatch(fresh.conn.messages, "room-event", {
+      event: { kind: "participant-joined", participant: { name: "bob" } },
+    });
+  });
+
+  it("이미 참여자인 clientId의 재접속은 participant-joined를 다시 브로드캐스트하지 않는다", () => {
+    const ctx = new RoomTestContext();
+    const room = ctx.createRoom();
+    const bob = ctx.connectParticipant(room, "bob");
+    ctx.connectParticipant(room, "alice", "c-alice");
+    const joinedCount = () =>
+      bob.conn.messages.filter(
+        (m) =>
+          m.type === "room-event" &&
+          m.event.kind === "participant-joined" &&
+          m.event.participant.clientId === "c-alice",
+      ).length;
+    expect(joinedCount()).toBe(1);
+
+    // 다른 참여자는 left를 본 적 없으므로 joined도 다시 보면 안 된다 (T2.9 조용한 복원의 전제)
+    ctx.connectParticipant(room, "alice", "c-alice");
+    expect(joinedCount()).toBe(1);
+  });
+
+  it("supersede된 이전 연결의 close 통지는 새 세션을 건드리지 않는다", () => {
+    const ctx = new RoomTestContext();
+    const room = ctx.createRoom();
+    const stale = ctx.connectParticipant(room, "alice", "c-alice");
+    const fresh = ctx.connectParticipant(room, "alice", "c-alice");
+
+    // 전송 계약상 닫힌 연결의 close 통지는 반드시 한 번 도착한다 — supersede 후 지연 도착 재현
+    ctx.core.handleClose(stale.conn);
+
+    ctx.connectParticipant(room, "bob");
+    expectMessageToMatch(fresh.conn.messages, "room-event", {
+      event: { kind: "participant-joined", participant: { name: "bob" } },
+    });
   });
 
   it("hello 이전의 다른 메시지는 error(bad-message)다", () => {

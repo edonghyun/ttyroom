@@ -34,16 +34,30 @@ export class JoinRoom {
 
     // auth 성공 시 room은 반드시 존재 — LinkAuth가 room-not-found를 걸렀다
     if (hello.role === "participant") {
+      // 재접속은 대체(supersede) — 1 clientId = 1 세션 불변식. 이전 연결은 여기서 닫히며,
+      // 그 close 통지는 새 세션을 건드리지 않아야 하고(connectionId 기준 unregister),
+      // T2.9(handleDisconnect)에서 유예 타이머도 걸지 않아야 한다.
+      const existing = this.deps.connections.byClientId(hello.roomId, auth.clientId);
+      if (existing) {
+        this.deps.connections.unregister(existing.connection.connectionId);
+        existing.connection.close();
+      }
+
+      // 재접속이면 다른 참여자는 left를 본 적 없다 — joined 재브로드캐스트 생략 (조용한 복원)
+      const rejoining = room!.hasParticipant(auth.clientId);
+
       room!.addParticipant(auth.clientId, auth.displayName);
       // register 전에 broadcast — 입장자 본인은 welcome의 스냅샷으로 자신을 보므로
       // participant-joined가 본인에게 중복 전달되지 않는다 (테스트가 이 순서를 고정)
-      this.deps.connections.broadcast(room!.roomId, {
-        type: "room-event",
-        event: {
-          kind: "participant-joined",
-          participant: { clientId: auth.clientId, name: auth.displayName },
-        },
-      });
+      if (!rejoining) {
+        this.deps.connections.broadcast(room!.roomId, {
+          type: "room-event",
+          event: {
+            kind: "participant-joined",
+            participant: { clientId: auth.clientId, name: auth.displayName },
+          },
+        });
+      }
       this.deps.connections.register({
         connection: conn,
         roomId: room!.roomId,

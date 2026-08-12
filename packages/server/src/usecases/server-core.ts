@@ -37,6 +37,12 @@ export class ServerCore {
     }
 
     if (parsed.message.type === "hello") {
+      // 세션 재개는 새 연결이 원칙(Transport 계약) — 등록된 연결의 재hello는 거부하되
+      // 연결은 닫지 않는다 (기존 세션은 유효)
+      if (this.deps.connections.bySessionOf(conn.connectionId)) {
+        conn.send({ type: "error", code: "bad-message", message: "이미 입장한 연결의 hello" });
+        return;
+      }
       this.joinRoom.execute(conn, parsed.message);
       return;
     }
