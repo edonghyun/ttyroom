@@ -1,6 +1,17 @@
-import { decodeDataFrame, parseServerMessage, serializeClientMessage } from "@ttyroom/protocol";
+import {
+  decodeDataFrame,
+  encodeDataFrame,
+  parseServerMessage,
+  serializeClientMessage,
+} from "@ttyroom/protocol";
 
-import type { HelloMessage, OutputFrame, ServerMessage } from "@ttyroom/protocol";
+import type {
+  ClientMessage,
+  HelloMessage,
+  InputFrame,
+  OutputFrame,
+  ServerMessage,
+} from "@ttyroom/protocol";
 import type { BrowserSocket, BrowserSocketFactory } from "./browser-socket.js";
 
 export interface BrowserTransportDeps {
@@ -21,6 +32,7 @@ type TransportSubscriber = (event: BrowserTransportEvent) => void;
 export class BrowserTransport {
   private socket: BrowserSocket | null = null;
   private helloSent = false;
+  private opened = false;
   private disposed = false;
   private readonly unsubscribe: Array<() => void> = [];
   private readonly subscribers = new Set<TransportSubscriber>();
@@ -40,6 +52,7 @@ export class BrowserTransport {
       this.socket.onOpen(() => {
         if (this.helloSent) return;
 
+        this.opened = true;
         this.helloSent = true;
         this.socket?.send(serializeClientMessage(this.options.hello));
       }),
@@ -63,7 +76,10 @@ export class BrowserTransport {
           this.publish({ kind: "failure", reason: "malformed-control" });
         }
       }),
-      this.socket.onClose(() => this.publish({ kind: "closed" })),
+      this.socket.onClose(() => {
+        this.opened = false;
+        this.publish({ kind: "closed" });
+      }),
       this.socket.onError(() => this.publish({ kind: "failure", reason: "socket-error" })),
     );
   }
@@ -75,10 +91,23 @@ export class BrowserTransport {
     return () => this.subscribers.delete(subscriber);
   }
 
+  sendControl(message: ClientMessage): void {
+    if (!this.opened || this.disposed) return;
+
+    this.socket?.send(serializeClientMessage(message));
+  }
+
+  sendInput(frame: InputFrame): void {
+    if (!this.opened || this.disposed) return;
+
+    this.socket?.send(new Uint8Array(encodeDataFrame(frame)).buffer);
+  }
+
   dispose(): void {
     if (this.disposed) return;
 
     this.disposed = true;
+    this.opened = false;
     for (const unsubscribe of this.unsubscribe.splice(0)) unsubscribe();
     this.subscribers.clear();
     this.socket?.close();

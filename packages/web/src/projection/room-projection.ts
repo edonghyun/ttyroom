@@ -82,6 +82,13 @@ export class RoomProjection {
     return () => this.subscribers.delete(subscriber);
   }
 
+  setConnection(connection: RoomConnectionState): void {
+    if (this.connection === connection) return;
+
+    this.connection = connection;
+    this.publish();
+  }
+
   terminal(terminalId: number): ProjectedTerminal | null {
     const terminal = this.room?.terminals.find((item) => item.terminalId === terminalId);
     if (!terminal) return null;

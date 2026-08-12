@@ -1,4 +1,4 @@
-import { encodeDataFrame, PROTOCOL_VERSION } from "@ttyroom/protocol";
+import { decodeDataFrame, encodeDataFrame, PROTOCOL_VERSION } from "@ttyroom/protocol";
 import { describe, expect, it, vi } from "vitest";
 
 import { FakeBrowserSocket } from "../test/fake-browser-socket.js";
@@ -146,6 +146,40 @@ describe("BrowserTransport — browser protocol boundary", () => {
       { kind: "closed" },
       { kind: "failure", reason: "socket-error" },
     ]);
+  });
+
+  it("serializes public control and input frames only after the socket opens", () => {
+    const socket = new FakeBrowserSocket();
+    const transport = createTransport(socket);
+    transport.start();
+
+    transport.sendControl({ type: "close-terminal-request", terminalId: 3 });
+    socket.open();
+    transport.sendControl({ type: "close-terminal-request", terminalId: 3 });
+    transport.sendInput({
+      kind: "input",
+      terminalId: 3,
+      seq: 1,
+      leaseId: 7,
+      payload: new Uint8Array([65]),
+    });
+
+    expect(socket.sent[1]).toBe(
+      JSON.stringify({ type: "close-terminal-request", terminalId: 3 }),
+    );
+    const data = socket.sent[2];
+    if (!(data instanceof ArrayBuffer)) throw new Error("Expected binary input frame");
+    expect(decodeDataFrame(new Uint8Array(data))).toEqual({
+      kind: "ok",
+      frame: {
+        kind: "input",
+        terminalId: 3,
+        seq: 1,
+        leaseId: 7,
+        payload: new Uint8Array([65]),
+      },
+    });
+    expect(socket.sent).toHaveLength(3);
   });
 });
 
