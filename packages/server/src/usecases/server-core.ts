@@ -1,4 +1,4 @@
-import { parseClientMessage } from "@ttyroom/protocol";
+import { decodeDataFrame, parseClientMessage } from "@ttyroom/protocol";
 import type { RoomRegistry } from "../domain/room-registry.js";
 import type { Clock } from "../ports/clock.js";
 import type { Identity } from "../ports/identity.js";
@@ -10,6 +10,7 @@ import { AcquireLease } from "./acquire-lease.js";
 import { JoinRoom } from "./join-room.js";
 import { OpenTerminal } from "./open-terminal.js";
 import { ReleaseLease } from "./release-lease.js";
+import { RouteTerminalInput } from "./route-terminal-input.js";
 
 // 어댑터가 아는 유일한 진입점 — 프레임을 유즈케이스로 라우팅한다
 export class ServerCore {
@@ -17,6 +18,7 @@ export class ServerCore {
   private readonly openTerminal: OpenTerminal;
   private readonly acquireLease: AcquireLease;
   private readonly releaseLease: ReleaseLease;
+  private readonly routeTerminalInput: RouteTerminalInput;
 
   constructor(
     private readonly deps: {
@@ -39,6 +41,10 @@ export class ServerCore {
     });
     this.acquireLease = new AcquireLease({ rooms: deps.rooms, connections: deps.connections });
     this.releaseLease = new ReleaseLease({ rooms: deps.rooms, connections: deps.connections });
+    this.routeTerminalInput = new RouteTerminalInput({
+      rooms: deps.rooms,
+      connections: deps.connections,
+    });
   }
 
   handleMessage(conn: Connection, raw: string): void {
@@ -103,8 +109,20 @@ export class ServerCore {
     });
   }
 
-  handleData(_conn: Connection, _bytes: Uint8Array): void {
-    // 데이터 프레임 라우팅은 Task 9(routeTerminalInput)에서 구현
+  handleData(conn: Connection, bytes: Uint8Array): void {
+    const decoded = decodeDataFrame(bytes);
+    if (decoded.kind === "malformed") {
+      conn.send({ type: "error", code: "bad-message", message: decoded.reason });
+      return;
+    }
+
+    const session = this.deps.connections.bySessionOf(conn.connectionId);
+    if (!session || session.role !== "participant" || decoded.frame.kind !== "input") {
+      conn.send({ type: "error", code: "bad-message", message: "허용되지 않은 데이터 프레임" });
+      return;
+    }
+
+    this.routeTerminalInput.execute(conn, session, decoded.frame);
   }
 
   handleClose(conn: Connection): void {

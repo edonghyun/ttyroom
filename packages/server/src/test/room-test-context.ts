@@ -72,6 +72,16 @@ export class RoomTestContext {
     return new RecordingConnection({ connectionId: `conn-${n}` });
   }
 
+  setTerminalMode(
+    room: { roomId: string },
+    terminalId: number,
+    mode: "exclusive" | "shared",
+  ): void {
+    const aggregate = this.rooms.get(room.roomId);
+    if (!aggregate) throw new Error(`테스트 Room이 없다: ${room.roomId}`);
+    aggregate.setTerminalMode(terminalId, mode);
+  }
+
   connectParticipant(
     room: { roomId: string; token: string },
     name: string,
