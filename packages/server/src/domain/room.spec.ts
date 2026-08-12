@@ -254,6 +254,24 @@ describe("Room 입력권 임대 — 역할: 터미널 입력 권한의 단일 �
     });
   });
 
+  it("removeParticipant는 떠난 참여자의 임대를 걷어 반환한다 (stale lease 방지, removeHost와 대칭)", () => {
+    const { room, t } = withTerminal();
+    room.acquireLease("alice", t.terminalId);
+
+    expect(room.removeParticipant("alice")).toMatchObject([
+      { terminalId: t.terminalId, holderClientId: "alice" },
+    ]);
+
+    expect(room.leaseOf(t.terminalId)).toBeUndefined();
+    expect(room.snapshot().leases).toEqual([]);
+  });
+
+  it("참여자가 아닌 clientId의 임대 요청은 throw한다 (프로그래머 오류 — hello/등록은 유즈케이스가 보장)", () => {
+    const { room, t } = withTerminal();
+    // 유예 중 단절 참여자는 removeParticipant 전이라 여전히 참여자다 — 유예 복원(T2.9)과 충돌하지 않는다
+    expect(() => room.acquireLease("stranger", t.terminalId)).toThrow();
+  });
+
   it("없는 터미널의 임대 요청은 rejected된다", () => {
     const { room } = withTerminal();
     expect(room.acquireLease("alice", 999)).toEqual({
@@ -323,6 +341,33 @@ describe("Room 입력권 임대 — 역할: 터미널 입력 권한의 단일 �
     const leaseId = d.kind === "granted" ? d.lease.leaseId : -1;
     room.markTerminalExited(t.terminalId, 0);
     expect(room.isInputAllowed("alice", t.terminalId, leaseId)).toBe(false);
+  });
+
+  it("release 후 재획득은 새 leaseId를 발급하고 이전 leaseId는 무효다 (leaseId 비재사용)", () => {
+    const { room, t } = withTerminal();
+    const first = room.acquireLease("alice", t.terminalId);
+    const firstId = first.kind === "granted" ? first.lease.leaseId : -1;
+
+    room.releaseLease("alice", t.terminalId);
+    const second = room.acquireLease("alice", t.terminalId);
+    const secondId = second.kind === "granted" ? second.lease.leaseId : -1;
+
+    // 오래된 leaseId 우회 차단의 전제 — leaseId가 재사용되면 lease-invalid 검증이 뚫린다
+    expect(secondId).toBeGreaterThan(firstId);
+    expect(room.isInputAllowed("alice", t.terminalId, firstId)).toBe(false);
+    expect(room.isInputAllowed("alice", t.terminalId, secondId)).toBe(true);
+  });
+
+  it("isInputAllowed: 존재하지 않는 터미널은 거짓이다", () => {
+    const { room } = withTerminal();
+    expect(room.isInputAllowed("alice", 999, 1)).toBe(false);
+  });
+
+  it("markHostOffline은 임대를 보존한다 (호스트 유예 복귀 시 참여자 임대 유지)", () => {
+    const { room, t } = withTerminal();
+    room.acquireLease("alice", t.terminalId);
+    room.markHostOffline("h1");
+    expect(room.leaseOf(t.terminalId)).toMatchObject({ holderClientId: "alice" });
   });
 
   it("removeHost는 제거된 터미널의 임대도 함께 걷는다 (stale lease 방지)", () => {

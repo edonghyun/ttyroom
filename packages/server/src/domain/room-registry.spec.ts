@@ -21,4 +21,9 @@ describe("RoomRegistry — 역할: 라이브 Room 인스턴스의 보관소", ()
     registry.remove("r1");
     expect(registry.get("r1")).toBeUndefined();
   });
+
+  it("없는 roomId의 remove는 조용한 no-op이다 (소멸 경로 중복 도착 안전)", () => {
+    const registry = new RoomRegistry();
+    expect(() => registry.remove("nope")).not.toThrow();
+  });
 });

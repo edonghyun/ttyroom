@@ -32,8 +32,10 @@ export class Room {
     return this.participants.has(clientId);
   }
 
-  removeParticipant(clientId: string): void {
+  // 떠난 참여자의 임대는 무효 — stale lease가 남지 않게 걷어서 반환한다 (removeHost와 대칭)
+  removeParticipant(clientId: string): LeaseView[] {
     this.participants.delete(clientId);
+    return this.releaseAllOf(clientId);
   }
 
   connectHost(hostId: string, name: string): void {
@@ -113,6 +115,11 @@ export class Room {
   }
 
   acquireLease(clientId: string, terminalId: number): AcquireDecision {
+    // 미등록 clientId가 여기까지 오면 유즈케이스(hello/등록) 버그 — 도메인 불변식 위반은 throw
+    if (!this.participants.has(clientId)) {
+      throw new Error(`참여자가 아닌 clientId의 임대 요청: ${clientId}`);
+    }
+
     const terminal = this.terminals.get(terminalId);
     if (!terminal || terminal.status !== "open") {
       return { kind: "rejected", reason: "terminal-not-open" };
