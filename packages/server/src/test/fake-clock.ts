@@ -24,11 +24,12 @@ export class FakeClock implements Clock {
   }
 
   advance(ms: number): void {
-    this.now += ms;
+    const target = this.now + ms;
 
-    // 콜백이 새 타이머를 등록해도(유예 체인) 경과분은 같은 advance에서 소화한다
+    // 실시간 의미론: due 시각 오름차순으로 발화하고, 콜백 실행 시점의 now는 그 타이머의
+    // due 시각이다 — 콜백이 등록한 새 타이머(유예 체인)도 target 안이면 같은 advance에서 발화한다.
     let firedCount = 0;
-    let next = this.nextDueTimer();
+    let next = this.nextDueTimer(target);
     while (next) {
       firedCount += 1;
       if (firedCount > MAX_FIRED_PER_ADVANCE) {
@@ -39,18 +40,26 @@ export class FakeClock implements Clock {
         );
       }
 
+      this.now = next.at;
       next.fired = true;
       next.fn();
-      next = this.nextDueTimer();
+      next = this.nextDueTimer(target);
     }
+
+    this.now = target;
   }
 
   pendingCount(): number {
     return this.timers.filter((t) => !t.cancelled && !t.fired).length;
   }
 
-  private nextDueTimer(): PendingTimer | undefined {
-    // 등록 순서 실행 계약 — 정렬 대신 삽입 순서 순회
-    return this.timers.find((t) => !t.cancelled && !t.fired && t.at <= this.now);
+  private nextDueTimer(target: number): PendingTimer | undefined {
+    // due 시각 오름차순, 같은 시각은 등록 순서(삽입 순서 순회 + 엄격 미만 교체)
+    let earliest: PendingTimer | undefined;
+    for (const timer of this.timers) {
+      if (timer.cancelled || timer.fired || timer.at > target) continue;
+      if (!earliest || timer.at < earliest.at) earliest = timer;
+    }
+    return earliest;
   }
 }

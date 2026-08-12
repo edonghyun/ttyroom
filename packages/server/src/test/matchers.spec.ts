@@ -17,6 +17,54 @@ describe("expectMessageToMatch — 역할: 진단 가능한 메시지 스트림 
     const received = [{ type: "sync", terminalId: 1, seq: 5 }] as ServerMessage[];
     expect(() => expectMessageToMatch(received, "sync", { seq: 99 })).toThrow(/"seq":5/);
   });
+
+  it("중첩 객체·배열 원소도 partial로 매치한다 (계획 Task 6의 welcome 단언 형태)", () => {
+    const received = [
+      {
+        type: "welcome",
+        selfClientId: "alice-id",
+        snapshot: {
+          roomId: "r1",
+          participants: [{ clientId: "alice-id", name: "alice" }],
+          hosts: [],
+          terminals: [],
+          leases: [],
+        },
+      },
+    ] as ServerMessage[];
+
+    expect(() =>
+      expectMessageToMatch(received, "welcome", {
+        selfClientId: "alice-id",
+        snapshot: { roomId: "r1", participants: [{ name: "alice" }] },
+      }),
+    ).not.toThrow();
+  });
+
+  it("배열은 길이가 다르면 원소가 부분 일치해도 실패한다", () => {
+    const received = [
+      {
+        type: "welcome",
+        selfClientId: "a",
+        snapshot: {
+          roomId: "r1",
+          participants: [
+            { clientId: "a", name: "alice" },
+            { clientId: "b", name: "bob" },
+          ],
+          hosts: [],
+          terminals: [],
+          leases: [],
+        },
+      },
+    ] as ServerMessage[];
+
+    expect(() =>
+      expectMessageToMatch(received, "welcome", {
+        snapshot: { participants: [{ name: "alice" }] },
+      }),
+    ).toThrow(/기대 partial/);
+  });
 });
 
 describe("expectNoMessage — 역할: 금지된 메시지의 부재 어서션", () => {
