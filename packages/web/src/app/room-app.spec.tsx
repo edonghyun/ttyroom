@@ -106,7 +106,61 @@ describe("RoomApp production composition", () => {
     expect(controllers.get(2)?.dispose).toHaveBeenCalledOnce();
     expect(session.stop).toHaveBeenCalledOnce();
   });
+
+  it("clamps local windows and updates the desktop input guard when the viewport changes", () => {
+    const projection = new RoomProjection();
+    const windowManager = new WindowManager({ viewport: { width: 1200, height: 700 } });
+    const runtime = runtimeForViewport({ projection, windowManager });
+    windowManager.reconcile([1]);
+    windowManager.move(1, { x: 1100, y: 650 });
+
+    runtime.resizeViewport({ width: 900, height: 574 });
+
+    expect(windowManager.view().windows[0]?.rect).toMatchObject({ x: 852, y: 526 });
+    expect(runtime.inputBlocked()).toBe(true);
+
+    runtime.resizeViewport({ width: 1280, height: 606 });
+    expect(runtime.inputBlocked()).toBe(false);
+    runtime.dispose();
+  });
 });
+
+function runtimeForViewport({
+  projection,
+  windowManager,
+}: {
+  projection: RoomProjection;
+  windowManager: WindowManager;
+}) {
+  return new RoomAppRuntime({
+    route: { kind: "room", roomId: "room-1", token: "secret" },
+    identity: { clientId: () => "client-1", nickname: () => null, saveNickname: vi.fn() },
+    projection,
+    windowManager,
+    createSession: () => ({
+      start: vi.fn(),
+      stop: vi.fn(),
+      subscribe: () => () => undefined,
+      takeControl: vi.fn(),
+      releaseControl: vi.fn(),
+      closeTerminal: vi.fn(),
+      openTerminal: vi.fn(),
+      resize: vi.fn(),
+      setMode: vi.fn(),
+    }),
+    createController: () => ({
+      mount: vi.fn(),
+      setInputAllowed: vi.fn(),
+      setVisible: vi.fn(),
+      acceptOutput: vi.fn(),
+      resetOutput: vi.fn(),
+      dispose: vi.fn(),
+    }),
+    createRoom: vi.fn(),
+    navigate: vi.fn(),
+    copyInvite: vi.fn(),
+  });
+}
 
 function snapshot(terminalIds: readonly number[]): RoomSnapshot {
   return {

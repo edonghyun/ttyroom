@@ -67,6 +67,11 @@ export interface RoomAppRuntimeDeps {
   readonly inviteUrl?: string;
   readonly narrowViewport?: boolean;
   readonly viewportBucket?: string;
+  readonly viewportChanges?: {
+    subscribe(
+      subscriber: (viewport: { readonly width: number; readonly height: number }) => void,
+    ): () => void;
+  };
 }
 
 export interface RoomAppView {
@@ -87,6 +92,7 @@ export class RoomAppRuntime {
   private readonly subscribers = new Set<Subscriber>();
   private readonly unsubscribeProjection: () => void;
   private readonly unsubscribeWindows: () => void;
+  private readonly unsubscribeViewport: () => void;
   private session: RoomAppSession | null = null;
   private unsubscribeSession: (() => void) | null = null;
   private joined = false;
@@ -95,8 +101,10 @@ export class RoomAppRuntime {
   private toasts: ToastMessage[] = [];
   private readonly layoutScope: LayoutScope | null;
   private layoutPersistenceStopped = false;
+  private narrowViewport: boolean;
 
   constructor(private readonly deps: RoomAppRuntimeDeps) {
+    this.narrowViewport = Boolean(deps.narrowViewport);
     this.layoutScope =
       deps.layoutRepository && deps.route.kind === "room"
         ? {
@@ -141,6 +149,9 @@ export class RoomAppRuntime {
       this.publish();
     });
     this.currentView = this.computeView();
+    this.unsubscribeViewport =
+      deps.viewportChanges?.subscribe((viewport) => this.resizeViewport(viewport)) ??
+      (() => undefined);
   }
 
   subscribe = (subscriber: Subscriber): (() => void) => {
@@ -295,6 +306,11 @@ export class RoomAppRuntime {
     this.deps.windowManager.resize(terminalId, size);
   }
 
+  resizeViewport(viewport: { readonly width: number; readonly height: number }): void {
+    this.narrowViewport = viewport.width < 1024;
+    this.deps.windowManager.setViewport(viewport);
+  }
+
   minimize(terminalId: number): void {
     this.deps.windowManager.minimize(terminalId);
   }
@@ -331,7 +347,7 @@ export class RoomAppRuntime {
   navigate = (location: string): void => this.deps.navigate(location);
   route = (): RoomRoute => this.deps.route;
   inputBlocked(): boolean {
-    return Boolean(this.deps.narrowViewport) || this.currentView.connection === "restoring";
+    return this.narrowViewport || this.currentView.connection === "restoring";
   }
 
   hostCommand(): string {
@@ -348,6 +364,7 @@ export class RoomAppRuntime {
     for (const controller of this.controllers.values()) controller.dispose();
     this.controllers.clear();
     this.unsubscribeWindows();
+    this.unsubscribeViewport();
     this.unsubscribeSession?.();
     this.unsubscribeProjection();
     this.session?.stop();
@@ -575,6 +592,17 @@ export function createProductionRoomRuntime(
     },
     inviteUrl: location.href,
     narrowViewport: globalThis.innerWidth < 1024,
+    viewportChanges: {
+      subscribe: (subscriber) => {
+        const handleResize = () =>
+          subscriber({
+            width: Math.max(1, globalThis.innerWidth),
+            height: Math.max(1, globalThis.innerHeight - 194),
+          });
+        globalThis.addEventListener("resize", handleResize);
+        return () => globalThis.removeEventListener("resize", handleResize);
+      },
+    },
     viewportBucket,
   });
 }
