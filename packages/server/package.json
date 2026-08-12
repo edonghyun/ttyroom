@@ -2,6 +2,9 @@
   "name": "@ttyroom/server",
   "version": "0.0.0",
   "type": "module",
+  "bin": {
+    "ttyroom-server": "./dist/index.js"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

@@ -16,13 +16,22 @@ interface ServerCoreBoundary {
 
 export class WsTransport {
   private readonly websocketServer = new WebSocketServer({ noServer: true });
+  private readonly httpServer: HttpServer;
+  private readonly upgradeHandler: Parameters<HttpServer["on"]>[1];
   private nextConnectionNumber = 1;
+  private shuttingDown = false;
+  private closing: Promise<void> | undefined;
 
   constructor(
     private readonly deps: { core: ServerCoreBoundary },
     options: { server: HttpServer },
   ) {
-    options.server.on("upgrade", (request, socket, head) => {
+    this.httpServer = options.server;
+    this.upgradeHandler = (request, socket, head) => {
+      if (this.shuttingDown) {
+        socket.destroy();
+        return;
+      }
       const path = new URL(request.url ?? "/", "http://localhost").pathname;
       if (path !== "/ws") {
         socket.destroy();
@@ -31,7 +40,13 @@ export class WsTransport {
       this.websocketServer.handleUpgrade(request, socket, head, (websocket) => {
         this.attach(websocket);
       });
-    });
+    };
+    this.httpServer.on("upgrade", this.upgradeHandler);
+  }
+
+  close(): Promise<void> {
+    this.closing ??= this.closeOnce();
+    return this.closing;
   }
 
   private attach(websocket: WebSocket): void {
@@ -45,7 +60,32 @@ export class WsTransport {
       }
       this.deps.core.handleMessage(connection, raw.toString());
     });
-    websocket.once("close", () => this.deps.core.handleClose(connection));
+    websocket.once("close", () => {
+      if (!this.shuttingDown) this.deps.core.handleClose(connection);
+    });
+  }
+
+  private async closeOnce(): Promise<void> {
+    this.shuttingDown = true;
+    this.httpServer.off("upgrade", this.upgradeHandler);
+    const clients = [...this.websocketServer.clients];
+    const clientsClosed = Promise.all(
+      clients.map(
+        (websocket) =>
+          new Promise<void>((resolve) => {
+            if (websocket.readyState === WebSocket.CLOSED) {
+              resolve();
+              return;
+            }
+            websocket.once("close", resolve);
+          }),
+      ),
+    );
+    for (const websocket of clients) websocket.terminate();
+    const serverClosed = new Promise<void>((resolve, reject) => {
+      this.websocketServer.close((error) => (error ? reject(error) : resolve()));
+    });
+    await Promise.all([clientsClosed, serverClosed]);
   }
 }
 
