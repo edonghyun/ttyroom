@@ -1,4 +1,5 @@
 import type { OutputFrame } from "@ttyroom/protocol";
+import type { Room } from "../domain/room.js";
 import type { RoomRegistry } from "../domain/room-registry.js";
 import type { Policy } from "../ports/policy.js";
 import type { Connection } from "../ports/transport.js";
@@ -6,9 +7,11 @@ import type { ConnectionRegistry, Session } from "./connection-registry.js";
 import { ScrollbackBuffer } from "./scrollback-buffer.js";
 
 export class BroadcastTerminalOutput {
-  private readonly buffers = new Map<number, ScrollbackBuffer>();
-  private readonly lastSequenceByTerminal = new Map<number, number>();
-  private readonly gaps = new Map<Connection, Map<number, { fromSeq: number; toSeq: number }>>();
+  private readonly outputByRoom = new WeakMap<Room, Map<number, TerminalOutput>>();
+  private readonly gaps = new WeakMap<
+    Connection,
+    Map<number, { fromSeq: number; toSeq: number }>
+  >();
 
   constructor(
     private readonly deps: { rooms: RoomRegistry; connections: ConnectionRegistry },
@@ -29,11 +32,11 @@ export class BroadcastTerminalOutput {
       return;
     }
 
-    const buffer = this.bufferFor(incoming.terminalId);
-    const seq = (this.lastSequenceByTerminal.get(incoming.terminalId) ?? 0) + 1;
-    this.lastSequenceByTerminal.set(incoming.terminalId, seq);
+    const output = this.outputFor(room, incoming.terminalId);
+    const seq = output.lastSeq + 1;
+    output.lastSeq = seq;
     const frame: OutputFrame = { ...incoming, seq };
-    buffer.append(frame);
+    output.buffer.append(frame);
     for (const participant of this.deps.connections.participantsOf(room.roomId)) {
       if (
         participant.connection.bufferedBytes() >= this.options.policy.sendBufferDropThresholdBytes
@@ -68,20 +71,35 @@ export class BroadcastTerminalOutput {
     }
   }
 
-  framesFor(terminalId: number): OutputFrame[] {
-    return this.buffers.get(terminalId)?.frames() ?? [];
+  framesFor(room: Room, terminalId: number): OutputFrame[] {
+    return this.outputByRoom.get(room)?.get(terminalId)?.buffer.frames() ?? [];
   }
 
-  lastSeqFor(terminalId: number): number {
-    return this.lastSequenceByTerminal.get(terminalId) ?? 0;
+  lastSeqFor(room: Room, terminalId: number): number {
+    return this.outputByRoom.get(room)?.get(terminalId)?.lastSeq ?? 0;
   }
 
-  private bufferFor(terminalId: number): ScrollbackBuffer {
-    let buffer = this.buffers.get(terminalId);
-    if (!buffer) {
-      buffer = new ScrollbackBuffer({ maxBytes: this.options.policy.scrollbackBytesPerTerminal });
-      this.buffers.set(terminalId, buffer);
+  private outputFor(room: Room, terminalId: number): TerminalOutput {
+    let roomOutput = this.outputByRoom.get(room);
+    if (!roomOutput) {
+      roomOutput = new Map();
+      this.outputByRoom.set(room, roomOutput);
     }
-    return buffer;
+    let output = roomOutput.get(terminalId);
+    if (!output) {
+      output = {
+        buffer: new ScrollbackBuffer({
+          maxBytes: this.options.policy.scrollbackBytesPerTerminal,
+        }),
+        lastSeq: 0,
+      };
+      roomOutput.set(terminalId, output);
+    }
+    return output;
   }
+}
+
+interface TerminalOutput {
+  buffer: ScrollbackBuffer;
+  lastSeq: number;
 }

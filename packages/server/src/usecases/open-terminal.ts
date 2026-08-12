@@ -1,9 +1,12 @@
 import type { TerminalMeta } from "@ttyroom/protocol";
+import type { Room } from "../domain/room.js";
 import type { RoomRegistry } from "../domain/room-registry.js";
 import type { Connection } from "../ports/transport.js";
 import type { ConnectionRegistry, Session } from "./connection-registry.js";
 
 export class OpenTerminal {
+  private readonly confirmedByRoom = new WeakMap<Room, Set<number>>();
+
   constructor(private readonly deps: { rooms: RoomRegistry; connections: ConnectionRegistry }) {}
 
   request(requester: Connection, session: Session, hostId: string): void {
@@ -34,6 +37,12 @@ export class OpenTerminal {
       });
       return;
     }
+    if (terminal.status !== "open") return;
+
+    const confirmed = this.confirmedByRoom.get(room) ?? new Set<number>();
+    if (confirmed.has(terminalId)) return;
+    confirmed.add(terminalId);
+    this.confirmedByRoom.set(room, confirmed);
 
     this.deps.connections.broadcast(room.roomId, {
       type: "room-event",
@@ -58,6 +67,8 @@ export class OpenTerminal {
       return;
     }
 
+    if (terminal.status === "exited") return;
+
     room.markTerminalExited(terminalId, exitCode);
     this.deps.connections.broadcast(room.roomId, {
       type: "room-event",
@@ -79,6 +90,14 @@ export class OpenTerminal {
         code: "bad-message",
         message: "host가 소유하지 않은 터미널이다",
       });
+      return;
+    }
+
+    if (
+      terminal.meta.cwd === meta.cwd &&
+      terminal.meta.gitBranch === meta.gitBranch &&
+      terminal.meta.fgProcess === meta.fgProcess
+    ) {
       return;
     }
 

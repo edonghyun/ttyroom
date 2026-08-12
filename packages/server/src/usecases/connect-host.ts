@@ -19,7 +19,7 @@ export class ConnectHost {
   }): void {
     const { connection, room, hostId, displayName } = input;
     this.deps.pending.cancel(room.roomId, "host", hostId);
-    const existing = this.deps.connections.byClientId(room.roomId, hostId);
+    const existing = this.deps.connections.byClientId(room.roomId, hostId, "host");
     if (existing) {
       this.deps.connections.unregister(existing.connection.connectionId);
       existing.connection.close();

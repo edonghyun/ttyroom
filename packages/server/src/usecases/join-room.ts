@@ -47,10 +47,10 @@ export class JoinRoom {
     // auth 성공 시 room은 반드시 존재 — LinkAuth가 room-not-found를 걸렀다
     if (hello.role === "participant") {
       this.deps.pending.cancel(hello.roomId, "participant", auth.clientId);
-      // 재접속은 대체(supersede) — 1 clientId = 1 세션 불변식. 이전 연결은 여기서 닫히며,
+      // 재접속은 대체(supersede) — 1 participant clientId = 1 세션 불변식. 이전 연결은 여기서 닫히며,
       // 그 close 통지는 새 세션을 건드리지 않아야 하고(connectionId 기준 unregister),
       // T2.9(handleDisconnect)에서 유예 타이머도 걸지 않아야 한다.
-      const existing = this.deps.connections.byClientId(hello.roomId, auth.clientId);
+      const existing = this.deps.connections.byClientId(hello.roomId, auth.clientId, "participant");
       if (existing) {
         this.deps.connections.unregister(existing.connection.connectionId);
         existing.connection.close();

@@ -41,4 +41,29 @@ describe("connectHost — 역할: Agent hello 처리와 Host 등록", () => {
     expect(stale.conn.messages.some((message) => message.type === "open-terminal")).toBe(false);
     expect(fresh.conn.messages.some((message) => message.type === "open-terminal")).toBe(true);
   });
+
+  it("같은 clientId의 participant 입장은 host 세션을 대체하지 않는다", () => {
+    const ctx = new RoomTestContext();
+    const room = ctx.createRoom();
+    const host = ctx.connectHost(room, "host", "same-id");
+    const participant = ctx.connectParticipant(room, "participant", "same-id");
+
+    participant.send({ type: "open-terminal-request", hostId: host.hostId });
+
+    expect(host.conn.closed).toBe(false);
+    expect(host.conn.messages.some((message) => message.type === "open-terminal")).toBe(true);
+  });
+
+  it("같은 clientId의 host 입장은 participant 세션을 대체하지 않는다", () => {
+    const ctx = new RoomTestContext();
+    const room = ctx.createRoom();
+    const participant = ctx.connectParticipant(room, "participant", "same-id");
+
+    ctx.connectHost(room, "host", "same-id");
+
+    expect(participant.conn.closed).toBe(false);
+    expectMessageToMatch(participant.conn.messages, "room-event", {
+      event: { kind: "host-connected", host: { hostId: "same-id" } },
+    });
+  });
 });

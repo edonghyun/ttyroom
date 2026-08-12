@@ -12,6 +12,7 @@ import { HandleDisconnect, PendingDisconnects } from "./handle-disconnect.js";
 import { JoinRoom } from "./join-room.js";
 import { OpenTerminal } from "./open-terminal.js";
 import { ReleaseLease } from "./release-lease.js";
+import { ResizeTerminal } from "./resize-terminal.js";
 import { RouteTerminalInput } from "./route-terminal-input.js";
 import { SyncLateJoiner } from "./sync-late-joiner.js";
 
@@ -21,6 +22,7 @@ export class ServerCore {
   private readonly openTerminal: OpenTerminal;
   private readonly acquireLease: AcquireLease;
   private readonly releaseLease: ReleaseLease;
+  private readonly resizeTerminal: ResizeTerminal;
   private readonly routeTerminalInput: RouteTerminalInput;
   private readonly broadcastTerminalOutput: BroadcastTerminalOutput;
   private readonly handleDisconnect: HandleDisconnect;
@@ -53,6 +55,10 @@ export class ServerCore {
     });
     this.acquireLease = new AcquireLease({ rooms: deps.rooms, connections: deps.connections });
     this.releaseLease = new ReleaseLease({ rooms: deps.rooms, connections: deps.connections });
+    this.resizeTerminal = new ResizeTerminal({
+      rooms: deps.rooms,
+      connections: deps.connections,
+    });
     this.routeTerminalInput = new RouteTerminalInput({
       rooms: deps.rooms,
       connections: deps.connections,
@@ -99,6 +105,17 @@ export class ServerCore {
 
     if (parsed.message.type === "release-lease" && session.role === "participant") {
       this.releaseLease.execute(conn, session, parsed.message.terminalId, parsed.message.leaseId);
+      return;
+    }
+
+    if (parsed.message.type === "resize-request" && session.role === "participant") {
+      this.resizeTerminal.execute(
+        conn,
+        session,
+        parsed.message.terminalId,
+        parsed.message.cols,
+        parsed.message.rows,
+      );
       return;
     }
 

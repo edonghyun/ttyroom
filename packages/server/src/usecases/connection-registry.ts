@@ -20,10 +20,11 @@ export class ConnectionRegistry {
     return this.byConnectionId.get(connectionId);
   }
 
-  // supersede 불변식(JoinRoom이 유지) 하에서 (roomId, clientId)당 세션은 최대 1개 — 단수 반환
-  byClientId(roomId: string, clientId: string): Session | undefined {
+  // supersede 불변식 하에서 (roomId, role, clientId)당 세션은 최대 1개 —
+  // host와 participant는 같은 clientId여도 서로의 연결을 대체하지 않는다.
+  byClientId(roomId: string, clientId: string, role: Session["role"]): Session | undefined {
     return [...this.byConnectionId.values()].find(
-      (s) => s.roomId === roomId && s.clientId === clientId,
+      (s) => s.roomId === roomId && s.clientId === clientId && s.role === role,
     );
   }
 

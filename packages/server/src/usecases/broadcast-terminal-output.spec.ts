@@ -72,6 +72,21 @@ describe("broadcastTerminalOutput — 역할: 출력 팬아웃과 느린 참여�
     expect(alice.conn.dataFrames).toEqual([]);
     expectMessageToMatch(attacker.conn.messages, "error", { code: "bad-message" });
   });
+
+  it("같은 terminalId를 쓰는 다른 Room의 seq와 스크롤백을 공유하지 않는다", () => {
+    const ctx = new RoomTestContext();
+    const first = setupOpenTerminal(ctx);
+    first.host.sendOutput(first.terminalId, 1, "room-one");
+    const second = setupOpenTerminal(ctx);
+
+    second.host.sendOutput(second.terminalId, 1, "room-two");
+    const late = ctx.connectParticipant(second.room, "late");
+
+    expect(second.terminalId).toBe(first.terminalId);
+    expect(second.alice.conn.dataFrames).toMatchObject([{ seq: 1 }]);
+    expect(late.conn.dataFrames).toMatchObject([{ seq: 1 }]);
+    expect(new TextDecoder().decode(late.conn.dataFrames[0]?.payload)).toBe("room-two");
+  });
 });
 
 function setupOpenTerminal(ctx = new RoomTestContext()): {
