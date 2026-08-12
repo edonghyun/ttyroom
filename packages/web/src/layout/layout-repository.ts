@@ -36,7 +36,11 @@ export class LayoutRepository {
 
   save(scope: LayoutScope, layouts: readonly WindowLayout[]): void {
     const sanitized = storedLayoutsSchema.parse(layouts);
-    this.deps.storage.setItem(this.key(scope), JSON.stringify(sanitized));
+    try {
+      this.deps.storage.setItem(this.key(scope), JSON.stringify(sanitized));
+    } catch {
+      // Layout persistence is optional; browser storage policy must not break the live workspace.
+    }
   }
 
   pruneTerminal(scope: LayoutScope, terminalId: number): void {
@@ -48,12 +52,16 @@ export class LayoutRepository {
 
   clearRoom(roomId: string): void {
     const prefix = `ttyroom:layout:v1:${encodeURIComponent(roomId)}:`;
-    const matchingKeys: string[] = [];
-    for (let index = 0; index < this.deps.storage.length; index += 1) {
-      const key = this.deps.storage.key(index);
-      if (key?.startsWith(prefix)) matchingKeys.push(key);
+    try {
+      const matchingKeys: string[] = [];
+      for (let index = 0; index < this.deps.storage.length; index += 1) {
+        const key = this.deps.storage.key(index);
+        if (key?.startsWith(prefix)) matchingKeys.push(key);
+      }
+      for (const key of matchingKeys) this.deps.storage.removeItem(key);
+    } catch {
+      // Room teardown must complete even when browser storage becomes unavailable.
     }
-    for (const key of matchingKeys) this.deps.storage.removeItem(key);
   }
 
   private key(scope: LayoutScope): string {

@@ -80,6 +80,21 @@ describe("LayoutRepository — participant-local window persistence", () => {
     expect(persisted).not.toContain("terminal secret");
     expect(repository.load(scope)).toEqual([layoutOf(1)]);
   });
+
+  it("keeps layout updates non-fatal when browser storage refuses a write", () => {
+    const repository = new LayoutRepository({ storage: new WriteDeniedLayoutStorage() });
+    const scope = { roomId: "room-1", clientId: "alice-id", viewportBucket: "1280x800" };
+
+    expect(() => repository.save(scope, [layoutOf(1)])).not.toThrow();
+  });
+
+  it("keeps Room removal non-fatal when browser storage refuses deletion", () => {
+    const storage = new RemovalDeniedLayoutStorage();
+    storage.setItem("ttyroom:layout:v1:room-1:alice-id:1280x800", JSON.stringify([layoutOf(1)]));
+    const repository = new LayoutRepository({ storage });
+
+    expect(() => repository.clearRoom("room-1")).not.toThrow();
+  });
 });
 
 function layoutOf(terminalId: number) {
@@ -123,5 +138,17 @@ class MemoryLayoutStorage implements Storage {
 
   keys(): string[] {
     return [...this.values.keys()];
+  }
+}
+
+class WriteDeniedLayoutStorage extends MemoryLayoutStorage {
+  override setItem(): void {
+    throw new DOMException("storage is unavailable", "SecurityError");
+  }
+}
+
+class RemovalDeniedLayoutStorage extends MemoryLayoutStorage {
+  override removeItem(): void {
+    throw new DOMException("storage is unavailable", "SecurityError");
   }
 }
