@@ -42,8 +42,15 @@ function makeApp() {
   const session = new FakeAppSession();
   const ptys = new FakeAppPtys();
   const statusLines: string[] = [];
-  const app = new AgentApp({ session, ptys }, { onStatus: (line) => statusLines.push(line) });
-  return { app, session, ptys, statusLines };
+  const opened: number[] = [];
+  const app = new AgentApp(
+    { session, ptys },
+    {
+      onStatus: (line) => statusLines.push(line),
+      onTerminalOpened: (terminalId) => opened.push(terminalId),
+    },
+  );
+  return { app, session, ptys, statusLines, opened };
 }
 
 describe("AgentApp — 역할: 서버 명령과 PTY의 배선, Kill Switch", () => {
@@ -137,6 +144,23 @@ describe("AgentApp — 역할: 서버 명령과 PTY의 배선, Kill Switch", () 
     expect(ptys.opens).toEqual([]);
     // 서버의 pending 터미널을 기존 protocol 메시지로 정리 — 유령 open 방지
     expect(session.sent).toEqual([{ type: "terminal-closed", terminalId: 9, exitCode: null }]);
+  });
+
+  it("실제로 연 터미널만 onTerminalOpened로 알린다 — 차단된 open을 관찰자(MetaCollector)가 추적하면 누수다", () => {
+    const { app, opened } = makeApp();
+
+    app.handleEvent({
+      kind: "server-message",
+      message: { type: "open-terminal", terminalId: 3, cols: 80, rows: 24 },
+    });
+
+    app.setKillSwitch(true);
+    app.handleEvent({
+      kind: "server-message",
+      message: { type: "open-terminal", terminalId: 9, cols: 80, rows: 24 },
+    });
+
+    expect(opened).toEqual([3]);
   });
 
   it("Kill Switch가 켜져 있어도 resize·close-terminal은 통과한다 (실행 능력 없음 — 차단하면 상태 드리프트)", () => {

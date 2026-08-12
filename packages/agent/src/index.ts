@@ -60,12 +60,7 @@ const session = new AgentSession(
   {
     wsUrl: command.wsUrl,
     hello,
-    onEvent: (event) => {
-      app.handleEvent(event);
-      if (event.kind === "server-message" && event.message.type === "open-terminal") {
-        collector.track(event.message.terminalId);
-      }
-    },
+    onEvent: (event) => app.handleEvent(event),
   },
 );
 
@@ -77,7 +72,10 @@ const collector = new MetaCollector(
   },
 );
 
-app = new AgentApp({ session, ptys }, { onStatus });
+app = new AgentApp(
+  { session, ptys },
+  { onStatus, onTerminalOpened: (terminalId) => collector.track(terminalId) },
+);
 
 function shutdown(): void {
   onStatus("종료 중 — 모든 터미널을 닫습니다");

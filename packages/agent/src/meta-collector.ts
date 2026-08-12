@@ -6,6 +6,10 @@ import type { AgentClock } from "./ports/agent-transport.js";
 
 const execFileAsync = promisify(execFile);
 
+// lsof·git이 매달리면(NFS·저장소 잠금) 틱마다 미결 수집이 무한히 쌓인다 —
+// 기본 폴링 간격(5초)보다 짧게 강제 종료해 겹침을 막는다. 실패와 동일하게 null 처리
+const EXEC_TIMEOUT_MS = 4000;
+
 // 소비자 관점 포트 — 수집에 필요한 조회 표면만 (PtyManager가 구조적으로 만족)
 export interface MetaSource {
   pid(terminalId: number): number | null;
@@ -78,7 +82,11 @@ async function readCwd(pid: number): Promise<string | null> {
 
     if (process.platform === "darwin") {
       // -Fn 출력에서 "n"으로 시작하는 라인이 경로다
-      const { stdout } = await execFileAsync("lsof", ["-a", "-p", String(pid), "-d", "cwd", "-Fn"]);
+      const { stdout } = await execFileAsync(
+        "lsof",
+        ["-a", "-p", String(pid), "-d", "cwd", "-Fn"],
+        { timeout: EXEC_TIMEOUT_MS },
+      );
       const line = stdout.split("\n").find((l) => l.startsWith("n"));
       return line ? line.slice(1) : null;
     }
@@ -91,7 +99,10 @@ async function readCwd(pid: number): Promise<string | null> {
 
 async function readGitBranch(cwd: string): Promise<string | null> {
   try {
-    const { stdout } = await execFileAsync("git", ["rev-parse", "--abbrev-ref", "HEAD"], { cwd });
+    const { stdout } = await execFileAsync("git", ["rev-parse", "--abbrev-ref", "HEAD"], {
+      cwd,
+      timeout: EXEC_TIMEOUT_MS,
+    });
     const branch = stdout.trim();
     return branch === "" ? null : branch;
   } catch {

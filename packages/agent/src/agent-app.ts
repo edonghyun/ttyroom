@@ -21,6 +21,10 @@ interface AgentAppDeps {
 
 interface AgentAppOptions {
   onStatus: (line: string) => void;
+
+  // 부가 관찰자(MetaCollector)의 배선점 — 실제로 연 터미널만 알린다.
+  // Kill Switch로 차단된 open까지 추적하면 exit이 없어 untrack 기회가 영영 오지 않는다
+  onTerminalOpened: (terminalId: number) => void;
 }
 
 // 서버 명령과 PTY 사이의 얇은 배선 — 판단은 서버에, 유일한 로컬 판단은 Kill Switch (스펙)
@@ -99,6 +103,7 @@ export class AgentApp {
 
       this.deps.ptys.open(msg.terminalId, msg.cols, msg.rows);
       this.deps.session.send({ type: "terminal-opened", terminalId: msg.terminalId });
+      this.options.onTerminalOpened(msg.terminalId);
       return;
     }
 
