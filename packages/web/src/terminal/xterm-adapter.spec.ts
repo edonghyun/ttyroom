@@ -155,6 +155,18 @@ describe("XtermAdapter", () => {
     expect(factory.terminal.keyHandler?.(new KeyboardEvent("keydown", { key: "a" }))).toBe(true);
   });
 
+  it("hands workspace Escape and Alt+O shortcuts to the browser without terminal bytes", () => {
+    const factory = new FakeXtermFactory();
+    new XtermAdapter(factory);
+
+    expect(factory.terminal.keyHandler?.(new KeyboardEvent("keydown", { key: "Escape" }))).toBe(
+      false,
+    );
+    expect(
+      factory.terminal.keyHandler?.(new KeyboardEvent("keydown", { key: "o", altKey: true })),
+    ).toBe(false);
+  });
+
   it("disposes subscriptions and the terminal exactly once", () => {
     const factory = new FakeXtermFactory();
     const adapter = new XtermAdapter(factory);
