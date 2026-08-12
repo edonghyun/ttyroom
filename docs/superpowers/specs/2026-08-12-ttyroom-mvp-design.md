@@ -23,6 +23,8 @@
 | 기존 세션 attach | MVP 제외. 브라우저에서 만드는 새 PTY만 지원 |
 | 아키텍처 | 단일 서버 프로세스(Control Plane + Relay 겸임), 인메모리 상태, 클라이언트당 WebSocket 하나에 멀티플렉싱. 인프라는 포트/어댑터로 교체 가능하게 |
 | 오픈소스 | 향후 공개를 전제로 특정 인프라(Tailscale 포함)에 하드 종속하지 않음 |
+| 개발 규율 | strict TDD (`donghyuns-agent-tools`의 tdd 스킬) + `semantic-context-os/CODING-GUIDELINES.md` 준수 |
+| Web UI | 별도 트랙으로 분리. 화면 설계를 먼저 하고 착수. 이번 구현 범위는 protocol·server·agent |
 
 ### 열린 질문에 대한 기본값 (설계에 포함된 결정)
 
@@ -38,8 +40,8 @@
 ```text
 ┌──────────┐   Transport    ┌─────────────────────────┐   Transport    ┌──────────┐
 │  Web     │◀══════════════▶│         Server          │◀══════════════▶│  Agent   │
-│ (브라우저)│                │  domain / usecases      │                │ (Node)   │
-└──────────┘                │  ports / adapters       │                └──────────┘
+│ (브라우저)│                │  역할 모듈 + 계약        │                │ (Node)   │
+└──────────┘                │  + 어댑터                │                └──────────┘
                             └─────────────────────────┘
 ```
 
@@ -53,30 +55,37 @@
 ```text
 ttyroom/
 ├── packages/protocol   # 제어 메시지 zod 스키마, 데이터 프레임 인코더/디코더, PROTOCOL.md
-├── packages/server     # domain / usecases / ports / adapters, config, main(조립)
+├── packages/server     # 역할 모듈 + 계약 + 어댑터, config, main(조립)
 ├── packages/agent      # CLI, PTY 관리, Transport 클라이언트 어댑터
-└── packages/web        # Room UI, xterm.js, Transport 브라우저 어댑터
+└── packages/web        # Room UI, xterm.js — 별도 트랙 (화면 설계 후 착수)
 ```
 
 `protocol`이 유일한 공유 지점이다. TS 타입과 함께 언어 중립 명세(`PROTOCOL.md`)를 유지한다.
 
-## 서버 레이어 구조
+## 서버 구조
 
-의존 방향은 항상 안쪽으로: `adapters → usecases → domain`.
+폴더는 코딩 가이드라인 §3.1/3.2에 따라 **역할 우선**으로 가른다 (계층 이름 폴더 금지).
+헥사고날 계층 — 도메인 모델 / 유즈케이스 / 계약(포트) / 어댑터 — 은 **개념과 의존 방향
+규칙**으로 유지하며, 순환·방향 위반은 CI의 의존성 검사(dependency-cruiser)로 강제한다.
 
 ```text
 packages/server/src/
-├── domain/      # Room·Host·Terminal·Lease 엔티티와 불변식. 순수 함수. 포트를 모름
-├── usecases/    # 실질적 플로우의 주인. 포트를 호출하는 유일한 레이어
-├── ports/       # Transport · SnapshotStore · Identity · Clock 인터페이스 + Policy 타입
-├── adapters/
-│   ├── ws/           # WebSocket Transport 어댑터 (송신 버퍼 감시 → 백프레셔 신호)
-│   ├── memory/       # SnapshotStore no-op 어댑터
-│   ├── link-auth/    # Room 토큰 + clientId Identity 어댑터
-│   └── system-clock/
+├── room/        # Room·Host·Terminal 모델과 불변식 + 참여·연결·터미널 유즈케이스
+├── lease/       # 입력권(Lease) 모델과 불변식 + 획득·해제·만료·복원 유즈케이스
+├── stream/      # 데이터 프레임 라우팅, 스크롤백 링버퍼, 백프레셔·sync 유즈케이스
+├── contracts/   # Transport·SnapshotStore·Identity·Clock 계약(소비자 관점) + Policy 타입
+├── transport/   # WebSocket Transport 어댑터 (송신 버퍼 감시 → 백프레셔 신호)
+├── identity/    # Room 토큰 + clientId 어댑터
+├── snapshot/    # no-op 어댑터 (후속: SQLite)
+├── clock/       # 시스템 시계 어댑터
 ├── config.ts    # zod 스키마 단일 진실 (아래 설정 계층 참조)
-└── main.ts      # 조립 지점. 어댑터 생성 → 유즈케이스 주입. 웹 정적 파일 서빙
+└── main.ts      # 조립 지점. 어댑터 생성 → 역할 모듈에 주입. 웹 정적 파일 서빙
 ```
+
+의존 방향 규칙: `room`·`lease`·`stream`(역할 모듈)은 `contracts`만 의존한다.
+어댑터(`transport`·`identity`·`snapshot`·`clock`)는 `contracts`를 구현하며 역할 모듈을 모른다.
+`main.ts`만 전부를 안다. 컴포넌트는 가이드라인대로 클래스 기본, 협력 객체(Deps)와
+설정값(Options)을 구분한 생성자 옵션 객체 주입으로 작성한다.
 
 ### 도메인 (불변식)
 
@@ -89,11 +98,13 @@ packages/server/src/
 
 ### 유즈케이스 목록
 
-`joinRoom`, `connectHost`, `openTerminal`, `acquireLease`, `releaseLease`,
-`routeTerminalInput`, `broadcastTerminalOutput`, `handleDisconnect`, `syncLateJoiner`.
-테스트도 이 단위로 작성한다.
+`joinRoom`, `connectHost`, `openTerminal`, `syncLateJoiner`, `handleDisconnect` (→ `room/`),
+`acquireLease`, `releaseLease` (→ `lease/`),
+`routeTerminalInput`, `broadcastTerminalOutput` (→ `stream/`).
+테스트도 이 단위로 작성한다. 유즈케이스는 별도 계층 폴더가 아니라
+자신이 조작하는 모델과 같은 역할 모듈에 소속된다.
 
-### 포트
+### 계약 (포트)
 
 - **Transport** — 연결 하나의 프레임 송수신. 의미론 계약을 인터페이스에 명시한다:
   프레임 순서 보장, 연결별 백프레셔 신호(송신 버퍼 수위), 재연결은 전송이 숨기지 않고
@@ -187,20 +198,35 @@ Agent는 의도적으로 얇다. 판단은 서버에 있고 Agent는 수행만 �
 유일한 로컬 판단은 **Kill Switch**: Agent 상태창에서 키 한 번으로 모든 원격 입력을 즉시 차단한다.
 서버를 거치지 않는 로컬 권한이어야 Host Owner가 신뢰할 수 있다.
 
-## Web
+## Web — 별도 트랙
 
-```text
-packages/web/src/
-├── room/         # 서버 브로드캐스트를 반영하는 단일 클라이언트 상태 스토어
-├── terminal/     # xterm.js 래핑, 데이터 프레임 ↔ 렌더링, 스크롤백 replay
-├── lease/        # 클릭 → 임대 요청, 시각 상태 (내 소유 / 타인 소유 / 빈 터미널)
-├── layout/       # Hosts 사이드바 · 터미널 탭/분할 · 참여자 패널
-└── transport/    # Transport 브라우저 어댑터 (WS, 자동 재접속)
-```
+Web UI는 이번 구현 범위에서 분리한다. 예시 화면 설계를 먼저 진행한 뒤 별도 계획으로 착수한다.
+서버·Agent는 플로우 e2e(실제 ws 클라이언트)로 검증하므로 web 없이 완결적으로 개발할 수 있다.
 
-- 프레임워크: React + Vite.
+Web 트랙에 승계되는 설계 결정:
+
+- 프레임워크: React + Vite, 터미널 렌더링은 xterm.js.
 - 서버가 보내는 스냅샷·이벤트가 유일한 진실이고 웹은 렌더링만 한다.
   낙관적 업데이트는 임대 획득 같은 지연 민감 지점에만 제한적으로 쓴다.
+- 입력권 시각 상태(내 소유 / 타인 소유 / 빈 터미널)의 강한 피드백,
+  Hosts 사이드바 · 터미널 탭/분할 · 참여자 패널 구조.
+- `packages/protocol`과 Transport 브라우저 어댑터를 통해서만 서버와 통신한다.
+
+## 개발 규율
+
+- **strict TDD** — `donghyuns-agent-tools`의 tdd 스킬을 구현 전 과정에 적용한다.
+  행동 증분 장부(ledger) 작성 → 행동 하나당 RED(실행으로 실패 확인) → 최소 GREEN →
+  GREEN 상태에서만 REFACTOR. RED/GREEN의 실행 명령과 결과를 증거로 보고한다.
+  버그 수정은 실패하는 회귀 테스트부터. 테스트는 co-located 스펙(`A.ts` 옆 `A.spec.ts`)으로
+  작성하며, 이는 본 문서의 테스트 배치 규칙과 일치한다.
+- **코딩 가이드라인** — `semantic-context-os/CODING-GUIDELINES.md`를 준수한다.
+  이 설계에 특히 영향을 주는 항목: 컴포넌트는 클래스 기본(한 파일 한 역할),
+  Deps/Options를 구분한 생성자 옵션 객체 주입, 역할 우선 폴더(계층·방법론 이름 금지),
+  strict TS(`noUncheckedIndexedAccess` 등), 프로그래머 오류(throw)와 예상된 실패
+  (discriminated union)의 구분, `cause` 보존, 시계·난수·ID 주입, 계약 스위트 공유,
+  제약 코멘트만 허용, 매직 넘버는 근거 코멘트와 함께 상수화.
+- 오류 표현의 프로젝트 표준: 예상된 실패는 discriminated union(`kind` 필드 +
+  exhaustive switch)으로 통일한다.
 
 ## 에러 처리
 
@@ -220,6 +246,7 @@ packages/web/src/
 
 사내 저장소 libera·hzpro-dev·hexai의 검증된 패턴을 채택했다. hexaijs 프레임워크 자체는
 채택하지 않는다 (TTYRoom은 CQRS/이벤트소싱이 아니라 실시간 상태 릴레이).
+작성 순서는 개발 규율 섹션의 strict TDD가 지배한다 — 아래는 테스트의 구조와 배치 규칙이다.
 
 1. **배치 규칙** — Vitest 단일 스택. 테스트는 소스 옆 co-located, 레이어는 파일명 접미사로 구분:
    `*.spec.ts`(유닛) / `*.integration.spec.ts`(실제 인프라) / `*.e2e.ts`(플로우).
@@ -246,11 +273,16 @@ packages/web/src/
    (실패 시 수신 프레임 타입 목록과 최근접 diff 출력). 재전송·중복 멱등성 테스트를 모든
    유즈케이스의 기본 케이스로 승격 ("같은 acquire-lease가 두 번 와도 상태 동일").
 9. **UI 스모크** — Playwright 한두 개: Room 생성 → Agent 연결 → 터미널 클릭 → 타이핑 → 출력 확인.
+   Web 트랙에 속하며 web 착수 시 추가한다.
 10. **실행과 게이트** — `pnpm test` = 유닛+프로토콜(인프라 불요). `test:integration` = 실제 PTY/WS.
     `test:e2e` = 플로우. 환경 미비 시 사유를 이름에 담은 `describe.skip`. CI는 GitHub Actions를
     처음부터 두고, PR 게이트는 유닛+프로토콜, 전체는 main 머지 시.
 
 ## MVP 범위
+
+이번 구현 계획의 산출물은 **protocol + server + agent + 플로우 e2e**다.
+Web UI는 별도 트랙이므로, 아래 "포함" 중 UI 관련 항목(터미널 탭·분할, 카드 표시 등)의
+화면 구현은 web 트랙에서 완성된다. 서버·Agent는 해당 기능의 프로토콜·상태 관리를 이번에 완성한다.
 
 ### 포함
 
