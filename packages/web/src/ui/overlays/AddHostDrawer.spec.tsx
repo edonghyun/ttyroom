@@ -30,5 +30,8 @@ describe("AddHostDrawer", () => {
     await userEvent.click(screen.getByRole("button", { name: "Copy command" }));
     expect(copy).toHaveBeenCalledWith("npx ttyroom join https://room");
     expect(screen.getByText(/Ctrl\+C stops the Host Agent and its PTYs/)).toBeVisible();
+    screen.getByRole("button", { name: "Close Add Host" }).focus();
+    await userEvent.tab({ shift: true });
+    expect(screen.getByRole("button", { name: "Copy command" })).toHaveFocus();
   });
 });

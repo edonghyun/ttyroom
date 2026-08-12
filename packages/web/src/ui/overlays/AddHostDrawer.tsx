@@ -21,16 +21,39 @@ export function AddHostDrawer({
   readonly close: () => void;
   readonly opener?: RefObject<HTMLElement | null>;
 }) {
+  const drawer = useRef<HTMLElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (open) closeButton.current?.focus();
     else opener?.current?.focus();
   }, [open, opener]);
+
+  useEffect(() => {
+    const root = drawer.current;
+    if (!open || !root) return;
+    function trapFocus(event: KeyboardEvent) {
+      if (event.key !== "Tab") return;
+      const controls = [...root!.querySelectorAll<HTMLElement>("button:not([disabled])")];
+      const first = controls[0];
+      const last = controls.at(-1);
+      if (!first || !last) return;
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+    root.addEventListener("keydown", trapFocus);
+    return () => root.removeEventListener("keydown", trapFocus);
+  }, [open]);
   if (!open) return null;
 
   return (
     <aside className="drawer-backdrop">
       <section
+        ref={drawer}
         className="add-host-drawer"
         role="dialog"
         aria-modal="true"
