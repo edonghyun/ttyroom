@@ -148,7 +148,8 @@ test("reference room renders five production terminal surfaces with stable colla
 
   await page.getByRole("button", { name: "Open backend menu" }).click();
   await expect(page.getByRole("menu", { name: "backend actions" })).toBeVisible();
-  await page.getByRole("button", { name: "Add host" }).click();
+  await page.getByRole("button", { name: "Open room menu" }).click();
+  await page.getByRole("menuitem", { name: "Add host" }).click();
   await expect(page.getByRole("dialog", { name: "Add Host" })).toBeVisible();
   await page.getByRole("button", { name: "Close Add Host" }).click();
   await expect(page.getByRole("dialog", { name: "Add Host" })).toBeHidden();

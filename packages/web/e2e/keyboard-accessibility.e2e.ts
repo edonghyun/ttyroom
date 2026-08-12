@@ -77,9 +77,8 @@ test("modal focus is trapped and Escape closes the modal before releasing contro
   await alice.joinRoom();
   await alice.roomPage.openTerminal();
   await alice.roomPage.takeControl("term-1");
-  const addHost = alice.page.getByRole("button", { name: "Add host" });
-
-  await addHost.click();
+  await alice.page.getByRole("button", { name: "Open room menu" }).click();
+  await alice.page.getByRole("menuitem", { name: "Add host" }).click();
   const dialog = alice.page.getByRole("dialog", { name: "Add Host" });
   const close = dialog.getByRole("button", { name: "Close Add Host" });
   const copy = dialog.getByRole("button", { name: "Copy command" });
@@ -91,7 +90,7 @@ test("modal focus is trapped and Escape closes the modal before releasing contro
 
   await alice.page.keyboard.press("Escape");
   await expect(dialog).toBeHidden();
-  await expect(addHost).toBeFocused();
+  await expect(alice.page.getByRole("button", { name: "Open room menu" })).toBeFocused();
   await expect(alice.roomPage.terminalStatus("term-1")).toHaveAccessibleName(
     "You control · Esc to release",
   );

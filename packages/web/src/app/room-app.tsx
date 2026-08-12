@@ -434,13 +434,15 @@ export function RoomApp({ runtime }: { readonly runtime: RoomAppRuntime }) {
   const [closingTerminalId, setClosingTerminalId] = useState<number | null>(null);
   const [addHostOpen, setAddHostOpen] = useState(false);
   const [hostIdsWhenDrawerOpened, setHostIdsWhenDrawerOpened] = useState<readonly string[]>([]);
+  const [addHostOpener, setAddHostOpener] = useState<HTMLElement | null>(null);
   const closingTerminal = view.terminals.find(
     (terminal) => terminal.terminalId === closingTerminalId,
   );
   const controlledTerminal = view.terminals.find((terminal) => terminal.status.kind === "mine");
   const connectedHost = view.hosts.find((host) => !hostIdsWhenDrawerOpened.includes(host.hostId));
-  const openAddHost = () => {
+  const openAddHost = (opener?: HTMLElement) => {
     setHostIdsWhenDrawerOpened(view.hosts.map((host) => host.hostId));
+    setAddHostOpener(opener ?? null);
     setAddHostOpen(true);
   };
   useWorkspaceKeyboard({
@@ -508,6 +510,7 @@ export function RoomApp({ runtime }: { readonly runtime: RoomAppRuntime }) {
         }
         copy={(command) => runtime.copyText(command)}
         close={() => setAddHostOpen(false)}
+        opener={{ current: addHostOpener }}
       />
       <CloseTerminalDialog
         open={Boolean(closingTerminal)}

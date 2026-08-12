@@ -17,7 +17,7 @@ export interface RoomCommands {
   readonly arrange: () => void;
   readonly overview: () => void;
   readonly openMenu: () => void;
-  readonly addHost?: () => void;
+  readonly addHost?: (opener?: HTMLElement) => void;
 }
 
 export function RoomWorkspace({

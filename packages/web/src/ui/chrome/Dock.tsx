@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Plus, Terminal } from "react-feather";
 
 export interface DockTerminal {
@@ -30,6 +30,8 @@ export function Dock({
   readonly addTerminal: (hostId: string) => void;
 }) {
   const [hostMenuOpen, setHostMenuOpen] = useState(false);
+  const terminalButtons = useRef(new Map<number, HTMLButtonElement>());
+  const addTerminalButton = useRef<HTMLButtonElement>(null);
 
   function requestTerminal(): void {
     if (hosts.length === 1) {
@@ -43,10 +45,16 @@ export function Dock({
     <aside className="dock" aria-label="Terminal Dock">
       <div className="dock-terminals">
         <button
+          ref={addTerminalButton}
           type="button"
           className="add-terminal"
           aria-expanded={hostMenuOpen}
           onClick={requestTerminal}
+          onKeyDown={(event) => {
+            if (event.key !== "Tab" || !event.shiftKey || terminals.length === 0) return;
+            event.preventDefault();
+            terminalButtons.current.get(terminals.at(-1)!.terminalId)?.focus();
+          }}
         >
           <Plus size={16} strokeWidth={1.5} aria-hidden="true" /> Add terminal
         </button>
@@ -69,11 +77,25 @@ export function Dock({
         )}
         {terminals.map((terminal) => (
           <button
+            ref={(button) => {
+              if (button) terminalButtons.current.set(terminal.terminalId, button);
+              else terminalButtons.current.delete(terminal.terminalId);
+            }}
             type="button"
             key={terminal.terminalId}
             className={activeTerminalId === terminal.terminalId ? "dock-active" : undefined}
             aria-label={`${terminal.minimized ? "Restore" : "Focus"} ${terminal.title}`}
             onClick={() => restore(terminal.terminalId)}
+            onKeyDown={(event) => {
+              if (
+                event.key === "Tab" &&
+                !event.shiftKey &&
+                terminal.terminalId === terminals.at(-1)?.terminalId
+              ) {
+                event.preventDefault();
+                addTerminalButton.current?.focus();
+              }
+            }}
           >
             <Terminal size={16} strokeWidth={1.5} aria-hidden="true" />
             <span>

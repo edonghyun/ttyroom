@@ -85,7 +85,8 @@ describe("RoomApp production composition", () => {
     });
     act(() => sessionEvent?.({ kind: "lease-acquired", terminalId: 1 }));
     expect(screen.getByText("Control acquired · terminal-1")).toBeVisible();
-    await userEvent.click(screen.getAllByRole("button", { name: "Add host" })[0]!);
+    await userEvent.click(screen.getByRole("button", { name: "Open room menu" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Add host" }));
     expect(screen.getByRole("dialog", { name: "Add Host" })).toHaveTextContent(
       "Waiting for Agent…",
     );

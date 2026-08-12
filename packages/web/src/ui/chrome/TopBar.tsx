@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Grid, Link, MoreVertical, Monitor, Plus, Terminal } from "react-feather";
+import { useRef, useState } from "react";
+import { Grid, Link, MoreVertical, Monitor, Terminal } from "react-feather";
 
 export type ConnectionLabel = "connected" | "reconnecting" | "restoring";
 
@@ -18,9 +18,10 @@ export function TopBar({
   readonly arrange: () => void;
   readonly overview: () => void;
   readonly openMenu: () => void;
-  readonly addHost?: () => void;
+  readonly addHost?: (opener?: HTMLElement) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuButton = useRef<HTMLButtonElement>(null);
 
   return (
     <header className="top-bar">
@@ -49,6 +50,7 @@ export function TopBar({
           <Monitor size={16} strokeWidth={1.5} aria-hidden="true" /> Overview
         </button>
         <button
+          ref={menuButton}
           type="button"
           onClick={() => {
             openMenu();
@@ -76,7 +78,7 @@ export function TopBar({
                 type="button"
                 role="menuitem"
                 onClick={() => {
-                  addHost();
+                  addHost(menuButton.current ?? undefined);
                   setMenuOpen(false);
                 }}
               >
@@ -84,11 +86,6 @@ export function TopBar({
               </button>
             )}
           </div>
-        )}
-        {addHost && (
-          <button type="button" className="add-host-command" onClick={addHost}>
-            <Plus size={16} strokeWidth={1.5} aria-hidden="true" /> Add host
-          </button>
         )}
       </nav>
     </header>
