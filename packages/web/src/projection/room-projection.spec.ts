@@ -353,6 +353,53 @@ describe("RoomProjection — authoritative Room state", () => {
     projection.applyServerMessage({ type: "sync", terminalId: 1, seq: 3 });
     expect(projection.terminal(1)?.output).toEqual({ status: "live", lastSeq: 3 });
   });
+
+  it("rewinds once when a live frame races ahead of retained replay after an output gap", () => {
+    const projection = welcomedProjection();
+    projection.applyServerMessage({ type: "sync", terminalId: 1, seq: 0 });
+    projection.applyServerMessage({
+      type: "output-gap",
+      terminalId: 1,
+      fromSeq: 1,
+      toSeq: 2,
+    });
+
+    expect(
+      projection.applyOutput({
+        kind: "output",
+        terminalId: 1,
+        seq: 3,
+        payload: new Uint8Array([67]),
+      }),
+    ).toMatchObject([{ seq: 3, replace: true }]);
+    expect(
+      projection.applyOutput({
+        kind: "output",
+        terminalId: 1,
+        seq: 1,
+        payload: new Uint8Array([65]),
+      }),
+    ).toMatchObject([{ seq: 1, replace: true }]);
+    expect(
+      projection.applyOutput({
+        kind: "output",
+        terminalId: 1,
+        seq: 2,
+        payload: new Uint8Array([66]),
+      }),
+    ).toMatchObject([{ seq: 2, replace: false }]);
+    expect(
+      projection.applyOutput({
+        kind: "output",
+        terminalId: 1,
+        seq: 3,
+        payload: new Uint8Array([67]),
+      }),
+    ).toMatchObject([{ seq: 3, replace: false }]);
+
+    projection.applyServerMessage({ type: "sync", terminalId: 1, seq: 3 });
+    expect(projection.terminal(1)?.output).toEqual({ status: "live", lastSeq: 3 });
+  });
 });
 
 function welcomedProjection(): RoomProjection {

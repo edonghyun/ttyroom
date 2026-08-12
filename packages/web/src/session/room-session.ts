@@ -207,6 +207,14 @@ export class RoomSession {
   private handleTransport(event: SessionTransportEvent): void {
     if (event.kind === "server-message") {
       const message = event.message;
+      if (message.type === "error" && message.code === "room-not-found") {
+        this.finish("gone");
+        return;
+      }
+      if (message.type === "error" && message.code === "unsupported-protocol-version") {
+        this.finish("incompatible");
+        return;
+      }
       if (message.type === "lease-result") this.pendingControl = null;
       if (message.type === "lease-result" && message.result.kind === "denied") {
         const holderClientId = message.result.holderClientId;
@@ -289,5 +297,17 @@ export class RoomSession {
       this.cancelReconnect = null;
       if (this.started) this.connect();
     });
+  }
+
+  private finish(connection: "gone" | "incompatible"): void {
+    this.started = false;
+    this.cancelReconnect?.();
+    this.cancelReconnect = null;
+    this.unsubscribeTransport?.();
+    this.unsubscribeTransport = null;
+    this.transport?.dispose();
+    this.transport = null;
+    this.pendingControl = null;
+    this.deps.projection.setConnection(connection);
   }
 }

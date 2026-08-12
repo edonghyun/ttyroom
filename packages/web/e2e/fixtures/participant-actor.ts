@@ -5,6 +5,7 @@ import type { TestRoom } from "./test-system.js";
 export class BrowserParticipantActor {
   readonly roomPage: RoomPage;
   private readonly errors: Error[] = [];
+  private readonly expectedConsoleErrors: RegExp[] = [];
   private disposed = false;
 
   private constructor(
@@ -16,7 +17,12 @@ export class BrowserParticipantActor {
     this.roomPage = new RoomPage(page);
     page.on("pageerror", (error) => this.errors.push(error));
     page.on("console", (message) => {
-      if (message.type() === "error") this.errors.push(new Error(`console: ${message.text()}`));
+      if (
+        message.type() === "error" &&
+        !this.expectedConsoleErrors.some((pattern) => pattern.test(message.text()))
+      ) {
+        this.errors.push(new Error(`console: ${message.text()}`));
+      }
     });
   }
 
@@ -27,6 +33,23 @@ export class BrowserParticipantActor {
   ): Promise<BrowserParticipantActor> {
     // Every actor owns a fresh context. Sharing storageState would invalidate identity tests.
     const context = await browser.newContext();
+    await context.addInitScript(() => {
+      const NativeWebSocket = globalThis.WebSocket;
+      const sockets = new Set<WebSocket>();
+      class ObservableWebSocket extends NativeWebSocket {
+        constructor(url: string | URL, protocols?: string | string[]) {
+          super(url, protocols);
+          sockets.add(this);
+          this.addEventListener("close", () => sockets.delete(this), { once: true });
+        }
+      }
+      globalThis.WebSocket = ObservableWebSocket;
+      Object.defineProperty(globalThis, "__ttyroomCloseTestSockets", {
+        value: () => {
+          for (const socket of sockets) socket.close();
+        },
+      });
+    });
     const page = await context.newPage();
     return new BrowserParticipantActor(nickname, context, page, room);
   }
@@ -50,6 +73,22 @@ export class BrowserParticipantActor {
       if (!parsed || typeof parsed.clientId !== "string") throw new Error("clientId not persisted");
       return parsed.clientId;
     }, roomId);
+  }
+
+  async goOffline(): Promise<void> {
+    await this.context.setOffline(true);
+    this.expectedConsoleErrors.push(/WebSocket connection to .* failed/);
+    await this.page.evaluate(() => {
+      const closeSockets = (
+        globalThis as typeof globalThis & { __ttyroomCloseTestSockets?: () => void }
+      ).__ttyroomCloseTestSockets;
+      if (!closeSockets) throw new Error("test socket control was not installed");
+      closeSockets();
+    });
+  }
+
+  async goOnline(): Promise<void> {
+    await this.context.setOffline(false);
   }
 
   assertHealthy(): void {

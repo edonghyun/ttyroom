@@ -69,6 +69,24 @@ describe("RoomSession — collaborative Room lifecycle", () => {
     ]);
   });
 
+  it("ends reconnect when the server reports that the Room is gone", () => {
+    const projection = new RoomProjection();
+    const transports = new FakeSessionTransportFactory();
+    const clock = new ManualSessionClock();
+    const session = createSession({ projection, transports, clock });
+    session.start();
+
+    transports.latest().emit({
+      kind: "server-message",
+      message: { type: "error", code: "room-not-found", message: "room-not-found" },
+    });
+    transports.latest().emit({ kind: "closed" });
+
+    expect(projection.view().connection).toBe("gone");
+    expect(clock.delays).toEqual([]);
+    expect(transports.latest().disposeCount).toBe(1);
+  });
+
   it("sends acquire only for explicit Take control and keeps ownership authoritative", () => {
     const projection = new RoomProjection();
     const transports = new FakeSessionTransportFactory();

@@ -20,6 +20,16 @@ export interface WindowManagerView {
   readonly overview: boolean;
 }
 
+export interface RestoredWindowLayout {
+  readonly terminalId: number;
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+  readonly z: number;
+  readonly state: "floating" | "minimized" | "maximized";
+}
+
 type Subscriber = (view: WindowManagerView) => void;
 
 export class WindowManager {
@@ -30,6 +40,20 @@ export class WindowManager {
 
   constructor({ viewport }: { readonly viewport: Viewport }) {
     this.#viewport = viewport;
+  }
+
+  restoreLayout(layouts: readonly RestoredWindowLayout[]): void {
+    this.#windows = layouts.map((layout) => ({
+      terminalId: layout.terminalId,
+      rect: clampRect(
+        { x: layout.x, y: layout.y, width: layout.width, height: layout.height },
+        this.#viewport,
+      ),
+      z: layout.z,
+      minimized: layout.state === "minimized",
+      maximized: layout.state === "maximized",
+    }));
+    this.#publish();
   }
 
   reconcile(terminalIds: readonly number[]): void {

@@ -20,6 +20,33 @@ describe("WindowManager — participant-local terminal windows", () => {
     ]);
   });
 
+  it("restores persisted participant geometry before reconciling live terminal ids", () => {
+    const manager = new WindowManager({ viewport: { width: 1200, height: 700 } });
+    manager.restoreLayout([
+      {
+        terminalId: 11,
+        x: 180,
+        y: 120,
+        width: 720,
+        height: 500,
+        z: 4,
+        state: "minimized",
+      },
+    ]);
+
+    manager.reconcile([11, 12]);
+
+    expect(manager.view().windows).toMatchObject([
+      {
+        terminalId: 11,
+        rect: { x: 180, y: 120, width: 720, height: 500 },
+        z: 4,
+        minimized: true,
+      },
+      { terminalId: 12, minimized: false },
+    ]);
+  });
+
   it("clamps a long cascade so every new title bar remains reachable", () => {
     const manager = new WindowManager({ viewport: { width: 1024, height: 768 } });
     manager.reconcile(Array.from({ length: 40 }, (_, index) => index + 1));

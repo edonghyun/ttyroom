@@ -9,7 +9,7 @@ import type { RoomSessionEvent } from "../session/room-session.js";
 import { RoomSession } from "../session/room-session.js";
 import { BrowserTransport } from "../transport/browser-transport.js";
 import { NativeBrowserSocketFactory } from "../transport/browser-socket.js";
-import { LayoutRepository } from "../layout/layout-repository.js";
+import { LayoutRepository, type LayoutScope } from "../layout/layout-repository.js";
 import { WindowManager } from "../windows/window-manager.js";
 import { TerminalController } from "../terminal/terminal-controller.js";
 import { XtermAdapter } from "../terminal/xterm-adapter.js";
@@ -66,6 +66,7 @@ export interface RoomAppRuntimeDeps {
   readonly copyText?: (text: string) => void;
   readonly inviteUrl?: string;
   readonly narrowViewport?: boolean;
+  readonly viewportBucket?: string;
 }
 
 export interface RoomAppView {
@@ -92,13 +93,53 @@ export class RoomAppRuntime {
   private disposed = false;
   private currentView: RoomAppView;
   private toasts: ToastMessage[] = [];
+  private readonly layoutScope: LayoutScope | null;
+  private layoutPersistenceStopped = false;
 
   constructor(private readonly deps: RoomAppRuntimeDeps) {
+    this.layoutScope =
+      deps.layoutRepository && deps.route.kind === "room"
+        ? {
+            roomId: deps.route.roomId,
+            clientId: deps.identity.clientId(deps.route.roomId),
+            viewportBucket: deps.viewportBucket ?? "default",
+          }
+        : null;
+    if (this.layoutScope && deps.layoutRepository) {
+      deps.windowManager.restoreLayout(deps.layoutRepository.load(this.layoutScope));
+    }
     this.unsubscribeProjection = deps.projection.subscribe(() => {
+      if (
+        deps.projection.view().connection === "gone" &&
+        deps.route.kind === "room" &&
+        deps.layoutRepository
+      ) {
+        this.layoutPersistenceStopped = true;
+        deps.layoutRepository.clearRoom(deps.route.roomId);
+        this.publish();
+        return;
+      }
       this.reconcileTerminals();
       this.publish();
     });
-    this.unsubscribeWindows = deps.windowManager.subscribe(() => this.publish());
+    this.unsubscribeWindows = deps.windowManager.subscribe((windowView) => {
+      if (this.layoutScope && deps.layoutRepository && !this.layoutPersistenceStopped) {
+        deps.layoutRepository.save(
+          this.layoutScope,
+          windowView.windows.map((window) => ({
+            terminalId: window.terminalId,
+            ...window.rect,
+            z: window.z,
+            state: window.minimized
+              ? ("minimized" as const)
+              : window.maximized
+                ? ("maximized" as const)
+                : ("floating" as const),
+          })),
+        );
+      }
+      this.publish();
+    });
     this.currentView = this.computeView();
   }
 
@@ -455,6 +496,7 @@ export function createProductionRoomRuntime(
       height: Math.max(1, globalThis.innerHeight - 194),
     },
   });
+  const viewportBucket = `${Math.max(1, globalThis.innerWidth)}x${Math.max(1, globalThis.innerHeight - 194)}`;
   // The repository owns the versioned browser storage boundary; WindowManager owns clamping.
   const layoutRepository = new LayoutRepository({ storage });
   const roomApi = new RoomApi();
@@ -521,5 +563,6 @@ export function createProductionRoomRuntime(
     },
     inviteUrl: location.href,
     narrowViewport: globalThis.innerWidth < 1024,
+    viewportBucket,
   });
 }

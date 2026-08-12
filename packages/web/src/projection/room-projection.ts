@@ -55,6 +55,7 @@ interface OutputState {
   mode: "live" | "replay";
   lastSeq: number;
   replayLastSeq: number | null;
+  replayCanRewind: boolean;
 }
 
 export class RoomProjection {
@@ -96,6 +97,7 @@ export class RoomProjection {
       mode: "live" as const,
       lastSeq: 0,
       replayLastSeq: null,
+      replayCanRewind: false,
     };
 
     return {
@@ -118,12 +120,22 @@ export class RoomProjection {
     }
 
     const previousSeq = state.mode === "live" ? state.lastSeq : state.replayLastSeq;
-    if (previousSeq !== null && frame.seq <= previousSeq) return [];
-    if (previousSeq !== null && frame.seq !== previousSeq + 1) return [];
+    const rewindingReplay =
+      state.mode === "replay" &&
+      state.replayCanRewind &&
+      previousSeq !== null &&
+      frame.seq < previousSeq;
+    if (previousSeq !== null && !rewindingReplay) {
+      if (frame.seq <= previousSeq || frame.seq !== previousSeq + 1) return [];
+    }
 
-    const replace = state.mode === "replay" && state.replayLastSeq === null;
+    const replace =
+      state.mode === "replay" && (state.replayLastSeq === null || rewindingReplay);
     if (state.mode === "live") state.lastSeq = frame.seq;
-    else state.replayLastSeq = frame.seq;
+    else {
+      state.replayLastSeq = frame.seq;
+      if (rewindingReplay) state.replayCanRewind = false;
+    }
     this.publish();
 
     return [
@@ -157,6 +169,7 @@ export class RoomProjection {
         output.mode = "live";
         output.lastSeq = message.seq;
         output.replayLastSeq = null;
+        output.replayCanRewind = false;
         this.publish();
       }
       return [];
@@ -177,6 +190,7 @@ export class RoomProjection {
         mode: "replay",
         lastSeq: 0,
         replayLastSeq: null,
+        replayCanRewind: false,
       });
     }
     this.publish();
@@ -226,6 +240,7 @@ export class RoomProjection {
           mode: "live",
           lastSeq: 0,
           replayLastSeq: null,
+          replayCanRewind: false,
         });
         return true;
       case "terminal-mode-changed":
@@ -280,6 +295,7 @@ export class RoomProjection {
 
     output.mode = "replay";
     output.replayLastSeq = null;
+    output.replayCanRewind = true;
     this.publish();
     return [
       { kind: "reset-terminal-output", terminalId },

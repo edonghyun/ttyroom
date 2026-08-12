@@ -3,6 +3,7 @@ import {
   loadConfig,
   startServer,
   type RunningServer,
+  type ServerConfig,
 } from "../../../server/dist/index.js";
 import { resolve } from "node:path";
 import * as pty from "node-pty";
@@ -31,12 +32,14 @@ export class TestSystem {
   private disposed = false;
 
   private constructor(
-    private readonly running: RunningServer,
+    private running: RunningServer,
+    private config: ServerConfig,
     readonly room: TestRoom,
   ) {}
 
   static async start(): Promise<TestSystem> {
-    const running = await startServer(loadConfig({ file: { port: 0 }, env: {} }));
+    const config = loadConfig({ file: { port: 0 }, env: {} });
+    const running = await startServer(config);
     try {
       await expect
         .poll(async () => (await fetch(`${running.httpBaseUrl}/healthz`)).text())
@@ -48,7 +51,7 @@ export class TestSystem {
       });
       expect(response.status).toBe(201);
       const room = (await response.json()) as TestRoom;
-      const system = new TestSystem(running, room);
+      const system = new TestSystem(running, config, room);
       await system.spawnAgent("real-host");
       return system;
     } catch (error) {
@@ -67,6 +70,20 @@ export class TestSystem {
     const agent = this.agents.values().next().value;
     if (!agent) throw new Error("real agent is not running");
     agent.toggleKillSwitch();
+  }
+
+  setOutputDropThreshold(bytes: number): void {
+    this.config.policy.sendBufferDropThresholdBytes = bytes;
+  }
+
+  async restartWithoutRooms(): Promise<void> {
+    const port = this.running.port;
+    await this.running.close();
+    this.config = loadConfig({ file: { port, policy: this.config.policy }, env: {} });
+    this.running = await startServer(this.config);
+    await expect
+      .poll(async () => (await fetch(`${this.running.httpBaseUrl}/healthz`)).text())
+      .toBe("ok");
   }
 
   private async spawnAgent(name: string): Promise<AgentHandle> {
