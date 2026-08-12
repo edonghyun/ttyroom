@@ -2,6 +2,15 @@ import { describe, expect, it } from "vitest";
 import { given, waitUntil } from "./harness.js";
 
 describe("협업 플로우 — A 입력을 B가 본다", () => {
+  it("이름을 붙여 만든 Room은 welcome snapshot에서 같은 표시 이름을 제공한다", async () => {
+    await using server = await given.server();
+    const room = await server.room("Payment Debug");
+    const alice = await given.participant(room, "alice");
+
+    expect(room.name).toBe("Payment Debug");
+    expect(alice.snapshot().name).toBe("Payment Debug");
+  });
+
   it("참여자 A가 agent 터미널에 입력하면 A와 B 화면에 출력이 도착한다", async () => {
     await using server = await given.server();
     const room = await server.room();
@@ -33,6 +42,50 @@ describe("협업 플로우 — A 입력을 B가 본다", () => {
 
     await waitUntil(() => carol.outputText(terminalId).includes("before-carol"));
     await waitUntil(() => carol.syncedSeq(terminalId) > 0);
+  });
+
+  it("output-gap 뒤 participant가 terminal 단위 resync를 요청하면 scrollback과 sync를 다시 받는다", async () => {
+    await using server = await given.server();
+    const room = await server.room();
+    const agent = await given.agent(room, "host-a");
+    const alice = await given.participant(room, "alice");
+    const terminalId = await alice.openTerminal(agent.hostId);
+    await alice.acquire(terminalId);
+    alice.type(terminalId, "echo replay-on-demand\n");
+    await waitUntil(() => alice.outputText(terminalId).includes("replay-on-demand"));
+
+    await alice.resyncOutput(terminalId);
+
+    expect(alice.outputText(terminalId)).toContain("replay-on-demand");
+    expect(alice.syncedSeq(terminalId)).toBeGreaterThan(0);
+  });
+
+  it("participant가 terminal mode를 명시적으로 shared로 바꾸면 snapshot projection이 갱신된다", async () => {
+    await using server = await given.server();
+    const room = await server.room();
+    const agent = await given.agent(room, "host-a");
+    const alice = await given.participant(room, "alice");
+    const terminalId = await alice.openTerminal(agent.hostId);
+
+    await alice.setMode(terminalId, "shared");
+
+    expect(
+      alice.snapshot().terminals.find((terminal) => terminal.terminalId === terminalId)?.mode,
+    ).toBe("shared");
+  });
+
+  it("participant close 요청은 Agent가 PTY를 닫은 뒤 exited snapshot으로 확정된다", async () => {
+    await using server = await given.server();
+    const room = await server.room();
+    const agent = await given.agent(room, "host-a");
+    const alice = await given.participant(room, "alice");
+    const terminalId = await alice.openTerminal(agent.hostId);
+
+    await alice.closeTerminal(terminalId);
+
+    expect(
+      alice.snapshot().terminals.find((terminal) => terminal.terminalId === terminalId),
+    ).toMatchObject({ status: "exited" });
   });
 
   it("점유된 터미널의 acquire는 denied와 현재 소유자를 돌려준다", async () => {
