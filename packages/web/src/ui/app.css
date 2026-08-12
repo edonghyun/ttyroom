@@ -120,9 +120,28 @@
 }
 
 .top-bar nav {
+  position: relative;
   margin-left: auto;
   display: flex;
   gap: 4px;
+}
+
+.top-bar .room-menu {
+  position: absolute;
+  top: 40px;
+  right: 0;
+  z-index: 30000;
+  min-width: 180px;
+  display: grid;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid #42464d;
+  border-radius: 6px;
+  background: var(--dock);
+}
+
+.top-bar .room-menu button {
+  justify-content: flex-start;
 }
 
 .top-bar button {

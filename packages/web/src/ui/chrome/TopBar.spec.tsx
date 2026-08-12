@@ -46,4 +46,25 @@ describe("TopBar", () => {
     );
     expect(screen.getByRole("button", { name: "Open room menu" })).toHaveTextContent("Room menu");
   });
+
+  it("opens an accessible room menu with working room actions", async () => {
+    const invite = vi.fn();
+    const addHost = vi.fn();
+    render(
+      <TopBar
+        roomName="Payment Debug"
+        connection="connected"
+        invite={invite}
+        arrange={vi.fn()}
+        overview={vi.fn()}
+        openMenu={vi.fn()}
+        addHost={addHost}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Open room menu" }));
+    expect(screen.getByRole("menu", { name: "Room menu" })).toBeVisible();
+    await userEvent.click(screen.getByRole("menuitem", { name: "Copy invite link" }));
+    expect(invite).toHaveBeenCalledOnce();
+  });
 });
