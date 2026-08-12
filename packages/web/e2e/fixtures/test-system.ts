@@ -8,6 +8,7 @@ import {
 import { resolve } from "node:path";
 import * as pty from "node-pty";
 import { BrowserParticipantActor } from "./participant-actor.js";
+import { disposeParticipants } from "../../src/test/dispose-participants.js";
 
 const WORKSPACE_ROOT = resolve(import.meta.dirname, "../../../..");
 const MAX_DIAGNOSTIC_CHARS = 16_384;
@@ -135,14 +136,7 @@ export class TestSystem {
     if (this.disposed) return;
     this.disposed = true;
     const failures: unknown[] = [];
-    for (const actor of this.actors) {
-      try {
-        actor.assertHealthy();
-        await actor.dispose();
-      } catch (error) {
-        failures.push(error);
-      }
-    }
+    failures.push(...(await disposeParticipants(this.actors)));
     try {
       await this.running.close();
     } catch (error) {
