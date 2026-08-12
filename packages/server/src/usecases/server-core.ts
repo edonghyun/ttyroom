@@ -7,6 +7,7 @@ import type { SnapshotStore } from "../ports/snapshot-store.js";
 import type { Connection } from "../ports/transport.js";
 import type { ConnectionRegistry } from "./connection-registry.js";
 import { AcquireLease } from "./acquire-lease.js";
+import { BroadcastTerminalOutput } from "./broadcast-terminal-output.js";
 import { JoinRoom } from "./join-room.js";
 import { OpenTerminal } from "./open-terminal.js";
 import { ReleaseLease } from "./release-lease.js";
@@ -19,6 +20,7 @@ export class ServerCore {
   private readonly acquireLease: AcquireLease;
   private readonly releaseLease: ReleaseLease;
   private readonly routeTerminalInput: RouteTerminalInput;
+  private readonly broadcastTerminalOutput: BroadcastTerminalOutput;
 
   constructor(
     private readonly deps: {
@@ -45,6 +47,10 @@ export class ServerCore {
       rooms: deps.rooms,
       connections: deps.connections,
     });
+    this.broadcastTerminalOutput = new BroadcastTerminalOutput(
+      { rooms: deps.rooms, connections: deps.connections },
+      { policy: options.policy },
+    );
   }
 
   handleMessage(conn: Connection, raw: string): void {
@@ -117,6 +123,11 @@ export class ServerCore {
     }
 
     const session = this.deps.connections.bySessionOf(conn.connectionId);
+    if (session?.role === "host" && decoded.frame.kind === "output") {
+      this.broadcastTerminalOutput.execute(conn, session, decoded.frame);
+      return;
+    }
+
     if (!session || session.role !== "participant" || decoded.frame.kind !== "input") {
       conn.send({ type: "error", code: "bad-message", message: "허용되지 않은 데이터 프레임" });
       return;
