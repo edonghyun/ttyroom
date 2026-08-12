@@ -873,7 +873,7 @@ describe("expectMessageToMatch — 역할: 진단 가능한 메시지 스트림 
 });
 ```
 
-구현: type 일치 메시지들을 골라 `expect.objectContaining(partial)` 매치. 전부 불일치면 수신 type 목록 + 같은 type 중 첫 메시지의 JSON을 에러 메시지에 포함해 throw.
+구현: type 일치 메시지들을 골라 **모든 깊이 partial 매치**(객체는 부분집합, 배열은 길이 일치 + 원소별 partial, 리프는 Object.is — Task 6의 중첩 단언 사용 예가 이 의미론을 요구한다. vitest 무의존 순수 구현). 전부 불일치면 수신 type 목록 + 기대 partial + 같은 type 중 첫 메시지의 JSON을 에러 메시지에 포함해 throw.
 
 - [ ] **Step 3: 포트·어댑터 파일 작성 (인터페이스는 테스트 불요, 구현 두 개는 스모크만)**
 
