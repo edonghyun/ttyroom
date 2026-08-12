@@ -49,6 +49,14 @@ describe("제어 메시지 스키마 — 역할: JSON 제어 프레임의 검증
     ).toMatchObject({ kind: "bad-message" });
   });
 
+  it("resize-request의 cols·rows는 1..65535 범위를 벗어나면 bad-message 결과를 돌려준다", () => {
+    const resize = (cols: number, rows: number) =>
+      JSON.stringify({ type: "resize-request", terminalId: 3, cols, rows });
+    expect(parseClientMessage(resize(0, 24))).toMatchObject({ kind: "bad-message" });
+    expect(parseClientMessage(resize(80, 0x10000))).toMatchObject({ kind: "bad-message" });
+    expect(parseClientMessage(resize(80, 24))).toMatchObject({ kind: "ok" });
+  });
+
   it("서버 메시지 직렬화 형태는 골든과 일치한다 — 변경은 PROTOCOL.md 갱신을 요구한다", () => {
     const json = serializeServerMessage({ type: "sync", terminalId: 3, seq: 10 });
     expect(JSON.parse(json)).toEqual({ type: "sync", terminalId: 3, seq: 10 });

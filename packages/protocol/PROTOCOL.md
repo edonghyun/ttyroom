@@ -53,6 +53,7 @@
 
 `terminalId` / `leaseId` / `seq`는 u32 숫자(Room 단위 증가 카운터).
 `roomId` / `hostId` / `clientId`는 문자열.
+터미널 치수 `cols` / `rows`는 1..65535 (u16 범위 — pty가 u16으로 받는다).
 
 ## 연결 수명
 
@@ -126,6 +127,31 @@
 
 ### room-event의 event 종류
 
-`participant-joined` · `participant-left` · `host-connected` · `host-offline` · `host-removed`
-· `terminal-opened` · `terminal-closed` · `lease-granted` · `lease-released` · `terminal-meta`
-— 각 형태는 `src/messages.ts`의 `roomEventSchema`가 단일 진실이다.
+`room-event.event`에 실리는 형태. `kind`가 판별자다.
+
+| kind                 | 예시                                                                                                                                                                                                       |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `participant-joined` | `{"kind":"participant-joined","participant":{"clientId":"c2","name":"민수"}}`                                                                                                                              |
+| `participant-left`   | `{"kind":"participant-left","clientId":"c2"}`                                                                                                                                                              |
+| `host-connected`     | `{"kind":"host-connected","host":{"hostId":"h1","name":"dev-server","online":true}}`                                                                                                                       |
+| `host-offline`       | `{"kind":"host-offline","hostId":"h1"}`                                                                                                                                                                    |
+| `host-removed`       | `{"kind":"host-removed","hostId":"h1"}`                                                                                                                                                                    |
+| `terminal-opened`    | `{"kind":"terminal-opened","terminal":{"terminalId":3,"hostId":"h1","title":"term-3","mode":"exclusive","status":"open","exitCode":null,"meta":{"cwd":"/home/kep","gitBranch":"main","fgProcess":"vim"}}}` |
+| `terminal-closed`    | `{"kind":"terminal-closed","terminalId":3,"exitCode":0}`                                                                                                                                                   |
+| `lease-granted`      | `{"kind":"lease-granted","lease":{"terminalId":3,"leaseId":7,"holderClientId":"c1"}}`                                                                                                                      |
+| `lease-released`     | `{"kind":"lease-released","terminalId":3}`                                                                                                                                                                 |
+| `terminal-meta`      | `{"kind":"terminal-meta","terminalId":3,"meta":{"cwd":"/home/kep","gitBranch":null,"fgProcess":null}}`                                                                                                     |
+
+## 뷰 타입 형태
+
+RoomSnapshot과 room-event가 공유하는 객체 형태. 표기 `A | null`은 JSON null 허용.
+
+- **ParticipantView** — `clientId`: string, `name`: string
+- **HostView** — `hostId`: string, `name`: string, `online`: boolean
+- **TerminalMeta** — `cwd`: string | null, `gitBranch`: string | null, `fgProcess`: string | null
+- **TerminalView** — `terminalId`: u32, `hostId`: string, `title`: string,
+  `mode`: `"exclusive"` | `"shared"`, `status`: `"open"` | `"exited"`,
+  `exitCode`: int | null, `meta`: TerminalMeta
+- **LeaseView** — `terminalId`: u32, `leaseId`: u32, `holderClientId`: string
+- **RoomSnapshot** — `roomId`: string, `participants`: ParticipantView[], `hosts`: HostView[],
+  `terminals`: TerminalView[], `leases`: LeaseView[]

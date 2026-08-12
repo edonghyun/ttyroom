@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 const u32 = z.number().int().min(0).max(0xffffffff);
+// 터미널 치수는 pty가 u16으로 받는다 — 상한 없는 정수를 호스트까지 흘리지 않는다
+const terminalDimension = z.number().int().min(1).max(0xffff);
 
 // ── 뷰 타입: RoomSnapshot과 이벤트가 공유하는 유선 형태 ──────────────────────
 
@@ -69,8 +71,8 @@ const releaseLeaseSchema = z.object({
 const resizeRequestSchema = z.object({
   type: z.literal("resize-request"),
   terminalId: u32,
-  cols: z.number().int().min(1),
-  rows: z.number().int().min(1),
+  cols: terminalDimension,
+  rows: terminalDimension,
 });
 const terminalOpenedSchema = z.object({ type: z.literal("terminal-opened"), terminalId: u32 });
 const terminalClosedSchema = z.object({
@@ -164,15 +166,15 @@ const errorMessageSchema = z.object({
 const openTerminalSchema = z.object({
   type: z.literal("open-terminal"),
   terminalId: u32,
-  cols: z.number().int().min(1),
-  rows: z.number().int().min(1),
+  cols: terminalDimension,
+  rows: terminalDimension,
 });
 const closeTerminalSchema = z.object({ type: z.literal("close-terminal"), terminalId: u32 });
 const resizeSchema = z.object({
   type: z.literal("resize"),
   terminalId: u32,
-  cols: z.number().int().min(1),
-  rows: z.number().int().min(1),
+  cols: terminalDimension,
+  rows: terminalDimension,
 });
 
 export const serverMessageSchema = z.discriminatedUnion("type", [
