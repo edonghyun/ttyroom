@@ -138,6 +138,9 @@ importers:
       react-feather:
         specifier: 2.0.10
         version: 2.0.10(react@19.2.8)
+      zod:
+        specifier: 3.25.76
+        version: 3.25.76
     devDependencies:
       '@axe-core/playwright':
         specifier: 4.13.0
