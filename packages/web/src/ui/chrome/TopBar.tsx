@@ -1,4 +1,4 @@
-import { Grid, Link, MoreVertical, Monitor } from "react-feather";
+import { Grid, Link, MoreVertical, Monitor, Plus } from "react-feather";
 
 export type ConnectionLabel = "connected" | "reconnecting" | "restoring";
 
@@ -9,6 +9,7 @@ export function TopBar({
   arrange,
   overview,
   openMenu,
+  addHost,
 }: {
   readonly roomName: string;
   readonly connection: ConnectionLabel;
@@ -16,6 +17,7 @@ export function TopBar({
   readonly arrange: () => void;
   readonly overview: () => void;
   readonly openMenu: () => void;
+  readonly addHost?: () => void;
 }) {
   return (
     <header className="top-bar">
@@ -32,6 +34,11 @@ export function TopBar({
             : "Reconnecting"}
       </span>
       <nav aria-label="Room commands">
+        {addHost && (
+          <button type="button" onClick={addHost}>
+            <Plus size={16} strokeWidth={1.5} aria-hidden="true" /> Add host
+          </button>
+        )}
         <button type="button" onClick={invite}>
           <Link size={16} strokeWidth={1.5} aria-hidden="true" /> Invite link
         </button>
