@@ -62,6 +62,7 @@ export interface Given {
 class E2eServer implements TestServer {
   private readonly children = new Set<ChildProcess>();
   private readonly participants = new Set<WsParticipant>();
+  private agentStartup = Promise.resolve();
   private closed = false;
 
   constructor(private readonly running: Awaited<ReturnType<typeof startServer>>) {}
@@ -76,33 +77,54 @@ class E2eServer implements TestServer {
   }
 
   async agent(room: TestRoom, name = "host"): Promise<AgentHandle> {
-    const observer = await this.participant(room, `observer-${name}`);
-    const before = observer.lastMessages().length;
-    const child = spawn(
-      process.execPath,
-      ["--import", TSX_LOADER, "packages/agent/src/index.ts", "join", room.joinUrl, "--name", name],
-      { cwd: WORKSPACE_ROOT, env: process.env, stdio: ["ignore", "pipe", "pipe"] },
-    );
-    this.children.add(child);
-    const diagnostics: string[] = [];
-    child.stdout?.on("data", (chunk: Buffer) => diagnostics.push(chunk.toString("utf8")));
-    child.stderr?.on("data", (chunk: Buffer) => diagnostics.push(chunk.toString("utf8")));
-    child.once("exit", () => this.children.delete(child));
+    // 공개 protocol에는 agent child PID와 hostId를 직접 상관하는 필드가 없다.
+    // startup을 직렬화하면 각 observer가 본 다음 host-connected가 방금 띄운 child임이 확정된다.
+    const previousStartup = this.agentStartup;
+    let releaseStartup: (() => void) | undefined;
+    this.agentStartup = new Promise<void>((resolveStartup) => {
+      releaseStartup = resolveStartup;
+    });
+    await previousStartup;
 
-    const connected = await observer.waitForMessage(
-      (message) => message.type === "room-event" && message.event.kind === "host-connected",
-      before,
-      () => `Agent가 연결 전에 종료됨${formatDiagnostics(diagnostics)}`,
-      child,
-    );
-    if (connected.type !== "room-event" || connected.event.kind !== "host-connected") {
-      throw new Error("host-connected 대기 결과가 계약과 다르다");
+    try {
+      const observer = await this.participant(room, `observer-${name}`);
+      const before = observer.lastMessages().length;
+      const child = spawn(
+        process.execPath,
+        [
+          "--import",
+          TSX_LOADER,
+          "packages/agent/src/index.ts",
+          "join",
+          room.joinUrl,
+          "--name",
+          name,
+        ],
+        { cwd: WORKSPACE_ROOT, env: process.env, stdio: ["ignore", "pipe", "pipe"] },
+      );
+      this.children.add(child);
+      const diagnostics: string[] = [];
+      child.stdout?.on("data", (chunk: Buffer) => diagnostics.push(chunk.toString("utf8")));
+      child.stderr?.on("data", (chunk: Buffer) => diagnostics.push(chunk.toString("utf8")));
+      child.once("exit", () => this.children.delete(child));
+
+      const connected = await observer.waitForMessage(
+        (message) => message.type === "room-event" && message.event.kind === "host-connected",
+        before,
+        () => `Agent가 연결 전에 종료됨${formatDiagnostics(diagnostics)}`,
+        child,
+      );
+      if (connected.type !== "room-event" || connected.event.kind !== "host-connected") {
+        throw new Error("host-connected 대기 결과가 계약과 다르다");
+      }
+
+      return {
+        hostId: connected.event.host.hostId,
+        kill: (signal = "SIGTERM") => child.kill(signal),
+      };
+    } finally {
+      releaseStartup?.();
     }
-
-    return {
-      hostId: connected.event.host.hostId,
-      kill: (signal = "SIGTERM") => child.kill(signal),
-    };
   }
 
   async participant(
@@ -118,9 +140,14 @@ class E2eServer implements TestServer {
   async close(): Promise<void> {
     if (this.closed) return;
     this.closed = true;
-    for (const participant of [...this.participants]) participant.close();
-    await Promise.all([...this.children].map((child) => terminateChild(child)));
-    await this.running.close();
+    // 서버 transport를 먼저 닫으면 WsTransport가 shutdown 중 close를 도메인 단절로
+    // 전달하지 않는다. 참가자·host를 먼저 닫으면 긴 grace 타이머가 테스트 프로세스에 남는다.
+    try {
+      await this.running.close();
+    } finally {
+      for (const participant of [...this.participants]) participant.close();
+      await Promise.all([...this.children].map((child) => terminateChild(child)));
+    }
   }
 
   [Symbol.asyncDispose](): Promise<void> {
@@ -162,7 +189,10 @@ class WsParticipant implements ParticipantClient {
     const before = this.messages.length;
     this.send({ type: "open-terminal-request", hostId });
     const opened = await this.waitForMessage(
-      (message) => message.type === "room-event" && message.event.kind === "terminal-opened",
+      (message) =>
+        message.type === "room-event" &&
+        message.event.kind === "terminal-opened" &&
+        message.event.terminal.hostId === hostId,
       before,
     );
     if (opened.type !== "room-event" || opened.event.kind !== "terminal-opened") {

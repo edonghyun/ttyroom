@@ -49,4 +49,56 @@ describe("협업 플로우 — A 입력을 B가 본다", () => {
       holderClientId: "alice-id",
     });
   });
+
+  it("서로 다른 host의 동시 open 응답은 요청한 host의 terminal로 각각 상관한다", async () => {
+    await using server = await given.server();
+    const room = await server.room();
+    const hostA = await given.agent(room, "host-a");
+    const hostB = await given.agent(room, "host-b");
+    const alice = await given.participant(room, "alice");
+    const bob = await given.participant(room, "bob");
+
+    const [terminalA, terminalB] = await Promise.all([
+      alice.openTerminal(hostA.hostId),
+      bob.openTerminal(hostB.hostId),
+    ]);
+
+    expect(
+      alice.snapshot().terminals.find((terminal) => terminal.terminalId === terminalA)?.hostId,
+    ).toBe(hostA.hostId);
+    expect(
+      bob.snapshot().terminals.find((terminal) => terminal.terminalId === terminalB)?.hostId,
+    ).toBe(hostB.hostId);
+  });
+
+  it("동시에 연결한 두 agent handle은 요청한 표시 이름의 host를 각각 가리킨다", async () => {
+    await using server = await given.server();
+    const room = await server.room();
+
+    const [hostA, hostB] = await Promise.all([
+      given.agent(room, "concurrent-a"),
+      given.agent(room, "concurrent-b"),
+    ]);
+    const observer = await given.participant(room, "observer");
+
+    expect(hostA.hostId).not.toBe(hostB.hostId);
+    expect(observer.snapshot().hosts).toContainEqual(
+      expect.objectContaining({ hostId: hostA.hostId, name: "concurrent-a" }),
+    );
+    expect(observer.snapshot().hosts).toContainEqual(
+      expect.objectContaining({ hostId: hostB.hostId, name: "concurrent-b" }),
+    );
+  });
+
+  it("표시 이름이 같은 agent를 동시에 연결해도 서로 다른 handle을 돌려준다", async () => {
+    await using server = await given.server();
+    const room = await server.room();
+
+    const [hostA, hostB] = await Promise.all([
+      given.agent(room, "duplicate-name"),
+      given.agent(room, "duplicate-name"),
+    ]);
+
+    expect(hostA.hostId).not.toBe(hostB.hostId);
+  });
 });
