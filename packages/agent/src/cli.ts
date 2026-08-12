@@ -15,7 +15,11 @@ export function parseCli(argv: string[], env: { hostname: string }): CliCommand 
   try {
     url = new URL(joinUrl);
   } catch {
-    return { kind: "invalid", reason: `joinUrl이 URL이 아닙니다: ${joinUrl}` };
+    return { kind: "invalid", reason: "joinUrl이 유효한 URL이 아닙니다" };
+  }
+
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    return { kind: "invalid", reason: "joinUrl은 http:// 또는 https:// URL이어야 합니다" };
   }
 
   const roomMatch = /^\/r\/([^/]+)$/.exec(url.pathname);

@@ -20,8 +20,10 @@ class FakeAppPtys {
   readonly writes: Array<{ terminalId: number; data: Uint8Array }> = [];
   readonly resizes: Array<{ terminalId: number; cols: number; rows: number }> = [];
   readonly closes: number[] = [];
+  openError: Error | null = null;
 
   open(terminalId: number, cols: number, rows: number): void {
+    if (this.openError) throw this.openError;
     this.opens.push({ terminalId, cols, rows });
   }
 
@@ -64,6 +66,22 @@ describe("AgentApp — 역할: 서버 명령과 PTY의 배선, Kill Switch", () 
 
     expect(ptys.opens).toEqual([{ terminalId: 3, cols: 80, rows: 24 }]);
     expect(session.sent).toEqual([{ type: "terminal-opened", terminalId: 3 }]);
+  });
+
+  it("PTY 생성이 실패하면 프로세스를 죽이지 않고 상태와 terminal-closed로 표면화한다", () => {
+    const { app, session, ptys, statusLines, opened } = makeApp();
+    ptys.openError = new Error("spawn failed");
+
+    expect(() =>
+      app.handleEvent({
+        kind: "server-message",
+        message: { type: "open-terminal", terminalId: 3, cols: 80, rows: 24 },
+      }),
+    ).not.toThrow();
+
+    expect(session.sent).toEqual([{ type: "terminal-closed", terminalId: 3, exitCode: null }]);
+    expect(statusLines).toContain("터미널 3 생성 실패");
+    expect(opened).toEqual([]);
   });
 
   it("close-terminal을 받으면 PTY를 닫되 terminal-closed는 직접 보내지 않는다 (보고는 exit 표면화 한 경로)", () => {

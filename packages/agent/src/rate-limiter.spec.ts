@@ -39,6 +39,20 @@ describe("RateLimiter — 역할: 터미널별 출력 속도 상한", () => {
     expect(concat(delivered)).toEqual([...fifteen]);
   });
 
+  it("큰 초과 청크도 버스트 용량씩 나눠 속도 상한을 지킨다", () => {
+    const { clock, limiter, delivered, deliver } = makeLimiter({ bytesPerSec: 10, burstBytes: 10 });
+    const thirty = bytes(...Array.from({ length: 30 }, (_, i) => i));
+
+    limiter.submit(thirty, deliver);
+    expect(concat(delivered)).toEqual([...thirty.subarray(0, 10)]);
+
+    clock.advance(1000);
+    expect(concat(delivered)).toEqual([...thirty.subarray(0, 20)]);
+
+    clock.advance(1000);
+    expect(concat(delivered)).toEqual([...thirty]);
+  });
+
   it("지연 큐가 있는 동안 새 submit은 큐를 앞지르지 않고 순서대로 전달된다", () => {
     const { clock, limiter, delivered, deliver } = makeLimiter({ bytesPerSec: 10, burstBytes: 10 });
 

@@ -29,6 +29,7 @@ interface MetaCollectorOptions {
 // cwd·git 브랜치·포그라운드 프로세스명을 폴링으로 수집 — 실패는 null (수집은 부가 정보, 절대 throw 금지)
 export class MetaCollector {
   private readonly tracked = new Set<number>();
+  private readonly collecting = new Set<number>();
   private cancelTick: (() => void) | null = null;
 
   constructor(
@@ -57,7 +58,12 @@ export class MetaCollector {
       this.cancelTick = null;
       this.scheduleTick();
 
-      for (const terminalId of this.tracked) void this.collect(terminalId);
+      for (const terminalId of this.tracked) {
+        if (this.collecting.has(terminalId)) continue;
+
+        this.collecting.add(terminalId);
+        void this.collect(terminalId).finally(() => this.collecting.delete(terminalId));
+      }
     });
   }
 

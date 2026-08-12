@@ -101,7 +101,19 @@ export class AgentApp {
         return;
       }
 
-      this.deps.ptys.open(msg.terminalId, msg.cols, msg.rows);
+      try {
+        this.deps.ptys.open(msg.terminalId, msg.cols, msg.rows);
+      } catch {
+        // 셸 경로·호스트 자원 문제는 예상 가능한 운영 실패다. 원인을 로그에 싣지 않아
+        // 로컬 경로·환경을 원격 상태나 공유 로그에 노출하지 않는다.
+        this.options.onStatus(`터미널 ${msg.terminalId} 생성 실패`);
+        this.deps.session.send({
+          type: "terminal-closed",
+          terminalId: msg.terminalId,
+          exitCode: null,
+        });
+        return;
+      }
       this.deps.session.send({ type: "terminal-opened", terminalId: msg.terminalId });
       this.options.onTerminalOpened(msg.terminalId);
       return;

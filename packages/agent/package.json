@@ -5,8 +5,13 @@
   "bin": {
     "ttyroom": "./dist/index.js"
   },
+  "files": [
+    "dist",
+    "scripts"
+  ],
   "scripts": {
     "postinstall": "node scripts/ensure-node-pty-helper.js",
+    "prepack": "pnpm build",
     "build": "tsc -p tsconfig.build.json",
     "test": "vitest run",
     "test:integration": "vitest run -c vitest.integration.config.ts",

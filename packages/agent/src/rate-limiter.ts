@@ -72,13 +72,14 @@ export class RateLimiter {
     const front = this.queue[0];
     if (!front) return;
 
-    // 큐 앞 청크 전체가 축적되는 시점에 깨어난다 — ceil이라 크레딧은 필요량 이하(보수적)
-    const delayMs = Math.ceil((front.chunk.length / this.options.bytesPerSec) * 1000);
-    const accruedBytes = front.chunk.length;
+    // 한 번에 버스트 용량보다 많이 충전하면 큰 청크가 시간 경과 뒤 한꺼번에 방출되어
+    // 토큰 버킷의 순간 상한을 깬다. 큐 앞 청크를 버스트 단위로만 충전·전달한다.
+    const accruedBytes = Math.min(front.chunk.length, this.options.burstBytes);
+    const delayMs = Math.ceil((accruedBytes / this.options.bytesPerSec) * 1000);
 
     this.cancelDrain = this.deps.clock.schedule(delayMs, () => {
       this.cancelDrain = null;
-      this.tokens += accruedBytes;
+      this.tokens = Math.min(this.tokens + accruedBytes, this.options.burstBytes);
       this.drain();
     });
   }

@@ -29,6 +29,29 @@ function makeGitDir(branch: string): string {
 }
 
 describe("MetaCollector — 역할: 터미널 카드 자동 맥락 수집", () => {
+  it("이전 폴링이 끝나기 전에는 같은 터미널의 외부 수집을 중첩하지 않는다", async () => {
+    const clock = new FakeClock();
+    const metas: TerminalMeta[] = [];
+    const collector = new MetaCollector(
+      {
+        ptys: { pid: () => process.pid, fgProcess: () => "node" },
+        clock,
+      },
+      { intervalMs: 1000, onMeta: (_terminalId, meta) => metas.push(meta) },
+    );
+
+    collector.track(1);
+    clock.advance(1000);
+    // 첫 collect가 readlink/lsof await에 머문 같은 이벤트 루프에서 다음 틱도 발화시킨다.
+    clock.advance(1000);
+    await waitUntil(() => metas.length > 0);
+
+    expect(metas).toHaveLength(1);
+
+    clock.advance(1000);
+    await waitUntil(() => metas.length === 2);
+  });
+
   it("실제 PTY의 cwd와 fgProcess를 수집한다 (git 저장소면 브랜치 포함)", async () => {
     const gitDir = makeGitDir("test-branch");
     const chunks: string[] = [];
