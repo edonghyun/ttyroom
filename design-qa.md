@@ -59,7 +59,7 @@
   lease switch, kill switch, recovery, layout persistence, keyboard flow, focus, and Axe serious /
   critical checks.
 
-## Written-spec overrides and remaining P3
+## Written-spec overrides and resolved P3
 
 - Intentional override, not a defect: the source includes raster-like Dock previews, while the
   approved Web UI design explicitly requires metadata-only Dock items and forbids a second xterm
@@ -67,10 +67,9 @@
 - Intentional omission, not a defect: source title bars show traffic-light controls. The written UI
   contract requires named window actions; the production implementation uses the existing Feather
   icon library and does not approximate traffic lights with CSS-drawn assets.
-- P3 follow-up: `Add host` remains in the Top Bar for the already-proven host-join workflow, although
-  the final Web UI document says Top Bar should contain Room-wide actions only. It is low impact and
-  does not compromise the visual or acceptance contract; a future information-architecture pass may
-  move it to Room menu or Dock.
+- Resolved P3: `Add host` moved from the persistent Top Bar into the accessible Room menu. The
+  keyboard acceptance test verifies menu-to-drawer focus restoration, and the final visual recapture
+  confirms the closed-menu Top Bar remains aligned with the reference state.
 
 ## Responsive usability evidence
 
