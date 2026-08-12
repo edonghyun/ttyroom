@@ -47,7 +47,7 @@ export class Room {
       meta: { cwd: null, gitBranch: null, fgProcess: null },
     };
     this.terminals.set(terminalId, view);
-    return view;
+    return copyOfTerminal(view);
   }
 
   markHostOffline(hostId: string): void {
@@ -89,7 +89,8 @@ export class Room {
   }
 
   terminal(terminalId: number): TerminalView | undefined {
-    return this.terminals.get(terminalId);
+    const terminal = this.terminals.get(terminalId);
+    return terminal && copyOfTerminal(terminal);
   }
 
   private requireTerminal(terminalId: number): TerminalView {
@@ -99,8 +100,8 @@ export class Room {
   }
 
   isEmpty(): boolean {
-    const onlineHosts = [...this.hosts.values()].filter((h) => h.online);
-    return this.participants.size === 0 && onlineHosts.length === 0;
+    const hasOnlineHost = [...this.hosts.values()].some((h) => h.online);
+    return this.participants.size === 0 && !hasOnlineHost;
   }
 
   snapshot(): RoomSnapshot {
@@ -108,9 +109,13 @@ export class Room {
       roomId: this.roomId,
       participants: [...this.participants].map(([clientId, p]) => ({ clientId, name: p.name })),
       hosts: [...this.hosts].map(([hostId, h]) => ({ hostId, name: h.name, online: h.online })),
-      // 구조 복사 — 스냅샷 소비자가 내부 터미널 상태를 변경하지 못하게 차단
-      terminals: [...this.terminals.values()].map((t) => ({ ...t, meta: { ...t.meta } })),
+      terminals: [...this.terminals.values()].map(copyOfTerminal),
       leases: [],
     };
   }
+}
+
+// 구조 복사 — Room 밖으로 나가는 터미널 뷰가 내부 상태로의 역참조를 갖지 않게 차단
+function copyOfTerminal(view: TerminalView): TerminalView {
+  return { ...view, meta: { ...view.meta } };
 }

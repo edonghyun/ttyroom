@@ -66,6 +66,14 @@ describe("Room — 역할: Room 라이브 상태와 불변식의 소유자", () 
     expect(room.isEmpty()).toBe(true);
   });
 
+  it("없는 참여자 제거는 조용한 no-op이다 (유예 만료·명시적 leave 중복 도착 안전)", () => {
+    const room = makeRoom();
+    room.addParticipant("c1", "동현");
+    room.removeParticipant("c1");
+    expect(() => room.removeParticipant("c1")).not.toThrow();
+    expect(room.snapshot().participants).toEqual([]);
+  });
+
   it("hasParticipant는 참여 중일 때만 참이다", () => {
     const room = makeRoom();
     room.addParticipant("c1", "동현");
@@ -106,11 +114,42 @@ describe("Room — 역할: Room 라이브 상태와 불변식의 소유자", () 
     });
   });
 
+  it("openTerminal이 돌려준 뷰를 변경해도 Room 내부 상태는 오염되지 않는다 (구조 복사 불변식)", () => {
+    const room = makeRoom();
+    room.connectHost("h1", "h");
+
+    const created = room.openTerminal("h1");
+    created.status = "exited";
+    created.meta.cwd = "/oops";
+
+    expect(room.terminal(created.terminalId)).toMatchObject({
+      status: "open",
+      meta: { cwd: null },
+    });
+  });
+
+  it("terminal()이 돌려준 뷰를 변경해도 Room 내부 상태는 오염되지 않는다 (구조 복사 불변식)", () => {
+    const room = makeRoom();
+    room.connectHost("h1", "h");
+    const t = room.openTerminal("h1");
+
+    // 직전 openTerminal이 만든 id — 존재가 보장된다
+    const view = room.terminal(t.terminalId)!;
+    view.mode = "shared";
+    view.meta.cwd = "/oops";
+
+    expect(room.terminal(t.terminalId)).toMatchObject({
+      mode: "exclusive",
+      meta: { cwd: null },
+    });
+  });
+
   it("스냅샷을 변경해도 Room 내부 상태는 오염되지 않는다 (구조 복사 불변식)", () => {
     const room = makeRoom();
     room.connectHost("h1", "h");
     const t = room.openTerminal("h1");
 
+    // 직전 openTerminal로 터미널 1개가 보장된다 — [0]은 항상 존재
     const snap = room.snapshot();
     snap.terminals[0]!.status = "exited";
     snap.terminals[0]!.meta.cwd = "/oops";
