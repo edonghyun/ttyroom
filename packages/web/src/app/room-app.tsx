@@ -72,6 +72,9 @@ export interface RoomAppRuntimeDeps {
       subscriber: (viewport: { readonly width: number; readonly height: number }) => void,
     ): () => void;
   };
+  readonly toastClock?: {
+    schedule(delayMs: number, callback: () => void): () => void;
+  };
 }
 
 export interface RoomAppView {
@@ -103,6 +106,8 @@ export class RoomAppRuntime {
   private readonly layoutScope: LayoutScope | null;
   private layoutPersistenceStopped = false;
   private narrowViewport: boolean;
+  private readonly cancelToastTimers = new Set<() => void>();
+  private nextToastId = 0;
 
   constructor(private readonly deps: RoomAppRuntimeDeps) {
     this.narrowViewport = Boolean(deps.narrowViewport);
@@ -239,27 +244,11 @@ export class RoomAppRuntime {
         this.controllers.get(event.terminalId)?.resetOutput();
       if (event.kind === "lease-acquired") {
         const title = this.deps.projection.terminal(event.terminalId)?.terminal.title ?? "terminal";
-        this.toasts = [
-          ...this.toasts,
-          {
-            id: `lease-acquired-${event.terminalId}-${this.toasts.length}`,
-            severity: "success",
-            message: `Control acquired · ${title}`,
-          },
-        ];
-        this.publish();
+        this.showToast("success", `Control acquired · ${title}`, event.terminalId);
       }
       if (event.kind === "lease-denied") {
         const title = this.deps.projection.terminal(event.terminalId)?.terminal.title ?? "terminal";
-        this.toasts = [
-          ...this.toasts,
-          {
-            id: `lease-denied-${event.terminalId}-${this.toasts.length}`,
-            severity: "error",
-            message: `${event.holderName} now controls ${title}`,
-          },
-        ];
-        this.publish();
+        this.showToast("error", `${event.holderName} now controls ${title}`, event.terminalId);
       }
     });
     this.session.start();
@@ -375,7 +364,30 @@ export class RoomAppRuntime {
     this.unsubscribeSession?.();
     this.unsubscribeProjection();
     this.session?.stop();
+    for (const cancel of this.cancelToastTimers) cancel();
+    this.cancelToastTimers.clear();
     this.subscribers.clear();
+  }
+
+  private showToast(severity: ToastMessage["severity"], message: string, terminalId: number): void {
+    const id = `terminal-${terminalId}-${this.nextToastId++}`;
+    this.toasts = [...this.toasts, { id, severity, message }];
+    const clock =
+      this.deps.toastClock ??
+      ({
+        schedule: (delayMs: number, callback: () => void) => {
+          const timer = globalThis.setTimeout(callback, delayMs);
+          return () => globalThis.clearTimeout(timer);
+        },
+      } as const);
+    let cancel: () => void = () => undefined;
+    cancel = clock.schedule(4_000, () => {
+      this.cancelToastTimers.delete(cancel);
+      this.toasts = this.toasts.filter((toast) => toast.id !== id);
+      this.publish();
+    });
+    this.cancelToastTimers.add(cancel);
+    this.publish();
   }
 
   private reconcileTerminals(): void {
