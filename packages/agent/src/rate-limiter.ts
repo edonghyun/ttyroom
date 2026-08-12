@@ -18,7 +18,7 @@ interface QueuedChunk {
 export class RateLimiter {
   private tokens: number;
   private readonly queue: QueuedChunk[] = [];
-  private drainScheduled = false;
+  private cancelDrain: (() => void) | null = null;
   private cancelRefill: (() => void) | null = null;
 
   constructor(
@@ -67,7 +67,7 @@ export class RateLimiter {
       this.scheduleRefill();
       return;
     }
-    if (this.drainScheduled) return;
+    if (this.cancelDrain) return;
 
     const front = this.queue[0];
     if (!front) return;
@@ -76,12 +76,23 @@ export class RateLimiter {
     const delayMs = Math.ceil((front.chunk.length / this.options.bytesPerSec) * 1000);
     const accruedBytes = front.chunk.length;
 
-    this.drainScheduled = true;
-    this.deps.clock.schedule(delayMs, () => {
-      this.drainScheduled = false;
+    this.cancelDrain = this.deps.clock.schedule(delayMs, () => {
+      this.cancelDrain = null;
       this.tokens += accruedBytes;
       this.drain();
     });
+  }
+
+  // 종료 경로 — 잔여를 순서대로 즉시 비우고 예약 타이머를 해제한다 (가이드라인 §6).
+  // 속도 상한보다 잔여 보존·순서가 우선인 시점(터미널 종료가 onExit으로 표면화되기 전)에만 부른다.
+  flush(): void {
+    this.cancelDrain?.();
+    this.cancelDrain = null;
+    this.cancelRefill?.();
+    this.cancelRefill = null;
+
+    const pending = this.queue.splice(0);
+    for (const { chunk, deliver } of pending) deliver(chunk);
   }
 
   // 큐가 빈 뒤 버킷이 다시 차는 시점을 예약한다 — 유휴가 지속되면 버스트 용량 회복

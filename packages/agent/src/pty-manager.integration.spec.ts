@@ -6,11 +6,11 @@ import { waitUntil } from "./test/wait-until.js";
 /**
  * 상태×이벤트 전이표 (terminalId 단위) — 아래 테스트들이 각 칸을 핀한다.
  *
- * | 상태 \ 이벤트 | open           | write     | resize          | close           | PTY exit                |
- * |--------------|----------------|-----------|-----------------|-----------------|-------------------------|
- * | absent       | spawn → tracked| 무시      | 무시            | 무시            | —                       |
- * | tracked      | 무시(기존 유지)| pty.write | clamp 후 resize | kill → closing  | onExit(exitCode) 후 제거|
- * | closing      | 무시           | 무시      | 무시            | 무시            | onExit(null) 후 제거    |
+ * | 상태 \ 이벤트 | open           | write     | resize          | close           | PTY exit                        |
+ * |--------------|----------------|-----------|-----------------|-----------------|---------------------------------|
+ * | absent       | spawn → tracked| 무시      | 무시            | 무시            | —                               |
+ * | tracked      | 무시(기존 유지)| pty.write | clamp 후 resize | kill → closing  | 제거·잔여 flush → onExit(exitCode)|
+ * | closing      | 무시           | 무시      | 무시            | 무시            | 제거·잔여 flush → onExit(null)   |
  *
  * closeAll = 모든 tracked에 close. fgProcess·pid는 tracked(비closing)면 값, 아니면 null.
  * 모든 PTY 종료(자연·명령발)는 onExit으로 정확히 한 번 표면화 — 계획 1854행의 terminal-closed 배선 계약.
@@ -117,6 +117,48 @@ describe("PtyManager — 역할: 실제 셸의 생성과 입출력", () => {
 
     // 시그널 종료는 exitCode null — protocol의 int|null에서 null은 "정상 종료 코드 없음"
     expect(exits).toEqual([{ terminalId: 1, exitCode: null }]);
+  });
+
+  it("closing 중 같은 terminalId의 open은 무시되고, exit 표면화 후에는 다시 열 수 있다", async () => {
+    const { manager, exits } = makeManager();
+
+    manager.open(1, 80, 24);
+    manager.close(1);
+
+    manager.open(1, 80, 24);
+    expect(manager.pid(1)).toBeNull();
+
+    await waitUntil(() => exits.length === 1);
+
+    manager.open(1, 80, 24);
+    expect(manager.pid(1)).not.toBeNull();
+  });
+
+  it("낮은 rate limit에서 종료 직전 출력이 onExit 보고 시점에 이미 모두 도착해 있다", async () => {
+    // 잔여가 onExit 뒤에 배달되면 소비자(onExit→terminal-closed 배선)가 꼬리 출력을 버리게 된다
+    const chunks: Uint8Array[] = [];
+    const decoder = new TextDecoder();
+    const textAtExit: string[] = [];
+    const manager = new PtyManager(
+      { clock: systemClock },
+      {
+        shell: "/bin/sh",
+        rateLimitBytesPerSec: 2048,
+        onOutput: (_id, chunk) => chunks.push(chunk),
+        onExit: () => {
+          textAtExit.push(chunks.map((c) => decoder.decode(c)).join(""));
+        },
+      },
+    );
+    managers.push(manager);
+
+    manager.open(1, 80, 24);
+    manager.write(1, encode("head -c 3000 /dev/zero | tr '\\0' a; echo END-\"MARK\"; exit 0\n"));
+
+    await waitUntil(() => textAtExit.length > 0);
+    const snapshot = textAtExit[0] ?? "";
+    expect(snapshot).toContain("END-MARK");
+    expect((snapshot.match(/a/g) ?? []).length).toBeGreaterThanOrEqual(3000);
   });
 
   it("이미 열린 terminalId로 open하면 무시되어 기존 셸이 유지된다", () => {

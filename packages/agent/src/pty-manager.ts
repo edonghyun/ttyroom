@@ -88,9 +88,16 @@ export class PtyManager {
       if (this.terminals.get(terminalId) !== tracked) return;
       this.terminals.delete(terminalId);
 
-      // 시그널 종료는 exitCode null — protocol의 int|null에서 null은 "정상 종료 코드 없음"
-      // (PROTOCOL.md는 형태만 정의 — 의미 서술 갱신은 protocol R&R 소관)
-      this.options.onExit(terminalId, signal ? null : exitCode);
+      // 리미터 잔여는 종료 보고 전에 비운다 — onExit(→terminal-closed, 계획 1854행) 뒤에
+      // 도착하는 출력은 소비자가 버리므로 꼬리 출력이 사실상 드롭된다. 종료 시점의 순간
+      // 초과는 무해(상한의 목적은 터미널 간 공정성). deliver가 던져도 종료 표면화는 보장.
+      try {
+        tracked.limiter.flush();
+      } finally {
+        // 시그널 종료는 exitCode null — protocol의 int|null에서 null은 "정상 종료 코드 없음"
+        // (PROTOCOL.md는 형태만 정의 — 의미 서술 갱신은 protocol R&R 소관)
+        this.options.onExit(terminalId, signal ? null : exitCode);
+      }
     });
   }
 

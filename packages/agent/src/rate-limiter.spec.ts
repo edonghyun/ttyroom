@@ -54,6 +54,22 @@ describe("RateLimiter — 역할: 터미널별 출력 속도 상한", () => {
     expect(concat(delivered)).toEqual([...Array.from({ length: 15 }, () => 1), 9, 9, 9]);
   });
 
+  it("flush는 지연 큐의 잔여를 순서대로 즉시 비우고 예약 타이머를 해제한다", () => {
+    const { clock, limiter, delivered, deliver } = makeLimiter({ bytesPerSec: 10, burstBytes: 10 });
+    const fifteen = bytes(...Array.from({ length: 15 }, (_, i) => i));
+
+    limiter.submit(fifteen, deliver);
+    expect(concat(delivered)).toHaveLength(10);
+
+    limiter.flush();
+    expect(concat(delivered)).toEqual([...fifteen]);
+
+    // 타이머가 남아 있지 않고, 시간이 더 가도 중복 전달이 없다
+    expect(clock.pendingTimerCount()).toBe(0);
+    clock.advance(10_000);
+    expect(concat(delivered)).toEqual([...fifteen]);
+  });
+
   it("큐가 빈 뒤 충분히 유휴하면 버스트 용량이 회복된다", () => {
     const { clock, limiter, delivered, deliver } = makeLimiter({ bytesPerSec: 10, burstBytes: 10 });
 
