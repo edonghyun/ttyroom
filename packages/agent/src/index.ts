@@ -31,8 +31,10 @@ const hello: HelloMessage = {
   protocolVersion: PROTOCOL_VERSION,
   roomId: command.roomId,
   token: command.token,
-  // 프로세스 수명 동안 고정 — 재접속 유예(같은 clientId 복귀)에 충분하다.
-  // 파일 보관(스펙 §신원)은 계획 범위 밖의 후속.
+  // 프로세스 수명 동안 고정 — 네트워크 단절 재접속(주 시나리오)의 유예 복원은 이것으로 작동한다.
+  // 프로세스 재시작이면 PTY가 전부 죽어 보존할 세션이 없고, 이때 파일 보관된 clientId로 복귀하면
+  // 서버가 죽은 터미널을 산 것으로 유지하는 유령이 생긴다 — 파일 보관(스펙 §신원)은
+  // welcome 스냅샷 reconcile과 한 묶음의 후속 (T3.3 리뷰 확정)
   clientId: randomUUID(),
   name: command.name,
   role: "host",

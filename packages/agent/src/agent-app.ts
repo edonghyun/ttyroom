@@ -78,11 +78,25 @@ export class AgentApp {
   }
 
   handlePtyExit(terminalId: number, exitCode: number | null): void {
+    // terminalId는 Room 단위 비재사용(서버 계약) — 정확성이 아니라 장수 프로세스의 맵 성장 방지
+    this.outputSeqs.delete(terminalId);
     this.deps.session.send({ type: "terminal-closed", terminalId, exitCode });
   }
 
   private handleServerMessage(msg: ServerMessage): void {
     if (msg.type === "open-terminal") {
+      // Kill Switch 범위 (T3.3 리뷰 확정 계약): 입력 프레임과 open-terminal(새 셸 스폰)은 차단,
+      // resize·close-terminal은 실행 능력이 없고 차단하면 서버 상태와 어긋나므로 통과시킨다.
+      // 차단된 open은 terminal-closed{exitCode:null}로 즉시 회신해 서버의 pending 터미널을 정리한다.
+      if (this.killSwitchOn) {
+        this.deps.session.send({
+          type: "terminal-closed",
+          terminalId: msg.terminalId,
+          exitCode: null,
+        });
+        return;
+      }
+
       this.deps.ptys.open(msg.terminalId, msg.cols, msg.rows);
       this.deps.session.send({ type: "terminal-opened", terminalId: msg.terminalId });
       return;
@@ -98,5 +112,9 @@ export class AgentApp {
     if (msg.type === "resize") {
       this.deps.ptys.resize(msg.terminalId, msg.cols, msg.rows);
     }
+
+    // welcome을 포함한 나머지 메시지는 의도적 무시 — 스냅샷 reconcile을 하지 않는 이유:
+    // agent 재시작은 새 clientId의 새 host라서(index.ts 참조) 이전 host의 유령 터미널은
+    // 서버 유예 만료(removeHost + terminal-closed 브로드캐스트)가 정리한다 (T3.3 리뷰 확정)
   }
 }

@@ -125,6 +125,37 @@ describe("AgentApp — 역할: 서버 명령과 PTY의 배선, Kill Switch", () 
     expect(statusLines.some((l) => l.includes("Kill Switch OFF"))).toBe(true);
   });
 
+  it("Kill Switch가 켜져 있으면 open-terminal을 차단하고 terminal-closed로 회신한다 (새 셸 생성 금지)", () => {
+    const { app, session, ptys } = makeApp();
+
+    app.setKillSwitch(true);
+    app.handleEvent({
+      kind: "server-message",
+      message: { type: "open-terminal", terminalId: 9, cols: 80, rows: 24 },
+    });
+
+    expect(ptys.opens).toEqual([]);
+    // 서버의 pending 터미널을 기존 protocol 메시지로 정리 — 유령 open 방지
+    expect(session.sent).toEqual([{ type: "terminal-closed", terminalId: 9, exitCode: null }]);
+  });
+
+  it("Kill Switch가 켜져 있어도 resize·close-terminal은 통과한다 (실행 능력 없음 — 차단하면 상태 드리프트)", () => {
+    const { app, ptys } = makeApp();
+
+    app.setKillSwitch(true);
+    app.handleEvent({
+      kind: "server-message",
+      message: { type: "resize", terminalId: 3, cols: 100, rows: 30 },
+    });
+    app.handleEvent({
+      kind: "server-message",
+      message: { type: "close-terminal", terminalId: 3 },
+    });
+
+    expect(ptys.resizes).toEqual([{ terminalId: 3, cols: 100, rows: 30 }]);
+    expect(ptys.closes).toEqual([3]);
+  });
+
   it("PTY 출력은 터미널별 단조 증가 seq의 출력 프레임으로 session에 전달된다", () => {
     const { app, session } = makeApp();
 
@@ -139,6 +170,16 @@ describe("AgentApp — 역할: 서버 명령과 PTY의 배선, Kill Switch", () 
     ]);
   });
 
+  it("exit한 터미널의 seq 상태는 남지 않는다 (장수 프로세스에서 맵이 터미널 수만큼 자라지 않게)", () => {
+    const { app, session } = makeApp();
+
+    app.handlePtyOutput(3, new Uint8Array([97]));
+    app.handlePtyExit(3, 0);
+    app.handlePtyOutput(3, new Uint8Array([98]));
+
+    expect(session.sentData.map((f) => f.seq)).toEqual([1, 1]);
+  });
+
   it("PTY exit은 terminal-closed 메시지가 된다", () => {
     const { app, session } = makeApp();
 
@@ -149,6 +190,23 @@ describe("AgentApp — 역할: 서버 명령과 PTY의 배선, Kill Switch", () 
       { type: "terminal-closed", terminalId: 3, exitCode: 0 },
       { type: "terminal-closed", terminalId: 5, exitCode: null },
     ]);
+  });
+
+  it("welcome은 부작용 없이 무시된다 (스냅샷 reconcile은 의도적으로 없음 — 재시작 정리는 서버 유예 소관)", () => {
+    const { app, session, ptys, statusLines } = makeApp();
+
+    app.handleEvent({
+      kind: "server-message",
+      message: {
+        type: "welcome",
+        selfClientId: "client-1",
+        snapshot: { roomId: "r", participants: [], hosts: [], terminals: [], leases: [] },
+      },
+    });
+
+    expect(ptys.opens).toEqual([]);
+    expect(session.sent).toEqual([]);
+    expect(statusLines).toEqual([]);
   });
 
   it("연결 수명주기 이벤트(connected·reconnecting·rejected)는 onStatus 상태 라인이 된다", () => {
