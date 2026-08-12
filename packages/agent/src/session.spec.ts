@@ -303,6 +303,80 @@ describe("AgentSession — 역할: 서버 연결 수명주기", () => {
     expect(transport.connectUrls).toHaveLength(1);
   });
 
+  it("stop 이후의 send·sendData는 닫힌 연결로 전달되지 않는다", async () => {
+    const { transport, session } = makeSession();
+
+    session.start();
+    await transport.settle();
+    session.stop();
+
+    session.send({ type: "terminal-opened", terminalId: 1 });
+    session.sendData({ kind: "output", terminalId: 1, seq: 1, payload: new Uint8Array([7]) });
+
+    expect(transport.lastConnection().sent).toMatchObject([{ type: "hello" }]);
+    expect(transport.lastConnection().sentData).toEqual([]);
+  });
+
+  it("rejected 콜백이 던져도 연결 close는 이미 완결되어 있다", async () => {
+    const transport = new FakeAgentTransport();
+    const clock = new FakeClock();
+    const session = new AgentSession(
+      { transport, clock },
+      {
+        wsUrl: "ws://server.test/ws",
+        hello: HELLO,
+        onEvent: (e) => {
+          if (e.kind === "rejected") throw new Error("listener bug");
+        },
+      },
+    );
+
+    session.start();
+    await transport.settle();
+
+    expect(() =>
+      transport.lastConnection().emitMessage({
+        type: "error",
+        code: "invalid-token",
+        message: "token rejected",
+      }),
+    ).toThrow("listener bug");
+    expect(transport.lastConnection().closed).toBe(true);
+  });
+
+  it("같은 연결의 close 이벤트가 중복 도착해도 재접속은 한 번만 예약된다", async () => {
+    const { transport, clock, session, events } = makeSession();
+
+    session.start();
+    await transport.settle();
+
+    transport.lastConnection().emitClose();
+    transport.lastConnection().emitClose();
+
+    expect(clock.pendingTimerCount()).toBe(1);
+    expect(events.filter((e) => e.kind === "reconnecting")).toMatchObject([{ attempt: 1 }]);
+  });
+
+  it("이전 연결의 유령 close가 늦게 도착해도 현재 연결을 폐기하지 않는다", async () => {
+    const { transport, clock, session } = makeSession();
+
+    session.start();
+    await transport.settle();
+    const first = transport.lastConnection();
+    first.emitClose();
+    clock.advance(500);
+    await transport.settle();
+
+    first.emitClose();
+    session.send({ type: "terminal-opened", terminalId: 1 });
+
+    expect(clock.pendingTimerCount()).toBe(0);
+    expect(transport.lastConnection().sent).toMatchObject([
+      { type: "hello" },
+      { type: "terminal-opened", terminalId: 1 },
+    ]);
+  });
+
   it("start를 두 번 호출하면 프로그래머 오류로 throw한다", () => {
     const { session } = makeSession();
 

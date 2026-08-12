@@ -68,13 +68,21 @@ export class AgentSession {
     }
 
     this.connection = connection;
+
+    // 동일성 가드: close 후에도 이벤트를 흘리거나 close를 중복 방출하는 transport 구현이
+    // 있을 수 있다 — 이미 폐기한 연결의 늦은 이벤트가 현재 연결을 밀어내거나
+    // 재접속 루프를 복제하지 못하게 한다
     connection.onClose(() => {
+      if (this.connection !== connection) return;
       this.connection = null;
       this.scheduleReconnect();
     });
-    connection.onMessage((msg) => this.handleServerMessage(msg));
+    connection.onMessage((msg) => {
+      if (this.connection !== connection) return;
+      this.handleServerMessage(msg);
+    });
     connection.onData((frame) => {
-      if (this.rejected || this.stopped) return;
+      if (this.connection !== connection) return;
       this.options.onEvent({ kind: "server-data", frame });
     });
     connection.send(this.options.hello);
@@ -82,19 +90,17 @@ export class AgentSession {
   }
 
   private handleServerMessage(msg: ServerMessage): void {
-    // 종료된 세션에 늦게 도착한 프레임 차단 — close 후에도 이벤트를 흘리는 transport 구현이 있을 수 있다
-    if (this.rejected || this.stopped) return;
-
     // welcome은 서버가 hello를 수락한 증거 — 여기부터 백오프를 처음부터 다시 센다
     if (msg.type === "welcome") this.attempt = 0;
 
     if (msg.type === "error") {
       this.rejected = true;
-      this.options.onEvent({ kind: "rejected", code: msg.code });
 
-      // 종료는 세션이 완결한다 — 서버가 닫아주기를 기다리지 않는다
+      // 종료는 세션이 완결한다 — 서버가 닫아주기를 기다리지 않고,
+      // 콜백보다 먼저 닫아 콜백이 던져도 연결이 남지 않는다
       this.connection?.close();
       this.connection = null;
+      this.options.onEvent({ kind: "rejected", code: msg.code });
       return;
     }
 
@@ -124,6 +130,9 @@ export class AgentSession {
   stop(): void {
     this.stopped = true;
     this.cancelReconnect?.();
+
+    // 참조도 함께 비운다 — stop 이후의 send가 닫힌 연결로 흘러가지 않게 (미연결 무시 규칙)
     this.connection?.close();
+    this.connection = null;
   }
 }
