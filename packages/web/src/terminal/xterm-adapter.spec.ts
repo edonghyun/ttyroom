@@ -8,7 +8,7 @@ vi.mock("@xterm/xterm", () => ({ Terminal: class {} }));
 vi.mock("@xterm/addon-fit", () => ({ FitAddon: class {} }));
 
 class FakeTerminal {
-  readonly options = { disableStdin: false };
+  readonly options: Record<string, unknown> = { disableStdin: false };
   cols = 80;
   rows = 24;
   loadedAddons: unknown[] = [];
@@ -80,6 +80,24 @@ class FakeXtermFactory implements XtermFactory {
 }
 
 describe("XtermAdapter", () => {
+  it("uses the workspace terminal palette and type scale", () => {
+    const factory = new FakeXtermFactory();
+
+    new XtermAdapter(factory);
+
+    expect(factory.terminal.options).toMatchObject({
+      fontFamily: '"Fira Code Variable", monospace',
+      fontSize: 12,
+      lineHeight: 1.25,
+      theme: {
+        background: "#111417",
+        foreground: "#d7dbe0",
+        cursor: "#d7dbe0",
+        selectionBackground: "#564070",
+      },
+    });
+  });
+
   it("creates exactly one Terminal and one FitAddon across repeated mounts", () => {
     const factory = new FakeXtermFactory();
     const adapter = new XtermAdapter(factory);

@@ -24,6 +24,15 @@ export class XtermAdapter implements TerminalAdapter {
 
   constructor(factory: XtermFactory = nativeXtermFactory) {
     this.terminal = factory.createTerminal();
+    this.terminal.options.fontFamily = '"Fira Code Variable", monospace';
+    this.terminal.options.fontSize = 12;
+    this.terminal.options.lineHeight = 1.25;
+    this.terminal.options.theme = {
+      background: "#111417",
+      foreground: "#d7dbe0",
+      cursor: "#d7dbe0",
+      selectionBackground: "#564070",
+    };
     this.fitAddon = factory.createFitAddon();
     this.terminal.loadAddon(this.fitAddon);
     this.terminal.attachCustomKeyEventHandler((event) => event.key !== "Tab");
