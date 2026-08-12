@@ -80,8 +80,9 @@ packages/server/src/
 
 ### 도메인 (불변식)
 
-- 한 터미널의 유효한 입력권 임대(Lease)는 최대 하나다.
-- 입력 프레임은 유효한 임대 없이 Agent로 전달되지 않는다.
+- Exclusive 모드 터미널의 유효한 입력권 임대(Lease)는 최대 하나다.
+- Exclusive 모드에서 입력 프레임은 유효한 임대 없이 Agent로 전달되지 않는다.
+  Shared 모드 터미널은 임대 검증 대신 Room 참여자 자격 검증으로 입력을 통과시킨다.
 - 임대 획득은 선착순이다.
 - 임대는 연결에 묶인다. 연결이 끊기면 유예 후 해제된다.
 - 임대 해제는 해당 터미널의 프로세스에 영향을 주지 않는다.
@@ -121,9 +122,11 @@ packages/server/src/
 연결 위를 흐르는 것은 두 종류다.
 
 - **제어 프레임(JSON)** — join, 터미널 생성, 임대 요청/획득/해제, 참여자 변동,
-  터미널 메타데이터(cwd·git 브랜치·실행 중 명령), resize, sync, 에러.
+  터미널 메타데이터(cwd·git 브랜치·포그라운드 프로세스명), resize, sync, 에러.
   zod 스키마가 단일 진실.
-- **데이터 프레임(바이너리)** — `[frameType(1B)][terminalId(4B)][seq(4B)][payload...]`.
+- **데이터 프레임(바이너리)** — 출력(Agent→서버→브라우저):
+  `[frameType(1B)][terminalId(4B)][seq(4B)][payload...]`,
+  입력(브라우저→서버→Agent): `[frameType(1B)][terminalId(4B)][seq(4B)][leaseId(4B)][payload...]`.
   터미널 입출력 바이트. 서버는 헤더만 읽고 payload는 불투명하게 라우팅·저장한다
   ("해석 금지, 불투명 저장 허용" — E2E를 켜면 암호문이 그대로 흐르고 서버는 무변경).
 
@@ -175,7 +178,8 @@ packages/agent/src/
 ├── cli.ts        # `ttyroom join <url>` 파싱, 상태 표시, Ctrl+C 처리
 ├── session.ts    # 접속·등록·재접속 (지수 백오프)
 ├── terminals.ts  # 서버 명령에 따른 PTY 생성/파기 (node-pty), 터미널별 출력 rate limit
-├── meta.ts       # cwd·git 브랜치·실행 중 명령 수집 → 제어 프레임 보고
+├── meta.ts       # cwd·git 브랜치·포그라운드 프로세스명 수집(폴링) → 제어 프레임 보고
+│                 #   셸 통합 기반의 의미 있는 명령 이벤트 수집은 후속 검토
 └── transport/    # Transport 클라이언트 어댑터 (WS)
 ```
 
