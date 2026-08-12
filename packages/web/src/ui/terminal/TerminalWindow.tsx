@@ -96,6 +96,7 @@ export function TerminalWindow({
     <article
       className={`terminal-window${active ? " active-window" : ""}${overview ? " overview-window" : ""}`}
       role="group"
+      tabIndex={0}
       aria-label={`${model.title} terminal`}
       aria-current={active ? "true" : undefined}
       data-terminal-id={model.terminalId}
@@ -109,6 +110,19 @@ export function TerminalWindow({
         zIndex: model.z,
       }}
       onPointerDown={() => actions.activate(model.terminalId)}
+      onFocus={(event) => {
+        if (event.target === event.currentTarget) actions.activate(model.terminalId);
+      }}
+      onKeyDown={(event) => {
+        if (
+          overview &&
+          event.target === event.currentTarget &&
+          (event.key === "Enter" || event.key === " ")
+        ) {
+          event.preventDefault();
+          actions.activate(model.terminalId);
+        }
+      }}
     >
       <header
         className="terminal-titlebar"

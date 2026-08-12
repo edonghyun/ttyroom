@@ -265,6 +265,7 @@ export class RoomAppRuntime {
 
   activate(terminalId: number): void {
     this.deps.windowManager.activate(terminalId);
+    if (this.deps.windowManager.view().overview) this.deps.windowManager.exitOverview();
   }
 
   takeControl(terminalId: number): void {
