@@ -363,6 +363,45 @@ describe("Room 입력권 임대 — 역할: 터미널 입력 권한의 단일 �
     expect(room.isInputAllowed("alice", 999, 1)).toBe(false);
   });
 
+  it("shared 전환은 기존 임대를 해제하지 않는다 (모드 전환은 임대에 관여하지 않음 — 계약 핀)", () => {
+    const { room, t } = withTerminal();
+    room.acquireLease("alice", t.terminalId);
+
+    room.setTerminalMode(t.terminalId, "shared");
+
+    // shared 동안 임대는 잠들 뿐 죽지 않는다 — 입력권은 isInputAllowed의 shared 분기가 결정
+    expect(room.leaseOf(t.terminalId)).toMatchObject({ holderClientId: "alice" });
+    expect(room.snapshot().leases).toHaveLength(1);
+  });
+
+  it("shared에서 exclusive로 복귀하면 보존된 임대가 그대로 유효하다 (계약 핀)", () => {
+    const { room, t } = withTerminal();
+    const d = room.acquireLease("alice", t.terminalId);
+    const leaseId = d.kind === "granted" ? d.lease.leaseId : -1;
+
+    room.setTerminalMode(t.terminalId, "shared");
+    room.setTerminalMode(t.terminalId, "exclusive");
+
+    // 해제된 적 없는 임대는 여전히 "현재" 임대다 — 우회가 아니라 연속
+    expect(room.isInputAllowed("alice", t.terminalId, leaseId)).toBe(true);
+    expect(room.acquireLease("bob", t.terminalId)).toEqual({
+      kind: "denied",
+      holderClientId: "alice",
+    });
+  });
+
+  it("markTerminalExited는 임대를 걷지 않는다 — 남은 임대는 isInputAllowed가 봉인한다 (계약 핀)", () => {
+    const { room, t } = withTerminal();
+    room.acquireLease("alice", t.terminalId);
+
+    room.markTerminalExited(t.terminalId, 0);
+
+    // 임대 수명은 소유자 이탈·터미널 제거 경로가 관리 — 상태 변경은 관여하지 않는다
+    expect(room.leaseOf(t.terminalId)).toMatchObject({ holderClientId: "alice" });
+    expect(room.releaseLease("alice", t.terminalId)).toMatchObject({ kind: "released" });
+    expect(room.snapshot().leases).toEqual([]);
+  });
+
   it("markHostOffline은 임대를 보존한다 (호스트 유예 복귀 시 참여자 임대 유지)", () => {
     const { room, t } = withTerminal();
     room.acquireLease("alice", t.terminalId);

@@ -32,7 +32,8 @@ export class Room {
     return this.participants.has(clientId);
   }
 
-  // 떠난 참여자의 임대는 무효 — stale lease가 남지 않게 걷어서 반환한다 (removeHost와 대칭)
+  // 떠난 참여자의 임대는 무효 — stale lease가 남지 않게 걷어서 반환한다 (removeHost와 대칭).
+  // 유예 중 단절 참여자는 아직 참여자라 여기 오지 않는다 — 유예 복원(T2.9)과 충돌 없음
   removeParticipant(clientId: string): LeaseView[] {
     this.participants.delete(clientId);
     return this.releaseAllOf(clientId);
@@ -89,10 +90,14 @@ export class Room {
     return removed;
   }
 
+  // 모드 전환은 임대에 관여하지 않는다 — shared 동안 입력권은 isInputAllowed의 shared 분기가
+  // 결정하고, exclusive 복귀 시 보존된 임대가 그대로 유효하다 (해제된 적 없으니 현재 임대)
   setTerminalMode(terminalId: number, mode: "exclusive" | "shared"): void {
     this.requireTerminal(terminalId).mode = mode;
   }
 
+  // 임대는 걷지 않는다 — exited 입력은 isInputAllowed가 차단하고,
+  // 임대 수명은 소유자 이탈(removeParticipant)·터미널 제거(removeHost) 경로가 관리한다
   markTerminalExited(terminalId: number, exitCode: number | null): void {
     const terminal = this.requireTerminal(terminalId);
     terminal.status = "exited";
