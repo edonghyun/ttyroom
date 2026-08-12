@@ -1012,14 +1012,13 @@ describe("joinRoom — 역할: hello 검증과 Room 입장", () => {
   it("프로토콜 버전 불일치는 error(unsupported-protocol-version)로 거부된다", () => {
     const ctx = new RoomTestContext();
     const room = ctx.createRoom();
-    const alice = ctx.connectParticipant(room, "alice");
-    alice.conn.messages.length = 0;
-    // RoomTestContext.connectParticipant는 PROTOCOL_VERSION을 쓰므로, 버전만 다른 hello를 직접 주입
-    ctx.core.handleMessage(alice.conn, JSON.stringify({
+    // 미등록 연결로 주입 — 등록된 연결의 재hello는 별도 계약(bad-message)에 먼저 걸린다
+    const conn = ctx.rawConnection();
+    ctx.core.handleMessage(conn, JSON.stringify({
       type: "hello", protocolVersion: 999, roomId: room.roomId, token: room.token,
       clientId: "x", name: "x", role: "participant",
     }));
-    expectMessageToMatch(alice.conn.messages, "error", { code: "unsupported-protocol-version" });
+    expectMessageToMatch(conn.messages, "error", { code: "unsupported-protocol-version" });
   });
 
   it("hello 이전의 다른 메시지는 error(bad-message)다", () => {
