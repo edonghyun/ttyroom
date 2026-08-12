@@ -6,13 +6,17 @@ import type { Policy } from "../ports/policy.js";
 import type { SnapshotStore } from "../ports/snapshot-store.js";
 import type { Connection } from "../ports/transport.js";
 import type { ConnectionRegistry } from "./connection-registry.js";
+import { AcquireLease } from "./acquire-lease.js";
 import { JoinRoom } from "./join-room.js";
 import { OpenTerminal } from "./open-terminal.js";
+import { ReleaseLease } from "./release-lease.js";
 
 // 어댑터가 아는 유일한 진입점 — 프레임을 유즈케이스로 라우팅한다
 export class ServerCore {
   private readonly joinRoom: JoinRoom;
   private readonly openTerminal: OpenTerminal;
+  private readonly acquireLease: AcquireLease;
+  private readonly releaseLease: ReleaseLease;
 
   constructor(
     private readonly deps: {
@@ -33,6 +37,8 @@ export class ServerCore {
       rooms: deps.rooms,
       connections: deps.connections,
     });
+    this.acquireLease = new AcquireLease({ rooms: deps.rooms, connections: deps.connections });
+    this.releaseLease = new ReleaseLease({ rooms: deps.rooms, connections: deps.connections });
   }
 
   handleMessage(conn: Connection, raw: string): void {
@@ -61,6 +67,16 @@ export class ServerCore {
 
     if (parsed.message.type === "open-terminal-request" && session.role === "participant") {
       this.openTerminal.request(conn, session, parsed.message.hostId);
+      return;
+    }
+
+    if (parsed.message.type === "acquire-lease" && session.role === "participant") {
+      this.acquireLease.execute(conn, session, parsed.message.terminalId);
+      return;
+    }
+
+    if (parsed.message.type === "release-lease" && session.role === "participant") {
+      this.releaseLease.execute(conn, session, parsed.message.terminalId, parsed.message.leaseId);
       return;
     }
 
