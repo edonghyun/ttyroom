@@ -180,6 +180,13 @@ RoomSnapshot과 room-event가 공유하는 객체 형태. 표기 `A | null`은 J
 
 ## Web prerequisite 동작 계약
 
+Room bootstrap HTTP 계약:
+
+- `POST /api/rooms`는 JSON body `{"name":"Payment Debug"}`를 선택적으로 받는다.
+  body 또는 `name`을 생략하면 `"Quick Room"`을 사용한다. 이름은 trim 후 1..80자다.
+- 성공 응답은 HTTP 201과 `{"roomId", "name", "token", "joinUrl"}`이다. `name`은 이후
+  `welcome.snapshot.name`과 동일하다.
+
 - `close-terminal-request`는 열린 터미널의 owning online host에만 `close-terminal`로 전달한다.
   서버는 요청만으로 터미널 상태를 바꾸지 않는다. 실제 PTY 종료 뒤 host가 보낸
   `terminal-closed`가 상태 변경과 `terminal-closed` room event의 유일한 원인이다.
