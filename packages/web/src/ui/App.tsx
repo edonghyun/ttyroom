@@ -44,7 +44,7 @@ export function App({
       />
     );
   }
-  if (state === "joining" || state === "restoring") {
+  if (state === "joining" || (state === "restoring" && !children)) {
     return (
       <main className="entry-screen">
         <p role="status">
@@ -53,6 +53,8 @@ export function App({
       </main>
     );
   }
+
+  if (state === "restoring") return <>{children}</>;
 
   return <>{children}</>;
 }

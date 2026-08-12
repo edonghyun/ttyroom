@@ -1,10 +1,10 @@
-import type { TerminalController } from "../../terminal/terminal-controller.js";
 import { Dock } from "../chrome/Dock.js";
 import { Overview } from "../chrome/Overview.js";
 import { terminalStatusLabel } from "./TerminalStatus.js";
 import {
   TerminalWindow,
   type TerminalWindowActions,
+  type TerminalControllerPort,
   type TerminalWindowModel,
 } from "./TerminalWindow.js";
 
@@ -15,9 +15,10 @@ export function TerminalScene({
   activeTerminalId,
   actions,
   overview,
+  inputBlocked = false,
 }: {
   readonly terminals: readonly TerminalWindowModel[];
-  readonly controllers: ReadonlyMap<number, TerminalController>;
+  readonly controllers: ReadonlyMap<number, TerminalControllerPort>;
   readonly participants: readonly string[];
   readonly activeTerminalId: number | null;
   readonly actions: TerminalWindowActions & {
@@ -25,6 +26,7 @@ export function TerminalScene({
     readonly addTerminal: () => void;
   };
   readonly overview: boolean;
+  readonly inputBlocked?: boolean;
 }) {
   return (
     <>
@@ -40,6 +42,7 @@ export function TerminalScene({
               actions={actions}
               active={activeTerminalId === model.terminalId}
               overview={overview}
+              inputBlocked={inputBlocked}
             />
           );
         })}

@@ -12,4 +12,4 @@ if (!root) {
   throw new Error("TTYRoom application root is missing");
 }
 
-createWebApp({ root, content: <main>TTYRoom</main> });
+createWebApp({ root });

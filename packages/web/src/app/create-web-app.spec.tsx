@@ -1,7 +1,10 @@
 import { act } from "react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { createWebApp } from "./create-web-app.js";
+
+vi.mock("@xterm/xterm", () => ({ Terminal: class {} }));
+vi.mock("@xterm/addon-fit", () => ({ FitAddon: class {} }));
 
 describe("createWebApp — React application lifetime", () => {
   it("mounts the supplied application once and unmounts it on dispose", async () => {

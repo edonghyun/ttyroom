@@ -1,7 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Maximize2, Minimize2, RotateCcw, X } from "react-feather";
 
-import type { TerminalController } from "../../terminal/terminal-controller.js";
 import type { WindowRect } from "../../windows/window-geometry.js";
 import { TerminalStatus, type TerminalStatusValue } from "./TerminalStatus.js";
 
@@ -31,6 +30,12 @@ export interface TerminalWindowActions {
   readonly openNew?: (host: string) => void;
 }
 
+export interface TerminalControllerPort {
+  mount(container: HTMLElement): void;
+  setInputAllowed(allowed: boolean): void;
+  setVisible(visible: boolean): void;
+}
+
 export function TerminalWindow({
   model,
   controller,
@@ -40,7 +45,7 @@ export function TerminalWindow({
   inputBlocked = false,
 }: {
   readonly model: TerminalWindowModel;
-  readonly controller: TerminalController;
+  readonly controller: TerminalControllerPort;
   readonly actions: TerminalWindowActions;
   readonly active: boolean;
   readonly overview?: boolean;

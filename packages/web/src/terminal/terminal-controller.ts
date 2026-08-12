@@ -89,6 +89,13 @@ export class TerminalController {
     return this.highestSeq;
   }
 
+  resetOutput(): void {
+    if (this.disposed) return;
+    this.pendingOutput.clear();
+    this.highestSeq = 0;
+    this.adapter?.reset();
+  }
+
   private scheduleFrame(): void {
     if (!this.adapter || this.cancelFrame || (this.pendingOutput.size === 0 && !this.fitPending))
       return;
