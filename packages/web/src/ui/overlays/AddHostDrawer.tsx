@@ -26,7 +26,8 @@ export function AddHostDrawer({
   useEffect(() => {
     if (!open) return;
     const previouslyFocused =
-      opener?.current ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
+      opener?.current ??
+      (document.activeElement instanceof HTMLElement ? document.activeElement : null);
     closeButton.current?.focus();
     return () => previouslyFocused?.focus();
   }, [open, opener]);

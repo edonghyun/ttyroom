@@ -90,7 +90,13 @@ export class TestSystem {
     let output = "";
     const terminalProcess = pty.spawn(
       process.execPath,
-      [resolve(WORKSPACE_ROOT, "packages/agent/dist/index.js"), "join", this.room.joinUrl, "--name", name],
+      [
+        resolve(WORKSPACE_ROOT, "packages/agent/dist/index.js"),
+        "join",
+        this.room.joinUrl,
+        "--name",
+        name,
+      ],
       {
         cwd: WORKSPACE_ROOT,
         env: Object.fromEntries(

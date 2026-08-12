@@ -30,11 +30,15 @@ export class RoomPage {
   }
 
   async takeControl(title: string): Promise<void> {
-    await this.terminal(title).getByRole("button", { name: `Take control of ${title}` }).click();
+    await this.terminal(title)
+      .getByRole("button", { name: `Take control of ${title}` })
+      .click();
   }
 
   async switchControl(title: string): Promise<void> {
-    await this.terminal(title).getByRole("button", { name: `Switch control to ${title}` }).click();
+    await this.terminal(title)
+      .getByRole("button", { name: `Switch control to ${title}` })
+      .click();
   }
 
   async typeInTerminal(title: string, command: string): Promise<void> {
@@ -49,7 +53,9 @@ export class RoomPage {
   }
 
   async requestClose(title: string): Promise<void> {
-    await this.terminal(title).getByRole("button", { name: `Close ${title}` }).click();
+    await this.terminal(title)
+      .getByRole("button", { name: `Close ${title}` })
+      .click();
   }
 
   closeDialog(): Locator {
@@ -65,7 +71,9 @@ export class RoomPage {
   }
 
   async setTerminalMode(title: string, mode: "Shared" | "Exclusive"): Promise<void> {
-    await this.terminal(title).getByRole("button", { name: `Open ${title} menu` }).click();
+    await this.terminal(title)
+      .getByRole("button", { name: `Open ${title} menu` })
+      .click();
     await this.page.getByRole("menuitem", { name: `Use ${mode.toLowerCase()} input` }).click();
   }
 
@@ -76,7 +84,9 @@ export class RoomPage {
   }
 
   async minimize(title: string): Promise<void> {
-    await this.terminal(title).getByRole("button", { name: `Minimize ${title}` }).click();
+    await this.terminal(title)
+      .getByRole("button", { name: `Minimize ${title}` })
+      .click();
   }
 
   async enterOverview(): Promise<void> {
@@ -127,7 +137,9 @@ export class RoomPage {
     return this.terminal(title).locator(".xterm-rows").innerText();
   }
 
-  async terminalRect(title: string): Promise<{ x: number; y: number; width: number; height: number }> {
+  async terminalRect(
+    title: string,
+  ): Promise<{ x: number; y: number; width: number; height: number }> {
     const rect = await this.terminal(title).boundingBox();
     if (!rect) throw new Error(`${title} has no visible layout rectangle`);
     return rect;

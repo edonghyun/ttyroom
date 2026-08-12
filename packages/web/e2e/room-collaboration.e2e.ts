@@ -1,6 +1,9 @@
 import { expect, test } from "./fixtures/actors.js";
 
-test("two participants explicitly take control and share real PTY output", async ({ alice, bob }) => {
+test("two participants explicitly take control and share real PTY output", async ({
+  alice,
+  bob,
+}) => {
   await alice.joinRoom();
   await bob.joinRoom();
 
@@ -161,9 +164,7 @@ test("Dock and Overview expose five terminals while each participant keeps a loc
 
   await alice.roomPage.minimize("term-1");
   await expect(alice.roomPage.terminal("term-1")).toBeHidden();
-  await expect(
-    alice.page.getByRole("button", { name: "Restore term-1" }),
-  ).toBeVisible();
+  await expect(alice.page.getByRole("button", { name: "Restore term-1" })).toBeVisible();
   await expect(bob.roomPage.terminal("term-1")).toBeVisible();
   await expect(bob.page.getByRole("button", { name: "Focus term-1" })).toBeVisible();
 

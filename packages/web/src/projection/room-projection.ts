@@ -129,8 +129,7 @@ export class RoomProjection {
       if (frame.seq <= previousSeq || frame.seq !== previousSeq + 1) return [];
     }
 
-    const replace =
-      state.mode === "replay" && (state.replayLastSeq === null || rewindingReplay);
+    const replace = state.mode === "replay" && (state.replayLastSeq === null || rewindingReplay);
     if (state.mode === "live") state.lastSeq = frame.seq;
     else {
       state.replayLastSeq = frame.seq;

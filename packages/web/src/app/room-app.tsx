@@ -171,8 +171,7 @@ export class RoomAppRuntime {
         branch: projected.terminal.meta.gitBranch ?? undefined,
         status: capability,
         mode: projected.terminal.mode,
-        controlAction:
-          capability.kind === "available" ? (ownLease ? "switch" : "take") : undefined,
+        controlAction: capability.kind === "available" ? (ownLease ? "switch" : "take") : undefined,
         rect: managed.rect,
         z: managed.z,
         minimized: managed.minimized,
