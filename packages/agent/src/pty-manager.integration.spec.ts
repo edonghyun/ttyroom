@@ -6,12 +6,14 @@ import { waitUntil } from "./test/wait-until.js";
 /**
  * 상태×이벤트 전이표 (terminalId 단위) — 아래 테스트들이 각 칸을 핀한다.
  *
- * | 상태 \ 이벤트 | open           | write     | resize          | close                  | PTY exit               |
- * |--------------|----------------|-----------|-----------------|------------------------|------------------------|
- * | absent       | spawn → tracked| 무시      | 무시            | 무시                   | —                      |
- * | tracked      | 무시(기존 유지)| pty.write | clamp 후 resize | kill+제거, onExit 억제 | onExit(exitCode) 후 제거|
+ * | 상태 \ 이벤트 | open           | write     | resize          | close           | PTY exit                |
+ * |--------------|----------------|-----------|-----------------|-----------------|-------------------------|
+ * | absent       | spawn → tracked| 무시      | 무시            | 무시            | —                       |
+ * | tracked      | 무시(기존 유지)| pty.write | clamp 후 resize | kill → closing  | onExit(exitCode) 후 제거|
+ * | closing      | 무시           | 무시      | 무시            | 무시            | onExit(null) 후 제거    |
  *
- * closeAll = 모든 tracked에 close. fgProcess·pid는 tracked면 값, 아니면 null.
+ * closeAll = 모든 tracked에 close. fgProcess·pid는 tracked(비closing)면 값, 아니면 null.
+ * 모든 PTY 종료(자연·명령발)는 onExit으로 정확히 한 번 표면화 — 계획 1854행의 terminal-closed 배선 계약.
  */
 
 interface Harness {
@@ -93,7 +95,7 @@ describe("PtyManager — 역할: 실제 셸의 생성과 입출력", () => {
     expect(manager.fgProcess(1)).toBeNull();
   });
 
-  it("close하면 셸 프로세스가 종료되고 onExit 콜백은 억제된다", async () => {
+  it("close하면 셸이 종료되고 onExit이 정확히 한 번 보고된다 (명령발 종료도 서버에 표면화)", async () => {
     const { manager, exits } = makeManager();
 
     manager.open(1, 80, 24);
@@ -101,11 +103,20 @@ describe("PtyManager — 역할: 실제 셸의 생성과 입출력", () => {
     if (pid === null) throw new Error("open 직후 pid가 있어야 한다");
 
     manager.close(1);
-    expect(manager.pid(1)).toBeNull();
-    await waitUntil(() => !isProcessAlive(pid));
 
-    // 억제 확인은 부정 단언 — 짧은 폴링 창 안에 onExit이 오면 실패
-    await expect(waitUntil(() => exits.length > 0, { timeoutMs: 250 })).rejects.toThrow();
+    // closing 동안 외부 관점은 이미 닫힘 — 조작은 무시되고 조회는 null
+    expect(manager.pid(1)).toBeNull();
+    expect(manager.fgProcess(1)).toBeNull();
+    expect(() => {
+      manager.write(1, encode("echo ghost\n"));
+      manager.close(1);
+    }).not.toThrow();
+
+    await waitUntil(() => !isProcessAlive(pid));
+    await waitUntil(() => exits.length > 0);
+
+    // 시그널 종료는 exitCode null — protocol의 int|null에서 null은 "정상 종료 코드 없음"
+    expect(exits).toEqual([{ terminalId: 1, exitCode: null }]);
   });
 
   it("이미 열린 terminalId로 open하면 무시되어 기존 셸이 유지된다", () => {
@@ -130,6 +141,18 @@ describe("PtyManager — 역할: 실제 셸의 생성과 입출력", () => {
 
     manager.write(1, encode("echo still-alive\n"));
     await waitUntil(() => text().includes("still-alive"));
+  });
+
+  it("멀티바이트 입력이 프레임 경계에서 쪼개져도 손상 없이 셸에 쓰인다", async () => {
+    const { manager, text } = makeManager();
+
+    manager.open(1, 80, 24);
+    const command = encode("echo 안녕-마커\n");
+    // "echo " 5바이트 + '안' 3바이트 중 2바이트에서 절단 — 멀티바이트 문자가 두 프레임에 걸친다
+    manager.write(1, command.subarray(0, 7));
+    manager.write(1, command.subarray(7));
+
+    await waitUntil(() => text().includes("안녕-마커"));
   });
 
   it("closeAll하면 모든 셸 프로세스가 종료되고 추적에서 제거된다", async () => {

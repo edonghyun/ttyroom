@@ -16,6 +16,13 @@ interface PtyManagerOptions {
 interface TrackedTerminal {
   pty: IPty;
   limiter: RateLimiter;
+
+  // close 후 실제 exit까지의 2단계 상태 — 외부 관점은 이미 닫혔지만(조작 무시·조회 null)
+  // 종료 보고(onExit)는 실제 exit에서 정확히 한 번 나간다 (계획 1854행: 모든 종료는 표면화)
+  closing: boolean;
+
+  // 터미널별 stateful 디코더 — 멀티바이트 문자가 입력 프레임 경계에 걸쳐도 손상되지 않게
+  inputDecoder: TextDecoder;
 }
 
 // 원격발 수치가 ioctl(TIOCSWINSZ)에 닿는다 — protocol 검증과 별개로 여기서도 하한·상한을 조인다
@@ -32,7 +39,6 @@ function clampDimension(value: number): number {
 export class PtyManager {
   private readonly terminals = new Map<number, TrackedTerminal>();
   private readonly encoder = new TextEncoder();
-  private readonly decoder = new TextDecoder();
 
   constructor(
     private readonly deps: PtyManagerDeps,
@@ -63,7 +69,12 @@ export class PtyManager {
       },
     );
 
-    const tracked: TrackedTerminal = { pty, limiter };
+    const tracked: TrackedTerminal = {
+      pty,
+      limiter,
+      closing: false,
+      inputDecoder: new TextDecoder(),
+    };
     this.terminals.set(terminalId, tracked);
 
     // 동일성 가드 — close()로 이미 제거(또는 교체)된 터미널의 늦은 콜백을 차단한다
@@ -73,45 +84,57 @@ export class PtyManager {
         this.options.onOutput(terminalId, chunk),
       );
     });
-    pty.onExit(({ exitCode }) => {
+    pty.onExit(({ exitCode, signal }) => {
       if (this.terminals.get(terminalId) !== tracked) return;
       this.terminals.delete(terminalId);
-      this.options.onExit(terminalId, exitCode ?? null);
+
+      // 시그널 종료는 exitCode null — protocol의 int|null에서 null은 "정상 종료 코드 없음"
+      // (PROTOCOL.md는 형태만 정의 — 의미 서술 갱신은 protocol R&R 소관)
+      this.options.onExit(terminalId, signal ? null : exitCode);
     });
   }
 
   write(terminalId: number, data: Uint8Array): void {
-    const tracked = this.terminals.get(terminalId);
+    const tracked = this.activeTerminal(terminalId);
     if (!tracked) return;
 
-    tracked.pty.write(this.decoder.decode(data));
+    tracked.pty.write(tracked.inputDecoder.decode(data, { stream: true }));
   }
 
   resize(terminalId: number, cols: number, rows: number): void {
-    const tracked = this.terminals.get(terminalId);
+    const tracked = this.activeTerminal(terminalId);
     if (!tracked) return;
 
     tracked.pty.resize(clampDimension(cols), clampDimension(rows));
   }
 
   close(terminalId: number): void {
-    const tracked = this.terminals.get(terminalId);
+    const tracked = this.activeTerminal(terminalId);
     if (!tracked) return;
 
-    this.terminals.delete(terminalId);
+    // kill 기본 신호는 SIGHUP — 대상이 사용자 셸이라 이것으로 죽는다. 신호를 무시하는
+    // 자식의 SIGKILL 에스컬레이션은 넣지 않는다: MVP에서 실익 대비 타이머 상태만 늘고,
+    // Host Owner는 로컬에서 직접 정리할 수 있으며 agent 종료 시 마스터 fd가 닫힌다.
+    tracked.closing = true;
     tracked.pty.kill();
   }
 
   fgProcess(terminalId: number): string | null {
-    return this.terminals.get(terminalId)?.pty.process ?? null;
+    return this.activeTerminal(terminalId)?.pty.process ?? null;
   }
 
   pid(terminalId: number): number | null {
-    return this.terminals.get(terminalId)?.pty.pid ?? null;
+    return this.activeTerminal(terminalId)?.pty.pid ?? null;
   }
 
   closeAll(): void {
-    for (const [, tracked] of this.terminals) tracked.pty.kill();
-    this.terminals.clear();
+    for (const terminalId of [...this.terminals.keys()]) this.close(terminalId);
+  }
+
+  // closing 터미널은 외부 관점에서 이미 닫힘 — exit 대기 중에도 조작·조회를 받지 않는다
+  private activeTerminal(terminalId: number): TrackedTerminal | undefined {
+    const tracked = this.terminals.get(terminalId);
+    if (!tracked || tracked.closing) return undefined;
+    return tracked;
   }
 }
