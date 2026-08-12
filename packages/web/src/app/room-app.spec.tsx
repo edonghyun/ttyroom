@@ -85,6 +85,27 @@ describe("RoomApp production composition", () => {
     });
     act(() => sessionEvent?.({ kind: "lease-acquired", terminalId: 1 }));
     expect(screen.getByText("Control acquired · terminal-1")).toBeVisible();
+    await userEvent.click(screen.getAllByRole("button", { name: "Add host" })[0]!);
+    expect(screen.getByRole("dialog", { name: "Add Host" })).toHaveTextContent(
+      "Waiting for Agent…",
+    );
+    act(() =>
+      projection.applyServerMessage({
+        type: "welcome",
+        selfClientId: "client-1",
+        snapshot: {
+          ...snapshot([1, 2]),
+          hosts: [
+            ...snapshot([1, 2]).hosts,
+            { hostId: "host-2", name: "Minsu-Mac", online: true, remoteInputAllowed: true },
+          ],
+        },
+      }),
+    );
+    expect(screen.getByRole("dialog", { name: "Add Host" })).toHaveTextContent(
+      "Minsu-Mac connected",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Close Add Host" }));
     await userEvent.click(screen.getByRole("button", { name: "Close terminal-1" }));
     expect(session.closeTerminal).not.toHaveBeenCalled();
     await userEvent.click(screen.getByRole("button", { name: "Close terminal" }));

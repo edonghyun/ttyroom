@@ -433,10 +433,16 @@ export function RoomApp({ runtime }: { readonly runtime: RoomAppRuntime }) {
   const view = useSyncExternalStore(runtime.subscribe, runtime.view, runtime.view);
   const [closingTerminalId, setClosingTerminalId] = useState<number | null>(null);
   const [addHostOpen, setAddHostOpen] = useState(false);
+  const [hostIdsWhenDrawerOpened, setHostIdsWhenDrawerOpened] = useState<readonly string[]>([]);
   const closingTerminal = view.terminals.find(
     (terminal) => terminal.terminalId === closingTerminalId,
   );
   const controlledTerminal = view.terminals.find((terminal) => terminal.status.kind === "mine");
+  const connectedHost = view.hosts.find((host) => !hostIdsWhenDrawerOpened.includes(host.hostId));
+  const openAddHost = () => {
+    setHostIdsWhenDrawerOpened(view.hosts.map((host) => host.hostId));
+    setAddHostOpen(true);
+  };
   useWorkspaceKeyboard({
     overlayOpen: addHostOpen || closingTerminalId !== null,
     closeOverlay: () => {
@@ -467,7 +473,7 @@ export function RoomApp({ runtime }: { readonly runtime: RoomAppRuntime }) {
         arrange: () => runtime.arrange(),
         overview: () => runtime.enterOverview(),
         openMenu: () => undefined,
-        addHost: () => setAddHostOpen(true),
+        addHost: openAddHost,
       }}
       narrowViewport={runtime.inputBlocked() && view.connection !== "restoring"}
     >
@@ -497,7 +503,9 @@ export function RoomApp({ runtime }: { readonly runtime: RoomAppRuntime }) {
       <AddHostDrawer
         open={addHostOpen}
         command={runtime.hostCommand()}
-        state={{ kind: "waiting" }}
+        state={
+          connectedHost ? { kind: "connected", hostName: connectedHost.name } : { kind: "waiting" }
+        }
         copy={(command) => runtime.copyText(command)}
         close={() => setAddHostOpen(false)}
       />
