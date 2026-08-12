@@ -36,7 +36,8 @@ export class XtermAdapter implements TerminalAdapter {
     this.fitAddon = factory.createFitAddon();
     this.terminal.loadAddon(this.fitAddon);
     this.terminal.attachCustomKeyEventHandler(
-      (event) => event.key !== "Tab" && event.key !== "Escape" && !(event.altKey && event.key === "o"),
+      (event) =>
+        event.key !== "Tab" && event.key !== "Escape" && !(event.altKey && event.key === "o"),
     );
     this.inputDisposable = this.terminal.onData((data) => {
       if (!this.inputEnabled) return;

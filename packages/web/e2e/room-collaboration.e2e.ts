@@ -190,13 +190,15 @@ test("Dock and Overview expose five terminals while each participant keeps a loc
     }),
   );
   const overlaps = overviewBoxes.flatMap((candidate, index) =>
-    overviewBoxes.slice(index + 1).filter(
-      (other) =>
-        candidate.left < other.right &&
-        candidate.right > other.left &&
-        candidate.top < other.bottom &&
-        candidate.bottom > other.top,
-    ),
+    overviewBoxes
+      .slice(index + 1)
+      .filter(
+        (other) =>
+          candidate.left < other.right &&
+          candidate.right > other.left &&
+          candidate.top < other.bottom &&
+          candidate.bottom > other.top,
+      ),
   );
   expect(overlaps).toEqual([]);
   await alice.roomPage.exitOverview();
