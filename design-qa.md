@@ -85,9 +85,13 @@ recovery surface.
 
 ## Verification
 
-- `pnpm --filter @ttyroom/web test` — 28 files, 93 tests passed
+- `pnpm --filter @ttyroom/web test` — 30 files, 112 tests passed
 - `pnpm --filter @ttyroom/web test:visual` — 1 Chromium visual test passed
 - `pnpm --filter @ttyroom/web test:browser` — 19 Chromium browser tests passed
 - `pnpm --filter @ttyroom/web typecheck` — passed
+
+Task 25 recaptured the source/implementation comparisons and all responsive viewports after the
+Overview, snap, host chooser, and focus-order fixes. The closed Room menu leaves the reference-state
+Top Bar hierarchy unchanged; the refreshed comparisons remain within the passed visual target.
 
 final result: passed
