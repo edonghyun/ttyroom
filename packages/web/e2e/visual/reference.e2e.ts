@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { copyFile, mkdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { createServer, type ViteDevServer } from "vite";
@@ -10,8 +10,8 @@ const SOURCE_IMAGE = resolve(
   "docs/superpowers/specs/assets/ttyroom-floating-terminal-workspace.png",
 );
 const SOURCE_ARTIFACT = resolve(ARTIFACTS_DIR, "source-reference.png");
-const IMPLEMENTATION_ARTIFACT = resolve(ARTIFACTS_DIR, "implementation-iteration-01.png");
-const COMPARISON_ARTIFACT = resolve(ARTIFACTS_DIR, "iteration-01-comparison.png");
+const FINAL_IMPLEMENTATION_ARTIFACT = resolve(ARTIFACTS_DIR, "implementation-final.png");
+const FINAL_COMPARISON_ARTIFACT = resolve(ARTIFACTS_DIR, "final-comparison.png");
 
 let server: ViteDevServer;
 let referenceUrl: string;
@@ -53,6 +53,20 @@ test("reference room renders five production terminal surfaces with stable colla
   ).toBeVisible();
   await expect(page.getByRole("button", { name: "Switch control to tests" })).toBeVisible();
   await expect(page.getByRole("status", { name: "Jihun controls · View only" })).toBeVisible();
+  await expect
+    .poll(() =>
+      page
+        .getByRole("status", { name: "You control · Esc to release" })
+        .evaluate((element) => getComputedStyle(element).backgroundColor),
+    )
+    .not.toBe("rgba(0, 0, 0, 0)");
+  await expect
+    .poll(() =>
+      page
+        .getByRole("button", { name: "Arrange terminals" })
+        .evaluate((element) => getComputedStyle(element).borderTopStyle),
+    )
+    .toBe("solid");
 
   await expect(page.getByLabel("backend output")).toContainText("Server listening");
   await page.evaluate(() => document.fonts.ready);
@@ -74,11 +88,11 @@ test("reference room renders five production terminal surfaces with stable colla
 
   await mkdir(ARTIFACTS_DIR, { recursive: true });
   await copyFile(SOURCE_IMAGE, SOURCE_ARTIFACT);
-  await page.screenshot({ path: IMPLEMENTATION_ARTIFACT, animations: "disabled" });
+  await page.screenshot({ path: FINAL_IMPLEMENTATION_ARTIFACT, animations: "disabled" });
 
   const [source, implementation] = await Promise.all([
     readFile(SOURCE_ARTIFACT, "base64"),
-    readFile(IMPLEMENTATION_ARTIFACT, "base64"),
+    readFile(FINAL_IMPLEMENTATION_ARTIFACT, "base64"),
   ]);
   const comparisonPage = await page.context().newPage();
   await comparisonPage.setViewportSize({ width: 2974, height: 1058 });
@@ -102,8 +116,35 @@ test("reference room renders five production terminal surfaces with stable colla
     "naturalWidth",
     1487,
   );
-  await comparisonPage.screenshot({ path: COMPARISON_ARTIFACT, animations: "disabled" });
+  await comparisonPage.screenshot({ path: FINAL_COMPARISON_ARTIFACT, animations: "disabled" });
   await comparisonPage.close();
+
+  await Promise.all([
+    captureFocusedComparison(page, source, implementation, "top-bar", {
+      x: 0,
+      y: 0,
+      width: 1487,
+      height: 110,
+    }),
+    captureFocusedComparison(page, source, implementation, "backend-header-status", {
+      x: 40,
+      y: 45,
+      width: 740,
+      height: 120,
+    }),
+    captureFocusedComparison(page, source, implementation, "tests-take-control", {
+      x: 20,
+      y: 600,
+      width: 500,
+      height: 270,
+    }),
+    captureFocusedComparison(page, source, implementation, "dock-participants", {
+      x: 0,
+      y: 914,
+      width: 1487,
+      height: 144,
+    }),
+  ]);
 
   await page.getByRole("button", { name: "Open backend menu" }).click();
   await expect(page.getByRole("menu", { name: "backend actions" })).toBeVisible();
@@ -112,4 +153,63 @@ test("reference room renders five production terminal surfaces with stable colla
   await page.getByRole("button", { name: "Close Add Host" }).click();
   await expect(page.getByRole("dialog", { name: "Add Host" })).toBeHidden();
   expect(consoleErrors).toEqual([]);
+
+  for (const viewport of [
+    { width: 1024, height: 768 },
+    { width: 1280, height: 800 },
+    { width: 1920, height: 1080 },
+  ]) {
+    const responsivePage = await page.context().newPage();
+    await responsivePage.setViewportSize(viewport);
+    await responsivePage.goto(referenceUrl);
+    await expect(responsivePage.locator(".terminal-window .xterm")).toHaveCount(5);
+    await responsivePage.evaluate(() => document.fonts.ready);
+    await expect
+      .poll(() =>
+        responsivePage.evaluate(() => ({
+          horizontal: document.documentElement.scrollWidth - window.innerWidth,
+          vertical: document.documentElement.scrollHeight - window.innerHeight,
+        })),
+      )
+      .toEqual({ horizontal: 0, vertical: 0 });
+    await responsivePage.screenshot({
+      path: resolve(ARTIFACTS_DIR, `responsive-${viewport.width}x${viewport.height}.png`),
+      animations: "disabled",
+    });
+    await responsivePage.close();
+  }
 });
+
+async function captureFocusedComparison(
+  page: Page,
+  source: string,
+  implementation: string,
+  name: string,
+  crop: { x: number; y: number; width: number; height: number },
+): Promise<void> {
+  const focusedPage = await page.context().newPage();
+  await focusedPage.setViewportSize({ width: crop.width * 2, height: crop.height });
+  await focusedPage.setContent(`
+    <style>
+      * { box-sizing: border-box; }
+      html, body { margin: 0; width: ${crop.width * 2}px; height: ${crop.height}px; overflow: hidden; background: #000; }
+      main { display: flex; }
+      .crop { position: relative; flex: none; width: ${crop.width}px; height: ${crop.height}px; overflow: hidden; }
+      img { position: absolute; left: -${crop.x}px; top: -${crop.y}px; width: 1487px; height: 1058px; max-width: none; }
+    </style>
+    <main aria-label="Focused source and implementation comparison">
+      <div class="crop"><img alt="Source crop" src="data:image/png;base64,${source}" /></div>
+      <div class="crop"><img alt="Implementation crop" src="data:image/png;base64,${implementation}" /></div>
+    </main>
+  `);
+  await expect(focusedPage.getByAltText("Source crop")).toHaveJSProperty("naturalWidth", 1487);
+  await expect(focusedPage.getByAltText("Implementation crop")).toHaveJSProperty(
+    "naturalWidth",
+    1487,
+  );
+  await focusedPage.screenshot({
+    path: resolve(ARTIFACTS_DIR, `focused-${name}-comparison.png`),
+    animations: "disabled",
+  });
+  await focusedPage.close();
+}

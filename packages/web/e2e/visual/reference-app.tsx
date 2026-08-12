@@ -40,6 +40,9 @@ class ReferenceRoomSession implements RoomAppSession {
       }
       this.projection.applyServerMessage({ type: "sync", terminalId: terminal.terminalId, seq: 1 });
     }
+    for (const subscriber of this.#subscribers) {
+      subscriber({ kind: "lease-acquired", terminalId: 1 });
+    }
   }
 
   stop(): void {
@@ -63,7 +66,9 @@ const root = document.querySelector<HTMLElement>("#root");
 if (!root) throw new Error("visual reference root is missing");
 
 const projection = new RoomProjection();
-const windowManager = new WindowManager({ viewport: { width: 1487, height: 864 } });
+const windowManager = new WindowManager({
+  viewport: { width: window.innerWidth, height: Math.max(1, window.innerHeight - 194) },
+});
 windowManager.restoreLayout(REFERENCE_LAYOUT);
 
 const runtime = new RoomAppRuntime({
