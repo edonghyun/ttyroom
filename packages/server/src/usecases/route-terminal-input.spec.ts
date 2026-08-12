@@ -47,6 +47,20 @@ describe("routeTerminalInput — 역할: 입력권 검증의 단일 지점", () 
     });
   });
 
+  it("host가 원격 입력을 차단하면 유효 lease 입력도 typed 사유로 폐기한다", () => {
+    const { alice, host, terminalId, leaseId } = setupWithLease();
+    host.allowAgentData();
+
+    host.send({ type: "host-input-state", remoteInputAllowed: false });
+    alice.sendInput(terminalId, leaseId, "blocked\n");
+
+    expect(host.conn.dataFrames).toEqual([]);
+    expectMessageToMatch(alice.conn.messages, "lease-invalid", {
+      terminalId,
+      reason: "remote-input-disabled",
+    });
+  });
+
   it("shared 터미널은 임대 없이 Room 참여자의 입력을 전달한다", () => {
     const { ctx, room, bob, host, terminalId } = setupWithLease();
     ctx.setTerminalMode(room, terminalId, "shared");

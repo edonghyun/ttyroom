@@ -4,6 +4,13 @@ import { Room } from "./room.js";
 const makeRoom = () => new Room({ roomId: "r1", token: "tok" });
 
 describe("Room — 역할: Room 라이브 상태와 불변식의 소유자", () => {
+  it("Room 표시 이름은 스냅샷에 포함되고 미지정 시 안전한 기본값을 사용한다", () => {
+    const named = new Room({ roomId: "named", token: "tok", name: "Payment Debug" });
+
+    expect(named.snapshot().name).toBe("Payment Debug");
+    expect(makeRoom().snapshot().name).toBe("Quick Room");
+  });
+
   it("참여자를 추가하면 스냅샷에 나타난다", () => {
     const room = makeRoom();
     room.addParticipant("c1", "동현");
@@ -35,8 +42,20 @@ describe("Room — 역할: Room 라이브 상태와 불변식의 소유자", () 
     room.connectHost("h1", "동현-Mac");
     room.openTerminal("h1");
     room.markHostOffline("h1");
-    expect(room.snapshot().hosts).toEqual([{ hostId: "h1", name: "동현-Mac", online: false }]);
+    expect(room.snapshot().hosts).toEqual([
+      { hostId: "h1", name: "동현-Mac", online: false, remoteInputAllowed: true },
+    ]);
     expect(room.snapshot().terminals).toHaveLength(1);
+  });
+
+  it("Host 원격 입력은 처음 허용되고 kill switch 보고로 snapshot 상태가 바뀐다", () => {
+    const room = makeRoom();
+    room.connectHost("h1", "동현-Mac");
+    expect(room.snapshot().hosts).toMatchObject([{ hostId: "h1", remoteInputAllowed: true }]);
+
+    room.setHostRemoteInputAllowed("h1", false);
+
+    expect(room.snapshot().hosts).toMatchObject([{ hostId: "h1", remoteInputAllowed: false }]);
   });
 
   it("removeHost는 host와 그 터미널을 제거하고 terminalId 목록을 돌려준다", () => {
@@ -97,7 +116,9 @@ describe("Room — 역할: Room 라이브 상태와 불변식의 소유자", () 
     room.connectHost("h1", "동현-Mac");
     room.markHostOffline("h1");
     room.connectHost("h1", "동현-Mac-2");
-    expect(room.snapshot().hosts).toEqual([{ hostId: "h1", name: "동현-Mac-2", online: true }]);
+    expect(room.snapshot().hosts).toEqual([
+      { hostId: "h1", name: "동현-Mac-2", online: true, remoteInputAllowed: true },
+    ]);
   });
 
   it("host 재접속(connectHost 재호출)은 그 host의 기존 터미널을 보존한다", () => {

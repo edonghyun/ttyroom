@@ -19,7 +19,16 @@ export async function startServer(config: ServerConfig): Promise<RunningServer> 
   const rooms = new RoomRegistry();
   const connections = new ConnectionRegistry();
   const api = new HttpApi(rooms);
-  const httpServer = createServer((request, response) => api.handle(request, response));
+  const httpServer = createServer((request, response) => {
+    void api.handle(request, response).catch(() => {
+      if (response.headersSent) {
+        response.destroy();
+        return;
+      }
+      response.writeHead(500, { "content-type": "text/plain; charset=utf-8" });
+      response.end("internal server error");
+    });
+  });
   const core = new ServerCore(
     {
       rooms,

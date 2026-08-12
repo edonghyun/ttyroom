@@ -26,6 +26,8 @@ export class ConnectHost {
     }
 
     room.connectHost(hostId, displayName);
+    const host = room.snapshot().hosts.find((candidate) => candidate.hostId === hostId);
+    if (!host) throw new Error(`방금 연결한 host가 snapshot에 없다: ${hostId}`);
     this.deps.connections.register({
       connection,
       roomId: room.roomId,
@@ -38,7 +40,7 @@ export class ConnectHost {
       type: "room-event",
       event: {
         kind: "host-connected",
-        host: { hostId, name: displayName, online: true },
+        host,
       },
     });
   }

@@ -26,6 +26,41 @@ export class OpenTerminal {
     });
   }
 
+  requestClose(requester: Connection, session: Session, terminalId: number): void {
+    const room = this.deps.rooms.get(session.roomId);
+    const terminal = room?.terminal(terminalId);
+    if (!terminal) {
+      requester.send({
+        type: "terminal-request-rejected",
+        request: "close",
+        terminalId,
+        reason: "terminal-not-found",
+      });
+      return;
+    }
+    if (terminal.status !== "open") {
+      requester.send({
+        type: "terminal-request-rejected",
+        request: "close",
+        terminalId,
+        reason: "terminal-not-open",
+      });
+      return;
+    }
+    const host = this.deps.connections.hostSession(session.roomId, terminal.hostId);
+    if (!host) {
+      requester.send({
+        type: "terminal-request-rejected",
+        request: "close",
+        terminalId,
+        reason: "host-offline",
+      });
+      return;
+    }
+
+    host.connection.send({ type: "close-terminal", terminalId });
+  }
+
   confirmOpened(connection: Connection, session: Session, terminalId: number): void {
     const room = this.deps.rooms.get(session.roomId);
     const terminal = room?.terminal(terminalId);

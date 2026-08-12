@@ -23,6 +23,15 @@ export class RouteTerminalInput {
       return;
     }
 
+    if (!room.isHostRemoteInputAllowed(terminal.hostId)) {
+      connection.send({
+        type: "lease-invalid",
+        terminalId: frame.terminalId,
+        reason: "remote-input-disabled",
+      });
+      return;
+    }
+
     if (!room.isInputAllowed(session.clientId, frame.terminalId, frame.leaseId)) {
       connection.send({
         type: "lease-invalid",

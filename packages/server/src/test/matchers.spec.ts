@@ -25,6 +25,7 @@ describe("expectMessageToMatch — 역할: 진단 가능한 메시지 스트림 
         selfClientId: "alice-id",
         snapshot: {
           roomId: "r1",
+          name: "Quick Room",
           participants: [{ clientId: "alice-id", name: "alice" }],
           hosts: [],
           terminals: [],
@@ -48,6 +49,7 @@ describe("expectMessageToMatch — 역할: 진단 가능한 메시지 스트림 
         selfClientId: "a",
         snapshot: {
           roomId: "r1",
+          name: "Quick Room",
           participants: [
             { clientId: "a", name: "alice" },
             { clientId: "b", name: "bob" },
