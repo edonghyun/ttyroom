@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { PROTOCOL_VERSION } from "./data-frame.js";
 import {
   parseClientMessage,
   parseServerMessage,
@@ -7,6 +8,10 @@ import {
 } from "./messages.js";
 
 describe("제어 메시지 스키마 — 역할: JSON 제어 프레임의 검증과 유선 형태 고정", () => {
+  it("Web prerequisite message variants는 protocol version 2에서 협상한다", () => {
+    expect(PROTOCOL_VERSION).toBe(2);
+  });
+
   it("정상 hello 메시지를 파싱해 타입을 부여한다", () => {
     const raw = JSON.stringify({
       type: "hello",
@@ -87,5 +92,122 @@ describe("제어 메시지 스키마 — 역할: JSON 제어 프레임의 검증
       result: { kind: "granted", leaseId: 5 },
     } as const;
     expect(parseServerMessage(serializeServerMessage(msg))).toEqual({ kind: "ok", message: msg });
+  });
+
+  it("welcome snapshot은 Room 표시 이름을 전달하고 구형 v1 payload에는 안전한 기본값을 채운다", () => {
+    const named = parseServerMessage(
+      JSON.stringify({
+        type: "welcome",
+        selfClientId: "c1",
+        snapshot: {
+          roomId: "r1",
+          name: "Payment Debug",
+          participants: [],
+          hosts: [],
+          terminals: [],
+          leases: [],
+        },
+      }),
+    );
+    const legacy = parseServerMessage(
+      JSON.stringify({
+        type: "welcome",
+        selfClientId: "c1",
+        snapshot: { roomId: "r1", participants: [], hosts: [], terminals: [], leases: [] },
+      }),
+    );
+
+    expect(named).toMatchObject({ kind: "ok", message: { snapshot: { name: "Payment Debug" } } });
+    expect(legacy).toMatchObject({ kind: "ok", message: { snapshot: { name: "Quick Room" } } });
+  });
+
+  it("participant의 close-terminal-request와 typed rejection을 라운드트립한다", () => {
+    const request = { type: "close-terminal-request", terminalId: 3 } as const;
+    const rejection = {
+      type: "terminal-request-rejected",
+      request: "close",
+      terminalId: 3,
+      reason: "host-offline",
+    } as const;
+
+    expect(parseClientMessage(serializeClientMessage(request))).toEqual({
+      kind: "ok",
+      message: request,
+    });
+    expect(parseServerMessage(serializeServerMessage(rejection))).toEqual({
+      kind: "ok",
+      message: rejection,
+    });
+  });
+
+  it("Host 원격 입력 허용 상태를 구형 snapshot 기본값·보고·event·typed 차단 사유로 표현한다", () => {
+    const legacyWelcome = parseServerMessage(
+      JSON.stringify({
+        type: "welcome",
+        selfClientId: "c1",
+        snapshot: {
+          roomId: "r1",
+          participants: [],
+          hosts: [{ hostId: "h1", name: "host", online: true }],
+          terminals: [],
+          leases: [],
+        },
+      }),
+    );
+    expect(legacyWelcome).toMatchObject({
+      kind: "ok",
+      message: { snapshot: { hosts: [{ remoteInputAllowed: true }] } },
+    });
+
+    const report = { type: "host-input-state", remoteInputAllowed: false } as const;
+    expect(parseClientMessage(serializeClientMessage(report))).toEqual({
+      kind: "ok",
+      message: report,
+    });
+
+    const event = {
+      type: "room-event",
+      event: { kind: "host-input-state-changed", hostId: "h1", remoteInputAllowed: false },
+    } as const;
+    expect(parseServerMessage(serializeServerMessage(event))).toEqual({
+      kind: "ok",
+      message: event,
+    });
+
+    const denied = {
+      type: "lease-invalid",
+      terminalId: 3,
+      reason: "remote-input-disabled",
+    } as const;
+    expect(parseServerMessage(serializeServerMessage(denied))).toEqual({
+      kind: "ok",
+      message: denied,
+    });
+  });
+
+  it("participant의 explicit terminal mode 변경과 broadcast event를 라운드트립한다", () => {
+    const request = { type: "set-terminal-mode", terminalId: 3, mode: "shared" } as const;
+    const changed = {
+      type: "room-event",
+      event: { kind: "terminal-mode-changed", terminalId: 3, mode: "shared" },
+    } as const;
+
+    expect(parseClientMessage(serializeClientMessage(request))).toEqual({
+      kind: "ok",
+      message: request,
+    });
+    expect(parseServerMessage(serializeServerMessage(changed))).toEqual({
+      kind: "ok",
+      message: changed,
+    });
+  });
+
+  it("output-gap 복구를 위한 terminal 단위 resync-output-request를 라운드트립한다", () => {
+    const request = { type: "resync-output-request", terminalId: 3 } as const;
+
+    expect(parseClientMessage(serializeClientMessage(request))).toEqual({
+      kind: "ok",
+      message: request,
+    });
   });
 });

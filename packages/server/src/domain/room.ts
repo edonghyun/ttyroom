@@ -9,19 +9,26 @@ export type AcquireDecision =
 
 export type ReleaseDecision = { kind: "released"; lease: LeaseView } | { kind: "not-holder" };
 
+export const DEFAULT_ROOM_NAME = "Quick Room";
+
 export class Room {
   readonly roomId: string;
   readonly token: string;
+  readonly name: string;
   private readonly participants = new Map<string, { name: string }>();
-  private readonly hosts = new Map<string, { name: string; online: boolean }>();
+  private readonly hosts = new Map<
+    string,
+    { name: string; online: boolean; remoteInputAllowed: boolean }
+  >();
   private readonly terminals = new Map<number, TerminalView>();
   private readonly leases = new Map<number, LeaseView>();
   private nextTerminalId = 1;
   private nextLeaseId = 1;
 
-  constructor(options: { roomId: string; token: string }) {
+  constructor(options: { roomId: string; token: string; name?: string }) {
     this.roomId = options.roomId;
     this.token = options.token;
+    this.name = options.name ?? DEFAULT_ROOM_NAME;
   }
 
   addParticipant(clientId: string, name: string): void {
@@ -40,7 +47,24 @@ export class Room {
   }
 
   connectHost(hostId: string, name: string): void {
-    this.hosts.set(hostId, { name, online: true });
+    const existing = this.hosts.get(hostId);
+    this.hosts.set(hostId, {
+      name,
+      online: true,
+      remoteInputAllowed: existing?.remoteInputAllowed ?? true,
+    });
+  }
+
+  setHostRemoteInputAllowed(hostId: string, remoteInputAllowed: boolean): boolean {
+    const host = this.hosts.get(hostId);
+    if (!host) throw new Error(`등록되지 않은 host의 원격 입력 상태를 바꿀 수 없다: ${hostId}`);
+    if (host.remoteInputAllowed === remoteInputAllowed) return false;
+    host.remoteInputAllowed = remoteInputAllowed;
+    return true;
+  }
+
+  isHostRemoteInputAllowed(hostId: string): boolean {
+    return this.hosts.get(hostId)?.remoteInputAllowed ?? false;
   }
 
   openTerminal(hostId: string): TerminalView {
@@ -92,8 +116,11 @@ export class Room {
 
   // 모드 전환은 임대에 관여하지 않는다 — shared 동안 입력권은 isInputAllowed의 shared 분기가
   // 결정하고, exclusive 복귀 시 보존된 임대가 그대로 유효하다 (해제된 적 없으니 현재 임대)
-  setTerminalMode(terminalId: number, mode: "exclusive" | "shared"): void {
-    this.requireTerminal(terminalId).mode = mode;
+  setTerminalMode(terminalId: number, mode: "exclusive" | "shared"): boolean {
+    const terminal = this.requireTerminal(terminalId);
+    if (terminal.mode === mode) return false;
+    terminal.mode = mode;
+    return true;
   }
 
   // 임대는 걷지 않는다 — exited 입력은 isInputAllowed가 차단하고,
@@ -193,8 +220,14 @@ export class Room {
   snapshot(): RoomSnapshot {
     return {
       roomId: this.roomId,
+      name: this.name,
       participants: [...this.participants].map(([clientId, p]) => ({ clientId, name: p.name })),
-      hosts: [...this.hosts].map(([hostId, h]) => ({ hostId, name: h.name, online: h.online })),
+      hosts: [...this.hosts].map(([hostId, h]) => ({
+        hostId,
+        name: h.name,
+        online: h.online,
+        remoteInputAllowed: h.remoteInputAllowed,
+      })),
       terminals: [...this.terminals.values()].map(copyOfTerminal),
       // LeaseView 필드는 전부 원시값 — 이 깊이의 복사로 내부 상태 역참조가 없다
       leases: [...this.leases.values()].map((l) => ({ ...l })),

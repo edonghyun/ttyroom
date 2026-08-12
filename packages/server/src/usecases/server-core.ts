@@ -12,9 +12,12 @@ import { HandleDisconnect, PendingDisconnects } from "./handle-disconnect.js";
 import { JoinRoom } from "./join-room.js";
 import { OpenTerminal } from "./open-terminal.js";
 import { ReleaseLease } from "./release-lease.js";
+import { ResyncTerminalOutput } from "./resync-terminal-output.js";
 import { ResizeTerminal } from "./resize-terminal.js";
 import { RouteTerminalInput } from "./route-terminal-input.js";
+import { SetTerminalMode } from "./set-terminal-mode.js";
 import { SyncLateJoiner } from "./sync-late-joiner.js";
+import { UpdateHostInputState } from "./update-host-input-state.js";
 
 // 어댑터가 아는 유일한 진입점 — 프레임을 유즈케이스로 라우팅한다
 export class ServerCore {
@@ -26,6 +29,9 @@ export class ServerCore {
   private readonly routeTerminalInput: RouteTerminalInput;
   private readonly broadcastTerminalOutput: BroadcastTerminalOutput;
   private readonly handleDisconnect: HandleDisconnect;
+  private readonly updateHostInputState: UpdateHostInputState;
+  private readonly setTerminalMode: SetTerminalMode;
+  private readonly resyncTerminalOutput: ResyncTerminalOutput;
 
   constructor(
     private readonly deps: {
@@ -67,6 +73,18 @@ export class ServerCore {
       { rooms: deps.rooms, connections: deps.connections, pending },
       { policy: options.policy },
     );
+    this.updateHostInputState = new UpdateHostInputState({
+      rooms: deps.rooms,
+      connections: deps.connections,
+    });
+    this.setTerminalMode = new SetTerminalMode({
+      rooms: deps.rooms,
+      connections: deps.connections,
+    });
+    this.resyncTerminalOutput = new ResyncTerminalOutput({
+      rooms: deps.rooms,
+      output: this.broadcastTerminalOutput,
+    });
   }
 
   handleMessage(conn: Connection, raw: string): void {
@@ -95,6 +113,21 @@ export class ServerCore {
 
     if (parsed.message.type === "open-terminal-request" && session.role === "participant") {
       this.openTerminal.request(conn, session, parsed.message.hostId);
+      return;
+    }
+
+    if (parsed.message.type === "close-terminal-request" && session.role === "participant") {
+      this.openTerminal.requestClose(conn, session, parsed.message.terminalId);
+      return;
+    }
+
+    if (parsed.message.type === "set-terminal-mode" && session.role === "participant") {
+      this.setTerminalMode.execute(conn, session, parsed.message.terminalId, parsed.message.mode);
+      return;
+    }
+
+    if (parsed.message.type === "resync-output-request" && session.role === "participant") {
+      this.resyncTerminalOutput.execute(conn, session, parsed.message.terminalId);
       return;
     }
 
@@ -131,6 +164,11 @@ export class ServerCore {
 
     if (parsed.message.type === "terminal-meta" && session.role === "host") {
       this.openTerminal.updateMeta(conn, session, parsed.message.terminalId, parsed.message.meta);
+      return;
+    }
+
+    if (parsed.message.type === "host-input-state" && session.role === "host") {
+      this.updateHostInputState.execute(conn, session, parsed.message.remoteInputAllowed);
       return;
     }
 

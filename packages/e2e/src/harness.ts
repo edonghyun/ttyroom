@@ -25,6 +25,7 @@ const CHILD_TERMINATION_GRACE_MS = 250;
 
 export interface TestRoom {
   roomId: string;
+  name: string;
   token: string;
   joinUrl: string;
   baseUrl: string;
@@ -41,6 +42,9 @@ export interface ParticipantClient {
   snapshot(): RoomSnapshot;
   openTerminal(hostId: string): Promise<number>;
   acquire(terminalId: number): Promise<LeaseResult>;
+  closeTerminal(terminalId: number): Promise<void>;
+  setMode(terminalId: number, mode: "exclusive" | "shared"): Promise<void>;
+  resyncOutput(terminalId: number): Promise<void>;
   type(terminalId: number, text: string): void;
   outputText(terminalId: number): string;
   syncedSeq(terminalId: number): number;
@@ -50,7 +54,7 @@ export interface ParticipantClient {
 }
 
 export interface TestServer {
-  room(): Promise<TestRoom>;
+  room(name?: string): Promise<TestRoom>;
   close(): Promise<void>;
   [Symbol.asyncDispose](): Promise<void>;
 }
@@ -69,12 +73,21 @@ class E2eServer implements TestServer {
 
   constructor(private readonly running: Awaited<ReturnType<typeof startServer>>) {}
 
-  async room(): Promise<TestRoom> {
-    const response = await fetch(`${this.running.httpBaseUrl}/api/rooms`, { method: "POST" });
+  async room(name?: string): Promise<TestRoom> {
+    const response = await fetch(`${this.running.httpBaseUrl}/api/rooms`, {
+      method: "POST",
+      headers: name === undefined ? undefined : { "content-type": "application/json" },
+      body: name === undefined ? undefined : JSON.stringify({ name }),
+    });
     if (response.status !== 201) {
       throw new Error(`Room 생성 실패: HTTP ${response.status}`);
     }
-    const body = (await response.json()) as { roomId: string; token: string; joinUrl: string };
+    const body = (await response.json()) as {
+      roomId: string;
+      name: string;
+      token: string;
+      joinUrl: string;
+    };
     return { ...body, baseUrl: this.running.httpBaseUrl };
   }
 
@@ -229,6 +242,41 @@ class WsParticipant implements ParticipantClient {
     if (result.type !== "lease-result") throw new Error("lease-result 대기 결과가 계약과 다르다");
     if (result.result.kind === "granted") this.leases.set(terminalId, result.result.leaseId);
     return result.result;
+  }
+
+  async closeTerminal(terminalId: number): Promise<void> {
+    const before = this.messages.length;
+    this.send({ type: "close-terminal-request", terminalId });
+    await this.waitForMessage(
+      (message) =>
+        message.type === "room-event" &&
+        message.event.kind === "terminal-closed" &&
+        message.event.terminalId === terminalId,
+      before,
+    );
+  }
+
+  async setMode(terminalId: number, mode: "exclusive" | "shared"): Promise<void> {
+    const before = this.messages.length;
+    this.send({ type: "set-terminal-mode", terminalId, mode });
+    await this.waitForMessage(
+      (message) =>
+        message.type === "room-event" &&
+        message.event.kind === "terminal-mode-changed" &&
+        message.event.terminalId === terminalId &&
+        message.event.mode === mode,
+      before,
+    );
+  }
+
+  async resyncOutput(terminalId: number): Promise<void> {
+    const before = this.messages.length;
+    this.output.delete(terminalId);
+    this.send({ type: "resync-output-request", terminalId });
+    await this.waitForMessage(
+      (message) => message.type === "sync" && message.terminalId === terminalId,
+      before,
+    );
   }
 
   type(terminalId: number, text: string): void {
@@ -418,6 +466,11 @@ function applyRoomEvent(snapshot: RoomSnapshot, event: RoomEvent): void {
       }
       remove(snapshot.terminals, (item) => item.hostId === event.hostId, true);
       return;
+    case "host-input-state-changed": {
+      const host = snapshot.hosts.find((item) => item.hostId === event.hostId);
+      if (host) host.remoteInputAllowed = event.remoteInputAllowed;
+      return;
+    }
     case "terminal-opened":
       upsert(
         snapshot.terminals,
@@ -425,6 +478,11 @@ function applyRoomEvent(snapshot: RoomSnapshot, event: RoomEvent): void {
         event.terminal,
       );
       return;
+    case "terminal-mode-changed": {
+      const terminal = snapshot.terminals.find((item) => item.terminalId === event.terminalId);
+      if (terminal) terminal.mode = event.mode;
+      return;
+    }
     case "terminal-closed": {
       const terminal = snapshot.terminals.find((item) => item.terminalId === event.terminalId);
       if (terminal) {

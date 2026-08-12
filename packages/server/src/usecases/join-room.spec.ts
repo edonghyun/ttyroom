@@ -58,6 +58,31 @@ describe("joinRoom — 역할: hello 검증과 Room 입장", () => {
     expectMessageToMatch(conn.messages, "error", { code: "unsupported-protocol-version" });
   });
 
+  it("구형 v1 hello는 v2 server에서 unsupported로 명확히 거부되고 연결이 닫힌다", () => {
+    const ctx = new RoomTestContext();
+    const room = ctx.createRoom();
+    const conn = ctx.rawConnection();
+
+    ctx.core.handleMessage(
+      conn,
+      JSON.stringify({
+        type: "hello",
+        protocolVersion: 1,
+        roomId: room.roomId,
+        token: room.token,
+        clientId: "legacy-client",
+        name: "legacy",
+        role: "participant",
+      }),
+    );
+
+    expectMessageToMatch(conn.messages, "error", {
+      code: "unsupported-protocol-version",
+      message: "server=2",
+    });
+    expect(conn.closed).toBe(true);
+  });
+
   it("등록된 연결의 재hello는 error(bad-message)이고 연결과 기존 세션은 유지된다", () => {
     const ctx = new RoomTestContext();
     const room = ctx.createRoom();

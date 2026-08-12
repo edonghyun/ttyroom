@@ -86,6 +86,70 @@ describe("openTerminal — 역할: 터미널 생성 요청의 중개", () => {
     });
   });
 
+  it("participant close 요청은 owning host로 전달되고 종료 이벤트는 host 확인 뒤에만 발생한다", () => {
+    const ctx = new RoomTestContext();
+    const room = ctx.createRoom();
+    const host = ctx.connectHost(room, "h");
+    const alice = ctx.connectParticipant(room, "alice");
+    alice.send({ type: "open-terminal-request", hostId: host.hostId });
+    const terminalId = lastMessageOfType(host.conn.messages, "open-terminal").terminalId;
+    host.send({ type: "terminal-opened", terminalId });
+    const eventsBeforeClose = alice.conn.messages.length;
+
+    alice.send({ type: "close-terminal-request", terminalId });
+
+    expect(lastMessageOfType(host.conn.messages, "close-terminal")).toEqual({
+      type: "close-terminal",
+      terminalId,
+    });
+    expect(
+      alice.conn.messages
+        .slice(eventsBeforeClose)
+        .some(
+          (message) => message.type === "room-event" && message.event.kind === "terminal-closed",
+        ),
+    ).toBe(false);
+
+    host.send({ type: "terminal-closed", terminalId, exitCode: 0 });
+    expectMessageToMatch(alice.conn.messages.slice(eventsBeforeClose), "room-event", {
+      event: { kind: "terminal-closed", terminalId, exitCode: 0 },
+    });
+  });
+
+  it("participant close 요청은 terminal 상태와 owning host 연결을 typed 사유로 검증한다", () => {
+    const ctx = new RoomTestContext();
+    const room = ctx.createRoom();
+    const host = ctx.connectHost(room, "h");
+    const alice = ctx.connectParticipant(room, "alice");
+
+    alice.send({ type: "close-terminal-request", terminalId: 999 });
+    expectMessageToMatch(alice.conn.messages, "terminal-request-rejected", {
+      request: "close",
+      terminalId: 999,
+      reason: "terminal-not-found",
+    });
+
+    alice.send({ type: "open-terminal-request", hostId: host.hostId });
+    const terminalId = lastMessageOfType(host.conn.messages, "open-terminal").terminalId;
+    host.send({ type: "terminal-closed", terminalId, exitCode: 0 });
+    alice.send({ type: "close-terminal-request", terminalId });
+    expectMessageToMatch(alice.conn.messages, "terminal-request-rejected", {
+      request: "close",
+      terminalId,
+      reason: "terminal-not-open",
+    });
+
+    alice.send({ type: "open-terminal-request", hostId: host.hostId });
+    const offlineTerminal = lastMessageOfType(host.conn.messages, "open-terminal").terminalId;
+    host.disconnect();
+    alice.send({ type: "close-terminal-request", terminalId: offlineTerminal });
+    expectMessageToMatch(alice.conn.messages, "terminal-request-rejected", {
+      request: "close",
+      terminalId: offlineTerminal,
+      reason: "host-offline",
+    });
+  });
+
   it("같은 terminal-closed가 재도착해도 종료 이벤트를 중복 브로드캐스트하지 않는다", () => {
     const ctx = new RoomTestContext();
     const room = ctx.createRoom();

@@ -150,6 +150,22 @@ describe("AgentApp — 역할: 서버 명령과 PTY의 배선, Kill Switch", () 
     expect(statusLines.some((l) => l.includes("Kill Switch OFF"))).toBe(true);
   });
 
+  it("연결과 Kill Switch 토글마다 서버에 현재 원격 입력 허용 상태를 보고한다", () => {
+    const { app, session } = makeApp();
+
+    app.handleEvent({ kind: "connected" });
+    app.setKillSwitch(true);
+    app.handleEvent({ kind: "connected" });
+    app.setKillSwitch(false);
+
+    expect(session.sent).toEqual([
+      { type: "host-input-state", remoteInputAllowed: true },
+      { type: "host-input-state", remoteInputAllowed: false },
+      { type: "host-input-state", remoteInputAllowed: false },
+      { type: "host-input-state", remoteInputAllowed: true },
+    ]);
+  });
+
   it("Kill Switch가 켜져 있으면 open-terminal을 차단하고 terminal-closed로 회신한다 (새 셸 생성 금지)", () => {
     const { app, session, ptys } = makeApp();
 
@@ -161,7 +177,10 @@ describe("AgentApp — 역할: 서버 명령과 PTY의 배선, Kill Switch", () 
 
     expect(ptys.opens).toEqual([]);
     // 서버의 pending 터미널을 기존 protocol 메시지로 정리 — 유령 open 방지
-    expect(session.sent).toEqual([{ type: "terminal-closed", terminalId: 9, exitCode: null }]);
+    expect(session.sent).toEqual([
+      { type: "host-input-state", remoteInputAllowed: false },
+      { type: "terminal-closed", terminalId: 9, exitCode: null },
+    ]);
   });
 
   it("실제로 연 터미널만 onTerminalOpened로 알린다 — 차단된 open을 관찰자(MetaCollector)가 추적하면 누수다", () => {
@@ -242,7 +261,14 @@ describe("AgentApp — 역할: 서버 명령과 PTY의 배선, Kill Switch", () 
       message: {
         type: "welcome",
         selfClientId: "client-1",
-        snapshot: { roomId: "r", participants: [], hosts: [], terminals: [], leases: [] },
+        snapshot: {
+          roomId: "r",
+          name: "Quick Room",
+          participants: [],
+          hosts: [],
+          terminals: [],
+          leases: [],
+        },
       },
     });
 

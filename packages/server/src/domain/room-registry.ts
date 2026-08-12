@@ -3,7 +3,7 @@ import { Room } from "./room.js";
 export class RoomRegistry {
   private readonly rooms = new Map<string, Room>();
 
-  create(options: { roomId: string; token: string }): Room {
+  create(options: { roomId: string; token: string; name?: string }): Room {
     if (this.rooms.has(options.roomId)) {
       throw new Error(`이미 존재하는 roomId: ${options.roomId}`);
     }

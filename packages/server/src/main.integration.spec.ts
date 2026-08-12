@@ -33,6 +33,49 @@ describe("startServer — 역할: 조립과 HTTP 경계", () => {
     }
   });
 
+  it("POST /api/rooms의 표시 이름이 생성 응답과 welcome snapshot까지 이어진다", async () => {
+    const server = await startServer(loadConfig({}));
+    let socket: WebSocket | undefined;
+    try {
+      const issued = await fetch(`${server.httpBaseUrl}/api/rooms`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name: "Payment Debug" }),
+      });
+      const room = (await issued.json()) as { roomId: string; token: string; name: string };
+      expect(room.name).toBe("Payment Debug");
+
+      socket = new WebSocket(`${server.httpBaseUrl.replace("http", "ws")}/ws`);
+      await new Promise<void>((resolve, reject) => {
+        socket?.once("open", resolve);
+        socket?.once("error", reject);
+      });
+      socket.send(
+        serializeClientMessage({
+          type: "hello",
+          protocolVersion: PROTOCOL_VERSION,
+          roomId: room.roomId,
+          token: room.token,
+          clientId: "alice-named",
+          name: "alice",
+          role: "participant",
+        }),
+      );
+      const raw = await new Promise<string>((resolve, reject) => {
+        socket?.once("message", (data) => resolve(data.toString()));
+        socket?.once("error", reject);
+      });
+
+      expect(parseServerMessage(raw)).toMatchObject({
+        kind: "ok",
+        message: { type: "welcome", snapshot: { name: "Payment Debug" } },
+      });
+    } finally {
+      if (socket?.readyState === WebSocket.OPEN) socket.terminate();
+      await server.close();
+    }
+  });
+
   it("GET /r/:roomId가 웹 트랙용 Room 자리표시를 제공한다", async () => {
     const server = await startServer(loadConfig({}));
     try {

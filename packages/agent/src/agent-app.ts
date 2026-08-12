@@ -50,6 +50,7 @@ export class AgentApp {
         return;
       case "connected":
         this.options.onStatus("서버에 연결됨");
+        this.reportRemoteInputState();
         return;
       case "reconnecting":
         this.options.onStatus(`재접속 대기 중 (시도 ${event.attempt}, ${event.delayMs}ms 후)`);
@@ -62,6 +63,7 @@ export class AgentApp {
 
   setKillSwitch(on: boolean): void {
     this.killSwitchOn = on;
+    this.reportRemoteInputState();
 
     // Host Owner가 동작을 신뢰하려면 상태가 보여야 한다 (스펙 "Host Owner 차단권")
     this.options.onStatus(
@@ -71,6 +73,13 @@ export class AgentApp {
 
   killSwitch(): boolean {
     return this.killSwitchOn;
+  }
+
+  private reportRemoteInputState(): void {
+    this.deps.session.send({
+      type: "host-input-state",
+      remoteInputAllowed: !this.killSwitchOn,
+    });
   }
 
   // 조립부가 PtyManager의 onOutput/onExit 옵션에 이 메서드들을 배선한다

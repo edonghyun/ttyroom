@@ -86,7 +86,14 @@ describe("AgentSession — 역할: 서버 연결 수명주기", () => {
     transport.lastConnection().emitMessage({
       type: "welcome",
       selfClientId: "client-1",
-      snapshot: { roomId: "room-1", hosts: [], participants: [], terminals: [], leases: [] },
+      snapshot: {
+        roomId: "room-1",
+        name: "Quick Room",
+        hosts: [],
+        participants: [],
+        terminals: [],
+        leases: [],
+      },
     });
     transport.lastConnection().emitClose();
 
