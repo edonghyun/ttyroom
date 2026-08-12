@@ -49,14 +49,36 @@ describe("회복 탄력성 — 단절과 유예", () => {
     const terminalId = await alice.openTerminal(agent.hostId);
     await alice.acquire(terminalId);
 
-    alice.type(terminalId, "printf 'tick-1\\n'; sleep 0.2; printf 'tick-2\\n'\n");
-    await waitUntil(() => alice.outputText(terminalId).includes("tick-1"));
+    alice.type(terminalId, "export TTYROOM_E2E_SENTINEL=pty-survived; printf 'state-set\\n'\n");
+    await waitUntil(() => alice.outputText(terminalId).includes("state-set"));
     alice.close();
     await alice.reconnect();
+    alice.type(terminalId, "printf '%s\\n' \"$TTYROOM_E2E_SENTINEL\"\n");
 
-    await waitUntil(() => alice.outputText(terminalId).includes("tick-2"));
+    await waitUntil(() => alice.outputText(terminalId).includes("pty-survived"));
     expect(alice.snapshot().terminals).toContainEqual(
       expect.objectContaining({ terminalId, status: "open" }),
     );
   });
+
+  it("재접속 replay는 이미 받은 seq를 transcript에 중복 추가하지 않는다", async () => {
+    await using server = await given.server({ participantGraceMs: 3_000 });
+    const room = await server.room();
+    const agent = await given.agent(room, "host-a");
+    const alice = await given.participant(room, "alice", "stable-alice");
+    const terminalId = await alice.openTerminal(agent.hostId);
+    await alice.acquire(terminalId);
+    alice.type(terminalId, "printf 'unique-replay-marker\\n'\n");
+    await waitUntil(() => countOf(alice.outputText(terminalId), "unique-replay-marker") === 1);
+
+    alice.close();
+    await alice.reconnect();
+    await waitUntil(() => alice.syncedSeq(terminalId) > 0);
+
+    expect(countOf(alice.outputText(terminalId), "unique-replay-marker")).toBe(1);
+  });
 });
+
+function countOf(text: string, marker: string): number {
+  return text.split(marker).length - 1;
+}

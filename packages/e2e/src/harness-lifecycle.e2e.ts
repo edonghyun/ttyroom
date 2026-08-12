@@ -3,6 +3,7 @@ import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { given, waitUntil } from "./harness.js";
 
 const WORKSPACE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const TSX_LOADER = createRequire(import.meta.url).resolve("tsx");
@@ -30,5 +31,38 @@ describe("E2E harness 수명 — 테스트 프로세스 정리", () => {
     if (result.kind === "timeout") child.kill("SIGKILL");
 
     expect(result, diagnostics.join("")).toEqual({ kind: "exit", code: 0 });
+  });
+
+  it("중첩 server에서도 room 소유 server가 자신이 만든 agent를 종료한다", async () => {
+    const serverA = await given.server();
+    const roomA = await serverA.room();
+    const serverB = await given.server();
+    const agentA = await given.agent(roomA, "owned-by-a");
+
+    await serverA.close();
+
+    await waitUntil(() => agentA.exited(), { timeoutMs: 1_000 });
+    await serverB.close();
+  });
+
+  it("정지된 agent가 있어도 server close는 제한 시간 안에 강제 종료한다", async () => {
+    const server = await given.server();
+    const room = await server.room();
+    const agent = await given.agent(room, "stopped-agent");
+    agent.kill("SIGSTOP");
+
+    const close = server.close();
+    const result = await Promise.race([
+      close.then(() => "closed" as const),
+      new Promise<"timeout">((resolveResult) => setTimeout(() => resolveResult("timeout"), 1_000)),
+    ]);
+    if (result === "timeout") {
+      agent.kill("SIGCONT");
+      agent.kill("SIGTERM");
+      await close;
+    }
+
+    expect(result).toBe("closed");
+    expect(agent.exited()).toBe(true);
   });
 });

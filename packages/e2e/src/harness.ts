@@ -21,6 +21,7 @@ type Policy = ServerConfig["policy"];
 const WORKSPACE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const TSX_LOADER = createRequire(import.meta.url).resolve("tsx");
 const DEFAULT_WAIT_TIMEOUT_MS = 10_000;
+const CHILD_TERMINATION_GRACE_MS = 250;
 
 export interface TestRoom {
   roomId: string;
@@ -32,6 +33,7 @@ export interface TestRoom {
 export interface AgentHandle {
   hostId: string;
   kill(signal?: NodeJS.Signals): void;
+  exited(): boolean;
 }
 
 export interface ParticipantClient {
@@ -121,6 +123,7 @@ class E2eServer implements TestServer {
       return {
         hostId: connected.event.host.hostId,
         kill: (signal = "SIGTERM") => child.kill(signal),
+        exited: () => child.exitCode !== null || child.signalCode !== null,
       };
     } finally {
       releaseStartup?.();
@@ -145,6 +148,7 @@ class E2eServer implements TestServer {
     try {
       await this.running.close();
     } finally {
+      serversByBaseUrl.delete(this.running.httpBaseUrl);
       for (const participant of [...this.participants]) participant.close();
       await Promise.all([...this.children].map((child) => terminateChild(child)));
     }
@@ -157,11 +161,12 @@ class E2eServer implements TestServer {
 
 class WsParticipant implements ParticipantClient {
   private readonly messages: ServerMessage[] = [];
-  private readonly output = new Map<number, Uint8Array[]>();
+  private readonly output = new Map<number, Map<number, Uint8Array>>();
   private readonly syncs = new Map<number, number>();
   private readonly leases = new Map<number, number>();
   private currentSnapshot: RoomSnapshot | undefined;
   private inputSeq = 0;
+  private openTerminalQueue = Promise.resolve();
 
   private constructor(
     readonly clientId: string,
@@ -186,19 +191,32 @@ class WsParticipant implements ParticipantClient {
   }
 
   async openTerminal(hostId: string): Promise<number> {
-    const before = this.messages.length;
-    this.send({ type: "open-terminal-request", hostId });
-    const opened = await this.waitForMessage(
-      (message) =>
-        message.type === "room-event" &&
-        message.event.kind === "terminal-opened" &&
-        message.event.terminal.hostId === hostId,
-      before,
-    );
-    if (opened.type !== "room-event" || opened.event.kind !== "terminal-opened") {
-      throw new Error("terminal-opened 대기 결과가 계약과 다르다");
+    // open-terminal-request/terminal-opened에는 requestId가 없으므로 한 participant의
+    // 동시 요청은 직렬화해야 각 Promise가 서로 다른 응답을 소비한다.
+    const previousOpen = this.openTerminalQueue;
+    let releaseOpen: (() => void) | undefined;
+    this.openTerminalQueue = new Promise<void>((resolveOpen) => {
+      releaseOpen = resolveOpen;
+    });
+    await previousOpen;
+
+    try {
+      const before = this.messages.length;
+      this.send({ type: "open-terminal-request", hostId });
+      const opened = await this.waitForMessage(
+        (message) =>
+          message.type === "room-event" &&
+          message.event.kind === "terminal-opened" &&
+          message.event.terminal.hostId === hostId,
+        before,
+      );
+      if (opened.type !== "room-event" || opened.event.kind !== "terminal-opened") {
+        throw new Error("terminal-opened 대기 결과가 계약과 다르다");
+      }
+      return opened.event.terminal.terminalId;
+    } finally {
+      releaseOpen?.();
     }
-    return opened.event.terminal.terminalId;
   }
 
   async acquire(terminalId: number): Promise<LeaseResult> {
@@ -229,7 +247,9 @@ class WsParticipant implements ParticipantClient {
   }
 
   outputText(terminalId: number): string {
-    const chunks = this.output.get(terminalId) ?? [];
+    const chunks = [...(this.output.get(terminalId)?.entries() ?? [])]
+      .sort(([left], [right]) => left - right)
+      .map(([, chunk]) => chunk);
     const size = chunks.reduce((total, chunk) => total + chunk.length, 0);
     const bytes = new Uint8Array(size);
     let offset = 0;
@@ -315,9 +335,9 @@ class WsParticipant implements ParticipantClient {
         raw instanceof ArrayBuffer ? new Uint8Array(raw) : new Uint8Array(raw as Buffer);
       const decoded = decodeDataFrame(bytes);
       if (decoded.kind !== "ok" || decoded.frame.kind !== "output") return;
-      const chunks = this.output.get(decoded.frame.terminalId) ?? [];
-      chunks.push(decoded.frame.payload);
-      this.output.set(decoded.frame.terminalId, chunks);
+      const frames = this.output.get(decoded.frame.terminalId) ?? new Map<number, Uint8Array>();
+      frames.set(decoded.frame.seq, decoded.frame.payload);
+      this.output.set(decoded.frame.terminalId, frames);
       return;
     }
 
@@ -339,22 +359,23 @@ export const given: Given = {
     const config = loadConfig({ file: { port: 0, policy }, env: {} });
     const running = await startServer(config);
     const server = new E2eServer(running);
-    activeServer = server;
+    serversByBaseUrl.set(running.httpBaseUrl, server);
     return server;
   },
   agent(room, name): Promise<AgentHandle> {
-    return requireActiveServer().agent(room, name);
+    return serverFor(room).agent(room, name);
   },
   participant(room, name, clientId): Promise<ParticipantClient> {
-    return requireActiveServer().participant(room, name, clientId);
+    return serverFor(room).participant(room, name, clientId);
   },
 };
 
-let activeServer: E2eServer | undefined;
+const serversByBaseUrl = new Map<string, E2eServer>();
 
-function requireActiveServer(): E2eServer {
-  if (!activeServer) throw new Error("given.server()를 먼저 호출해야 한다");
-  return activeServer;
+function serverFor(room: TestRoom): E2eServer {
+  const server = serversByBaseUrl.get(room.baseUrl);
+  if (!server) throw new Error(`room 소유 server가 없거나 닫혔다: ${room.baseUrl}`);
+  return server;
 }
 
 export async function waitUntil(
@@ -456,6 +477,14 @@ async function terminateChild(child: ChildProcess): Promise<void> {
   if (child.exitCode !== null || child.signalCode !== null) return;
   const exited = new Promise<void>((resolvePromise) => child.once("exit", () => resolvePromise()));
   child.kill("SIGTERM");
+  const exitedGracefully = await Promise.race([
+    exited.then(() => true),
+    new Promise<false>((resolveTimeout) => {
+      const timeout = setTimeout(() => resolveTimeout(false), CHILD_TERMINATION_GRACE_MS);
+      timeout.unref();
+    }),
+  ]);
+  if (!exitedGracefully) child.kill("SIGKILL");
   await exited;
 }
 

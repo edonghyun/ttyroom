@@ -101,4 +101,18 @@ describe("협업 플로우 — A 입력을 B가 본다", () => {
 
     expect(hostA.hostId).not.toBe(hostB.hostId);
   });
+
+  it("한 참여자의 같은 host 동시 open은 서로 다른 terminalId로 완료된다", async () => {
+    await using server = await given.server();
+    const room = await server.room();
+    const host = await given.agent(room, "host-a");
+    const alice = await given.participant(room, "alice");
+
+    const terminalIds = await Promise.all([
+      alice.openTerminal(host.hostId),
+      alice.openTerminal(host.hostId),
+    ]);
+
+    expect(new Set(terminalIds).size).toBe(2);
+  });
 });
