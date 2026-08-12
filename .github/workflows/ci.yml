@@ -34,6 +34,7 @@ jobs:
       - run: pnpm --filter @ttyroom/web exec playwright install --with-deps chromium
       - run: pnpm --filter @ttyroom/web build
       - run: pnpm --filter @ttyroom/server build
+      - run: pnpm --filter @ttyroom/agent build
       - run: pnpm test:browser
       - if: failure()
         uses: actions/upload-artifact@v4
