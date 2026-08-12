@@ -21,6 +21,29 @@ jobs:
       - run: pnpm depcruise
       - run: pnpm test
 
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @ttyroom/web exec playwright install --with-deps chromium
+      - run: pnpm --filter @ttyroom/web build
+      - run: pnpm --filter @ttyroom/server build
+      - run: pnpm test:browser
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-test-evidence
+          if-no-files-found: ignore
+          path: |
+            packages/web/playwright-report
+            packages/web/test-results
+
   full:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest

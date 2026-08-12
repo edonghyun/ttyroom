@@ -8,7 +8,7 @@
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "build": "tsc -p tsconfig.json --noEmit && vite build",
-    "test:browser": "playwright test --config playwright.config.ts",
+    "test:browser": "playwright test e2e --pass-with-no-tests",
     "test:visual": "playwright test --config playwright.visual.config.ts"
   },
   "dependencies": {

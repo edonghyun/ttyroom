@@ -3,3 +3,5 @@ dist/
 *.tsbuildinfo
 .env
 refs/sshx/
+packages/web/playwright-report/
+packages/web/test-results/
