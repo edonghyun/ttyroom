@@ -1,5 +1,5 @@
-import { useEffect, useRef } from "react";
-import { Maximize2, Minimize2, RotateCcw, X } from "react-feather";
+import { useEffect, useRef, useState } from "react";
+import { Maximize2, Minimize2, MoreHorizontal, RotateCcw, X } from "react-feather";
 
 import type { WindowRect } from "../../windows/window-geometry.js";
 import { TerminalStatus, type TerminalStatusValue } from "./TerminalStatus.js";
@@ -11,6 +11,8 @@ export interface TerminalWindowModel {
   readonly cwd?: string;
   readonly branch?: string;
   readonly status: TerminalStatusValue;
+  readonly mode: "exclusive" | "shared";
+  readonly controlAction?: "take" | "switch";
   readonly rect: WindowRect;
   readonly z: number;
   readonly minimized: boolean;
@@ -27,6 +29,7 @@ export interface TerminalWindowActions {
   readonly maximize: (terminalId: number) => void;
   readonly restore: (terminalId: number) => void;
   readonly requestClose: (terminalId: number) => void;
+  readonly setMode: (terminalId: number, mode: "exclusive" | "shared") => void;
   readonly openNew?: (host: string) => void;
 }
 
@@ -54,6 +57,7 @@ export function TerminalWindow({
   const terminalRoot = useRef<HTMLDivElement>(null);
   const dragStart = useRef<{ x: number; y: number; rect: WindowRect } | null>(null);
   const resizeStart = useRef<{ x: number; y: number; rect: WindowRect } | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const inputAllowed = model.status.kind === "mine" || model.status.kind === "shared";
 
   useEffect(() => {
@@ -62,7 +66,7 @@ export function TerminalWindow({
 
   useEffect(() => {
     controller.setInputAllowed(inputAllowed && !overview && !model.minimized && !inputBlocked);
-    controller.setVisible(!model.minimized);
+    controller.setVisible(overview || !model.minimized);
   }, [controller, inputAllowed, inputBlocked, model.minimized, overview]);
 
   useEffect(() => {
@@ -96,7 +100,7 @@ export function TerminalWindow({
       aria-current={active ? "true" : undefined}
       data-terminal-id={model.terminalId}
       data-overview={overview || undefined}
-      hidden={model.minimized}
+      hidden={model.minimized && !overview}
       style={{
         left: model.rect.x,
         top: model.rect.y,
@@ -121,11 +125,11 @@ export function TerminalWindow({
           <button
             type="button"
             className="take-control"
-            aria-label={`Take control of ${model.title}`}
+            aria-label={`${model.controlAction === "switch" ? "Switch control to" : "Take control of"} ${model.title}`}
             onPointerDown={(event) => event.stopPropagation()}
             onClick={() => actions.takeControl(model.terminalId)}
           >
-            Take control
+            {model.controlAction === "switch" ? "Switch" : "Take control"}
           </button>
         )}
         {model.status.kind === "exited" && actions.openNew && (
@@ -139,6 +143,14 @@ export function TerminalWindow({
           </button>
         )}
         <div className="window-actions">
+          <button
+            type="button"
+            aria-label={`Open ${model.title} menu`}
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((open) => !open)}
+          >
+            <MoreHorizontal size={15} strokeWidth={1.5} aria-hidden="true" />
+          </button>
           <button
             type="button"
             aria-label={`Minimize ${model.title}`}
@@ -169,6 +181,23 @@ export function TerminalWindow({
             <X size={15} strokeWidth={1.5} aria-hidden="true" />
           </button>
         </div>
+        {menuOpen && (
+          <div className="terminal-menu" role="menu" aria-label={`${model.title} actions`}>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                actions.setMode(
+                  model.terminalId,
+                  model.mode === "exclusive" ? "shared" : "exclusive",
+                );
+                setMenuOpen(false);
+              }}
+            >
+              Use {model.mode === "exclusive" ? "shared" : "exclusive"} input
+            </button>
+          </div>
+        )}
       </header>
       <div className="terminal-renderer" ref={terminalRoot} aria-label={`${model.title} output`} />
       <button

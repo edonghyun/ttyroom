@@ -25,7 +25,8 @@ const SECURITY_HEADERS = {
     "img-src 'self' data:",
     "object-src 'none'",
     "script-src 'self'",
-    "style-src 'self'",
+    // React window geometry and xterm both apply runtime-computed inline styles.
+    "style-src 'self' 'unsafe-inline'",
   ].join("; "),
   "cross-origin-opener-policy": "same-origin",
   "referrer-policy": "no-referrer",

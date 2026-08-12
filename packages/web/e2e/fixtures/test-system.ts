@@ -63,6 +63,12 @@ export class TestSystem {
     return actor;
   }
 
+  toggleKillSwitch(): void {
+    const agent = this.agents.values().next().value;
+    if (!agent) throw new Error("real agent is not running");
+    agent.toggleKillSwitch();
+  }
+
   private async spawnAgent(name: string): Promise<AgentHandle> {
     let output = "";
     const terminalProcess = pty.spawn(

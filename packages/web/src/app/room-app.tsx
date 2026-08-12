@@ -42,6 +42,7 @@ export interface RoomAppSession {
   closeTerminal(terminalId: number): void;
   openTerminal(hostId: string): void;
   resize(terminalId: number, cols: number, rows: number): void;
+  setMode(terminalId: number, mode: "exclusive" | "shared"): void;
 }
 
 interface RoomAppIdentity extends Pick<RoomIdentity, "clientId" | "nickname" | "saveNickname"> {}
@@ -111,6 +112,7 @@ export class RoomAppRuntime {
   private computeView(): RoomAppView {
     const projection = this.deps.projection.view();
     const room = projection.room;
+    const ownLease = room?.leases.find((lease) => lease.holderClientId === projection.selfClientId);
     const windowView = this.deps.windowManager.view();
     const terminals: TerminalWindowModel[] = [];
     for (const managed of windowView.windows) {
@@ -127,6 +129,9 @@ export class RoomAppRuntime {
         cwd: projected.terminal.meta.cwd ?? undefined,
         branch: projected.terminal.meta.gitBranch ?? undefined,
         status: capability,
+        mode: projected.terminal.mode,
+        controlAction:
+          capability.kind === "available" ? (ownLease ? "switch" : "take") : undefined,
         rect: managed.rect,
         z: managed.z,
         minimized: managed.minimized,
@@ -251,6 +256,15 @@ export class RoomAppRuntime {
 
   closeTerminal(terminalId: number): void {
     this.session?.closeTerminal(terminalId);
+  }
+
+  setMode(terminalId: number, mode: "exclusive" | "shared"): void {
+    this.session?.setMode(terminalId, mode);
+  }
+
+  openTerminal(): void {
+    const host = this.deps.projection.view().room?.hosts.find((candidate) => candidate.online);
+    if (host) this.session?.openTerminal(host.hostId);
   }
 
   openNew(hostName: string): void {
@@ -384,8 +398,9 @@ export function RoomApp({ runtime }: { readonly runtime: RoomAppRuntime }) {
           maximize: (id) => runtime.maximize(id),
           restore: (id) => runtime.restore(id),
           requestClose: (id) => setClosingTerminalId(id),
+          setMode: (id, mode) => runtime.setMode(id, mode),
           exitOverview: () => runtime.exitOverview(),
-          addTerminal: () => undefined,
+          addTerminal: () => runtime.openTerminal(),
           openNew: (host) => runtime.openNew(host),
         }}
       />

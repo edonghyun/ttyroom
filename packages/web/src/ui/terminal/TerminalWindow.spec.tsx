@@ -71,6 +71,7 @@ function windowProps(
       cwd: "~/projects/api",
       branch: "feature/payment",
       status: { kind: "available" } as const,
+      mode: "exclusive" as const,
       rect: { x: 62, y: 62, width: 698, height: 613 },
       z: 1,
       minimized: false,
@@ -88,6 +89,7 @@ function windowProps(
       maximize: vi.fn(),
       restore: vi.fn(),
       requestClose: vi.fn(),
+      setMode: vi.fn(),
     },
   };
 }

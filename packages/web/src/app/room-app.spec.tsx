@@ -38,6 +38,7 @@ describe("RoomApp production composition", () => {
       closeTerminal: vi.fn(),
       openTerminal: vi.fn(),
       resize: vi.fn(),
+      setMode: vi.fn(),
     };
     const controllers = new Map<
       number,

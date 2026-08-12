@@ -205,6 +205,7 @@
 }
 
 .terminal-titlebar {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -214,6 +215,32 @@
   background: #22262b;
   cursor: move;
   user-select: none;
+}
+
+.terminal-menu {
+  position: absolute;
+  top: 44px;
+  right: 8px;
+  z-index: 2;
+  padding: 5px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: #20242a;
+  box-shadow: 0 8px 18px rgb(0 0 0 / 32%);
+}
+
+.terminal-menu button {
+  min-height: 30px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  white-space: nowrap;
+}
+
+.terminal-menu button:hover,
+.terminal-menu button:focus-visible {
+  background: #383d44;
 }
 
 .terminal-heading {
@@ -287,6 +314,10 @@
   transform: scale(0.72);
   transform-origin: top left;
   transition: transform 160ms ease;
+}
+
+.terminal-window[hidden] {
+  display: none;
 }
 
 .overview-overlay {
