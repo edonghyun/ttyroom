@@ -168,10 +168,52 @@ test("Dock and Overview expose five terminals while each participant keeps a loc
   await expect(bob.roomPage.terminal("term-1")).toBeVisible();
   await expect(bob.page.getByRole("button", { name: "Focus term-1" })).toBeVisible();
 
+  const floatingGeometry = await alice.page.locator(".terminal-window").evaluateAll((windows) =>
+    windows.map((window) => {
+      const element = window as HTMLElement;
+      return {
+        left: element.style.left,
+        top: element.style.top,
+        width: element.style.width,
+        height: element.style.height,
+      };
+    }),
+  );
   await alice.roomPage.enterOverview();
   for (let terminalId = 1; terminalId <= 5; terminalId += 1) {
     await expect(alice.roomPage.terminal(`term-${terminalId}`)).toBeVisible();
   }
+  const overviewBoxes = await alice.page.locator(".terminal-window").evaluateAll((windows) =>
+    windows.map((window) => {
+      const { left, top, right, bottom } = window.getBoundingClientRect();
+      return { left, top, right, bottom };
+    }),
+  );
+  const overlaps = overviewBoxes.flatMap((candidate, index) =>
+    overviewBoxes.slice(index + 1).filter(
+      (other) =>
+        candidate.left < other.right &&
+        candidate.right > other.left &&
+        candidate.top < other.bottom &&
+        candidate.bottom > other.top,
+    ),
+  );
+  expect(overlaps).toEqual([]);
   await alice.roomPage.exitOverview();
+  await expect
+    .poll(() =>
+      alice.page.locator(".terminal-window").evaluateAll((windows) =>
+        windows.map((window) => {
+          const element = window as HTMLElement;
+          return {
+            left: element.style.left,
+            top: element.style.top,
+            width: element.style.width,
+            height: element.style.height,
+          };
+        }),
+      ),
+    )
+    .toEqual(floatingGeometry);
   await expect(alice.roomPage.terminal("term-1")).toBeHidden();
 });
