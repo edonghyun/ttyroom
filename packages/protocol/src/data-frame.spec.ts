@@ -63,6 +63,24 @@ describe("데이터 프레임 코덱 — 역할: 터미널 입출력 바이트�
     expect(encode({ leaseId: 0x1_0000_0000 })).toThrow(/leaseId/);
   });
 
+  it("byteOffset이 0이 아닌 서브뷰를 디코딩해도 프레임을 올바르게 읽는다", () => {
+    // ws는 공유 풀 위의 Buffer 뷰(byteOffset≠0)로 프레임을 전달한다 —
+    // bytes.buffer를 offset 없이 읽는 회귀를 여기서 차단한다
+    const frame = {
+      kind: "output",
+      terminalId: 7,
+      seq: 42,
+      payload: new Uint8Array([1, 2, 3]),
+    } as const;
+    const encoded = encodeDataFrame(frame);
+    const padded = new Uint8Array(4 + encoded.length + 4);
+    padded.set(encoded, 4);
+    expect(decodeDataFrame(padded.subarray(4, 4 + encoded.length))).toEqual({
+      kind: "ok",
+      frame,
+    });
+  });
+
   it("알 수 없는 frameType은 malformed 결과를 돌려준다 (throw하지 않는다)", () => {
     expect(decodeDataFrame(new Uint8Array([0xff, 0, 0, 0, 1, 0, 0, 0, 1]))).toMatchObject({
       kind: "malformed",
