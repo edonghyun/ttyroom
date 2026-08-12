@@ -22,7 +22,20 @@ export interface InputFrame {
 export type DataFrame = OutputFrame | InputFrame;
 export type DecodeResult = { kind: "ok"; frame: DataFrame } | { kind: "malformed"; reason: string };
 
+const U32_MAX = 0xffffffff;
+
+// DataView.setUint32는 범위 밖 값을 조용히 wrap·절단한다 — 호출자 버그가
+// "다른 터미널의 프레임"으로 변조되기 전에 여기서 크게 실패시킨다 (프로그래머 오류)
+function assertU32(name: string, value: number): void {
+  if (!Number.isInteger(value) || value < 0 || value > U32_MAX) {
+    throw new RangeError(`${name} must be a u32 integer, got ${value}`);
+  }
+}
+
 export function encodeDataFrame(frame: DataFrame): Uint8Array {
+  assertU32("terminalId", frame.terminalId);
+  assertU32("seq", frame.seq);
+  if (frame.kind === "input") assertU32("leaseId", frame.leaseId);
   const headerBytes = frame.kind === "output" ? OUTPUT_HEADER_BYTES : INPUT_HEADER_BYTES;
   const out = new Uint8Array(headerBytes + frame.payload.length);
   const view = new DataView(out.buffer);

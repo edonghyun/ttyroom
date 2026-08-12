@@ -47,6 +47,22 @@ describe("데이터 프레임 코덱 — 역할: 터미널 입출력 바이트�
     expect([...bytes]).toEqual([FRAME_INPUT, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3]);
   });
 
+  it("u32 범위를 벗어나거나 정수가 아닌 필드의 인코딩은 throw한다 (프로그래머 오류)", () => {
+    const encode = (fields: { terminalId?: number; seq?: number; leaseId?: number }) => () =>
+      encodeDataFrame({
+        kind: "input",
+        terminalId: 1,
+        seq: 1,
+        leaseId: 1,
+        payload: new Uint8Array(),
+        ...fields,
+      });
+    expect(encode({ terminalId: 0x1_0000_0000 })).toThrow(/terminalId/);
+    expect(encode({ seq: -1 })).toThrow(/seq/);
+    expect(encode({ seq: 1.5 })).toThrow(/seq/);
+    expect(encode({ leaseId: 0x1_0000_0000 })).toThrow(/leaseId/);
+  });
+
   it("알 수 없는 frameType은 malformed 결과를 돌려준다 (throw하지 않는다)", () => {
     expect(decodeDataFrame(new Uint8Array([0xff, 0, 0, 0, 1, 0, 0, 0, 1]))).toMatchObject({
       kind: "malformed",
@@ -55,6 +71,13 @@ describe("데이터 프레임 코덱 — 역할: 터미널 입출력 바이트�
 
   it("헤더보다 짧은 바이트열은 malformed 결과를 돌려준다", () => {
     expect(decodeDataFrame(new Uint8Array([FRAME_OUTPUT, 0, 0]))).toMatchObject({
+      kind: "malformed",
+    });
+  });
+
+  it("입력 프레임이 입력 헤더(13B)보다 짧으면 malformed 결과를 돌려준다", () => {
+    // 특성화 테스트 — 출력 헤더(9B)는 통과하지만 leaseId가 잘린 9~12B 구간
+    expect(decodeDataFrame(new Uint8Array([FRAME_INPUT, 0, 0, 0, 1, 0, 0, 0, 2]))).toMatchObject({
       kind: "malformed",
     });
   });
