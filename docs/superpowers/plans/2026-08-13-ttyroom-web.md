@@ -177,14 +177,14 @@ HostView & { remoteInputAllowed: boolean };
 
 // participant -> server
 { type: "close-terminal-request"; terminalId: number }
-{ type: "set-terminal-mode-request"; terminalId: number; mode: "exclusive" | "shared" }
-{ type: "resync-output-request"; terminalId: number; afterSeq?: number }
+{ type: "set-terminal-mode"; terminalId: number; mode: "exclusive" | "shared" }
+{ type: "resync-output-request"; terminalId: number }
 
 // host -> server
 { type: "host-input-state"; remoteInputAllowed: boolean }
 
 // server -> room
-{ type: "room-event"; event: { kind: "host-input-state"; hostId: string; remoteInputAllowed: boolean } }
+{ type: "room-event"; event: { kind: "host-input-state-changed"; hostId: string; remoteInputAllowed: boolean } }
 { type: "room-event"; event: { kind: "terminal-mode-changed"; terminalId: number; mode: "exclusive" | "shared" } }
 
 // expected failure is typed, including remote-input-disabled
@@ -200,15 +200,15 @@ HostView & { remoteInputAllowed: boolean };
 - participant의 close, mode 변경, replay 요청은 위 message를 통해서만 수행한다.
 - input binary layout은 shared에서도 `leaseId` slot을 유지한다. F5가 현재 server contract test처럼
   shared 입력의 sentinel을 `0`으로 고정한 것을 `PROTOCOL.md`에서 확인하고 그 public 규칙을 사용한다.
-- replay는 retained output 뒤 `sync`로 끝난다. Web은 `output-gap`을 받으면 terminal별 마지막 연속 seq를
-  `afterSeq`로 보내며, `sync` 전까지 `restoring`으로 표시한다.
+- replay는 해당 terminal의 표시 버퍼를 비우고 retained output으로 대체한 뒤 `sync`로 끝난다.
+  Web은 `output-gap`을 받으면 `resync-output-request`를 보내고 `sync` 전까지 `restoring`으로 표시한다.
 
 **Preflight commands (모두 PASS 전에는 Task 1 금지):**
 
 ```bash
 git status --short --branch
 git log --oneline --decorate -12
-rg -n 'name: z.string|remoteInputAllowed|close-terminal-request|set-terminal-mode-request|resync-output-request|host-input-state|terminal-mode-changed|remote-input-disabled' packages/protocol packages/server packages/agent
+rg -n 'name: z.string|remoteInputAllowed|close-terminal-request|set-terminal-mode|resync-output-request|host-input-state|terminal-mode-changed|remote-input-disabled' packages/protocol packages/server packages/agent
 pnpm --filter @ttyroom/protocol test
 pnpm --filter @ttyroom/server test
 pnpm --filter @ttyroom/agent test
@@ -442,7 +442,7 @@ React component가 clientId/lease/mode/host 상태를 다시 조합하지 않게
 
 **Files:** create/test `src/session/room-session.ts`, `room-session.spec.ts`.
 
-**Ledger (one RED/GREEN each):** start/hello/welcome -> reconnect with same clientId and bounded injected clock -> explicit Take control (window focus alone sends nothing) -> switch control release then acquire -> Esc release -> close/mode/resize F5 messages -> typed lease denial/invalid feedback -> output-gap replay request with `afterSeq` -> stop cancels timers and transport.
+**Ledger (one RED/GREEN each):** start/hello/welcome -> reconnect with same clientId and bounded injected clock -> explicit Take control (window focus alone sends nothing) -> switch control release then acquire -> Esc release -> close/mode/resize F5 messages -> typed lease denial/invalid feedback -> output-gap replay request with terminal buffer replacement -> stop cancels timers and transport.
 
 **RED:** `pnpm --filter @ttyroom/web exec vitest run src/session/room-session.spec.ts`
 
