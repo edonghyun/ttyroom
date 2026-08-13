@@ -82,6 +82,28 @@ describe("TerminalWindow", () => {
     expect(screen.getByRole("tooltip")).toHaveTextContent("You, Bob");
   });
 
+  it("shows the terminal input mode independently from its control status", () => {
+    const adapters = new FakeTerminalAdapterFactory();
+    const controller = new TerminalController(
+      { adapterFactory: adapters, frameScheduler: { schedule: () => () => undefined } },
+      { terminalId: 11, sendInput: vi.fn(), resize: vi.fn() },
+    );
+    const props = windowProps(controller, vi.fn(), vi.fn());
+    const { rerender } = render(<TerminalWindow {...props} />);
+
+    expect(screen.getByRole("img", { name: "Exclusive input mode" })).toHaveTextContent(
+      "Exclusive",
+    );
+
+    rerender(
+      <TerminalWindow
+        {...props}
+        model={{ ...props.model, mode: "shared", status: { kind: "shared" } }}
+      />,
+    );
+    expect(screen.getByRole("img", { name: "Shared input mode" })).toHaveTextContent("Shared");
+  });
+
   it.each([
     ["left", { x: 1, y: 400 }, { x: 0, y: 0, width: 600, height: 800 }],
     ["right", { x: 1199, y: 400 }, { x: 600, y: 0, width: 600, height: 800 }],

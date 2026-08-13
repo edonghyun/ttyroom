@@ -318,11 +318,32 @@
 }
 
 .terminal-titlebar .terminal-status {
-  margin-left: auto;
   min-height: 26px;
   padding: 0 7px;
   font-size: 11px;
   white-space: nowrap;
+}
+
+.terminal-mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 22px;
+  margin-left: auto;
+  padding: 0 6px;
+  border: 1px solid #50565f;
+  border-radius: 999px;
+  color: #aeb6c2;
+  background: rgb(142 166 192 / 8%);
+  font-size: 10px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.terminal-mode-shared {
+  border-color: #6960a0;
+  color: #d7c5f5;
+  background: rgb(122 92 179 / 14%);
 }
 
 .terminal-focus-presence {

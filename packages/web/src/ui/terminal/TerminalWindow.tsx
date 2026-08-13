@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Maximize2, Minimize2, MoreHorizontal, RotateCcw, Users, X } from "react-feather";
+import { Lock, Maximize2, Minimize2, MoreHorizontal, RotateCcw, Users, X } from "react-feather";
 
 import {
   snapRect,
@@ -209,6 +209,18 @@ export function TerminalWindow({
             <strong>{model.title}</strong>
             <span>{[model.host, model.cwd, model.branch].filter(Boolean).join(" · ")}</span>
           </div>
+          <span
+            className={`terminal-mode terminal-mode-${model.mode}`}
+            role="img"
+            aria-label={`${model.mode === "exclusive" ? "Exclusive" : "Shared"} input mode`}
+          >
+            {model.mode === "exclusive" ? (
+              <Lock size={12} strokeWidth={1.7} aria-hidden="true" />
+            ) : (
+              <Users size={12} strokeWidth={1.7} aria-hidden="true" />
+            )}
+            <span>{model.mode === "exclusive" ? "Exclusive" : "Shared"}</span>
+          </span>
           <TerminalStatus status={model.status} />
           {model.focusedParticipants.length > 0 && (
             <span

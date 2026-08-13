@@ -129,14 +129,23 @@ test("exclusive and shared terminal modes are reflected for every participant", 
   await bob.joinRoom();
   await alice.roomPage.openTerminal();
   await expect(alice.roomPage.terminalStatus("term-1")).toHaveAccessibleName("Available");
+  await expect(
+    alice.roomPage.terminal("term-1").getByRole("img", { name: "Exclusive input mode" }),
+  ).toBeVisible();
 
   await alice.roomPage.setTerminalMode("term-1", "Shared");
   await expect(alice.roomPage.terminalStatus("term-1")).toHaveAccessibleName("Shared input");
   await expect(bob.roomPage.terminalStatus("term-1")).toHaveAccessibleName("Shared input");
+  await expect(
+    bob.roomPage.terminal("term-1").getByRole("img", { name: "Shared input mode" }),
+  ).toBeVisible();
 
   await alice.roomPage.setTerminalMode("term-1", "Exclusive");
   await expect(alice.roomPage.terminalStatus("term-1")).toHaveAccessibleName("Available");
   await expect(bob.roomPage.terminalStatus("term-1")).toHaveAccessibleName("Available");
+  await expect(
+    bob.roomPage.terminal("term-1").getByRole("img", { name: "Exclusive input mode" }),
+  ).toBeVisible();
 });
 
 test("the real agent kill switch makes terminals read-only and rejects remote input", async ({
