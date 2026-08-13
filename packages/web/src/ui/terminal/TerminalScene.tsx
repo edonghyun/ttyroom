@@ -26,6 +26,7 @@ export function TerminalScene({
   readonly actions: TerminalWindowActions & {
     readonly exitOverview: () => void;
     readonly addTerminal: (hostId: string) => void;
+    readonly addHost: (opener?: HTMLElement) => void;
   };
   readonly overview: boolean;
   readonly inputBlocked?: boolean;
@@ -66,6 +67,7 @@ export function TerminalScene({
           actions.activate(terminalId);
         }}
         addTerminal={actions.addTerminal}
+        addHost={actions.addHost}
       />
     </>
   );

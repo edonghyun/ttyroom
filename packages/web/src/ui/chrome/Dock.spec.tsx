@@ -23,6 +23,7 @@ describe("Dock", () => {
         restore={restore}
         hosts={[{ hostId: "host-1", name: "Donghyeon-Mac" }]}
         addTerminal={vi.fn()}
+        addHost={vi.fn()}
       />,
     );
 
@@ -49,6 +50,7 @@ describe("Dock", () => {
         restore={vi.fn()}
         hosts={[{ hostId: "host-1", name: "Donghyeon-Mac" }]}
         addTerminal={vi.fn()}
+        addHost={vi.fn()}
       />,
     );
 
@@ -73,6 +75,7 @@ describe("Dock", () => {
           { hostId: "host-2", name: "Minsu-Mac" },
         ]}
         addTerminal={addTerminal}
+        addHost={vi.fn()}
       />,
     );
 
@@ -80,5 +83,25 @@ describe("Dock", () => {
     expect(screen.getByRole("menu", { name: "Choose host" })).toBeVisible();
     await userEvent.click(screen.getByRole("menuitem", { name: "Minsu-Mac" }));
     expect(addTerminal).toHaveBeenCalledWith("host-2");
+  });
+
+  it("opens the Add Host flow when no host can create a terminal", async () => {
+    const addHost = vi.fn();
+    render(
+      <Dock
+        terminals={[]}
+        participants={["You"]}
+        activeTerminalId={null}
+        restore={vi.fn()}
+        hosts={[]}
+        addTerminal={vi.fn()}
+        addHost={addHost}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Add terminal" }));
+
+    expect(addHost).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("menu", { name: "Choose host" })).not.toBeInTheDocument();
   });
 });

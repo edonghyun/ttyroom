@@ -21,6 +21,7 @@ export function Dock({
   restore,
   hosts,
   addTerminal,
+  addHost,
 }: {
   readonly terminals: readonly DockTerminal[];
   readonly participants: readonly string[];
@@ -28,12 +29,17 @@ export function Dock({
   readonly restore: (terminalId: number) => void;
   readonly hosts: readonly DockHost[];
   readonly addTerminal: (hostId: string) => void;
+  readonly addHost: (opener?: HTMLElement) => void;
 }) {
   const [hostMenuOpen, setHostMenuOpen] = useState(false);
   const terminalButtons = useRef(new Map<number, HTMLButtonElement>());
   const addTerminalButton = useRef<HTMLButtonElement>(null);
 
   function requestTerminal(): void {
+    if (hosts.length === 0) {
+      addHost(addTerminalButton.current ?? undefined);
+      return;
+    }
     if (hosts.length === 1) {
       addTerminal(hosts[0]!.hostId);
       return;

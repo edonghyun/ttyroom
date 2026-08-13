@@ -499,6 +499,7 @@ export function RoomApp({ runtime }: { readonly runtime: RoomAppRuntime }) {
           setMode: (id, mode) => runtime.setMode(id, mode),
           exitOverview: () => runtime.exitOverview(),
           addTerminal: (hostId) => runtime.openTerminal(hostId),
+          addHost: openAddHost,
           openNew: (host) => runtime.openNew(host),
         }}
       />

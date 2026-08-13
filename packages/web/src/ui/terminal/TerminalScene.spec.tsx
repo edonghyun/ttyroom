@@ -57,6 +57,7 @@ function sceneProps(controller: TerminalController) {
       setMode: vi.fn(),
       exitOverview: vi.fn(),
       addTerminal: vi.fn(),
+      addHost: vi.fn(),
     },
   };
 }
