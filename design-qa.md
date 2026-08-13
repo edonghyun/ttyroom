@@ -9,6 +9,12 @@
 - User Dock height cue: `artifacts/design-qa/dock-height-reference-at-2x.png` (`3456 x 84` at
   DPR `2`, equivalent to `1728 x 42` CSS pixels). This is a browser-chrome density cue, not a
   request to copy its content or colors.
+- User terminal-header before-state: `artifacts/design-qa/terminal-header-before-at-2x.png`
+  (`2270 x 1602` at DPR `2`), normalized to
+  `artifacts/design-qa/terminal-header-before-normalized.png` (`1135 x 801` at DPR `1`). The
+  normalized title bar occupies `54` CSS px.
+- Live KEP implementation: `artifacts/design-qa/terminal-header-live-after.png` (`1135 x 801` at
+  DPR `1`) with `term-1` maximized, shared input active, and the title bar occupying `42` CSS px.
 - Implementation dimensions: `1487 x 1058` CSS/physical pixels
 - Browser density: Chromium, DPR `1`
 - Deterministic state: `Payment Debug`; `backend` mine; `frontend` held by Minsu;
@@ -26,6 +32,10 @@
   - `artifacts/design-qa/focused-user-dock-height-comparison.png` (`2974 x 76`; the user cue was
     downsampled to DPR `1` and center-cropped to `1487 x 42`, while the rendered Dock was captured
     at DPR `1` as `1487 x 48`)
+  - `artifacts/design-qa/terminal-header-user-comparison.png` (`2270 x 801`; same normalized
+    viewport, before and after)
+  - `artifacts/design-qa/focused-terminal-header-comparison.png` (`2266 x 82`; `1133 x 54` before
+    and `1133 x 42` after, bottom-aligned for direct density comparison)
 
 ## Iteration history
 
@@ -85,6 +95,26 @@
 - Live production-server verification at `657 x 813`: Dock `48` px, action `36` px, Add terminal
   `nowrap`, zero document overflow, and zero console errors. The narrow viewport correctly retains
   the existing desktop-width input guard while the Dock remains usable.
+
+### Iteration 4 — user-directed compact terminal title bars
+
+- Evidence: the user terminal screenshot, refreshed deterministic captures, live KEP capture, and
+  `artifacts/design-qa/focused-terminal-header-comparison.png`.
+- P1, terminal title-bar density: the production title bar measured `58` CSS px, status controls
+  `28` px, and window / Take control buttons `30` px. The user screenshot's normalized before-state
+  measured `54` px and was explicitly identified as too thick. A visual regression was written
+  first for a `42` px title bar and `26` px controls; RED observed at `58/28/30/30`. Minimum fix:
+  reduce only the terminal-header grid row, padding, gaps, heading rhythm, and header-owned controls.
+- Post-fix evidence: the regression passes at `42/26/26/26`. The live KEP room at `1135 x 801`
+  reports the same metrics, zero document overflow, and zero console errors. The title, host/path,
+  shared-input status, and all four window actions remain present.
+- Required fidelity surfaces: typography keeps the existing Inter hierarchy with tighter line
+  rhythm; spacing is reduced by `16` px without clipping; colors and semantic status tokens are
+  unchanged; the existing React Feather icons remain sharp and unmodified; all app-specific copy is
+  unchanged. No raster or generated asset is involved in this UI chrome.
+- Comparison note: the full before image begins at the terminal title bar while the live capture
+  includes TTYRoom's global Top Bar and Dock. The focused comparison removes that framing mismatch
+  and is the primary fidelity evidence. No actionable P0/P1/P2 finding remains.
 
 ## Written-spec overrides and resolved P3
 

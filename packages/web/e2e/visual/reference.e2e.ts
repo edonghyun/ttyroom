@@ -47,6 +47,30 @@ test("reference room renders five production terminal surfaces with stable colla
   await expect(page.locator(".terminal-window .xterm")).toHaveCount(5);
   await expect
     .poll(() =>
+      page.evaluate(() => {
+        const terminal = document.querySelector<HTMLElement>(
+          '.terminal-window[data-terminal-id="1"]',
+        );
+        const titlebar = terminal?.querySelector<HTMLElement>(".terminal-titlebar");
+        const status = terminal?.querySelector<HTMLElement>(".terminal-status");
+        const action = terminal?.querySelector<HTMLButtonElement>(".window-actions button");
+        const takeControl = document.querySelector<HTMLButtonElement>(".take-control");
+        return {
+          titlebarHeight: titlebar?.getBoundingClientRect().height ?? 0,
+          statusHeight: status?.getBoundingClientRect().height ?? 0,
+          actionHeight: action?.getBoundingClientRect().height ?? 0,
+          takeControlHeight: takeControl?.getBoundingClientRect().height ?? 0,
+        };
+      }),
+    )
+    .toEqual({
+      titlebarHeight: 42,
+      statusHeight: 26,
+      actionHeight: 26,
+      takeControlHeight: 26,
+    });
+  await expect
+    .poll(() =>
       page.locator(".dock").evaluate((dock) => ({
         dockHeight: dock.getBoundingClientRect().height,
         terminalButtonHeight:
