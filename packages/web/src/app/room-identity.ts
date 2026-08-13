@@ -23,7 +23,7 @@ export class RoomIdentity {
 
   constructor(
     private readonly deps: RoomIdentityDeps = {
-      storage: globalThis.localStorage,
+      storage: globalThis.sessionStorage,
       createId: () => globalThis.crypto.randomUUID(),
     },
   ) {}

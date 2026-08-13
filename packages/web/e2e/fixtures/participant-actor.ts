@@ -68,7 +68,7 @@ export class BrowserParticipantActor {
   async clientId(): Promise<string> {
     const roomId = this.room.roomId;
     return this.page.evaluate((id) => {
-      const raw = localStorage.getItem(`ttyroom:identity:v1:${encodeURIComponent(id)}`);
+      const raw = sessionStorage.getItem(`ttyroom:identity:v1:${encodeURIComponent(id)}`);
       const parsed = raw ? (JSON.parse(raw) as { clientId?: unknown }) : null;
       if (!parsed || typeof parsed.clientId !== "string") throw new Error("clientId not persisted");
       return parsed.clientId;

@@ -543,13 +543,18 @@ export function createProductionRoomRuntime(
   options: {
     readonly location?: Pick<Location, "pathname" | "hash" | "href">;
     readonly storage?: Storage;
+    readonly identityStorage?: Storage;
     readonly navigate?: (location: string) => void;
   } = {},
 ): RoomAppRuntime {
   const location = options.location ?? globalThis.location;
   const storage = options.storage ?? globalThis.localStorage;
+  const identityStorage = options.identityStorage ?? globalThis.sessionStorage;
   const route = parseRoomRoute(location);
-  const identity = new RoomIdentity({ storage, createId: () => globalThis.crypto.randomUUID() });
+  const identity = new RoomIdentity({
+    storage: identityStorage,
+    createId: () => globalThis.crypto.randomUUID(),
+  });
   const projection = new RoomProjection();
   const windowManager = new WindowManager({
     viewport: {
