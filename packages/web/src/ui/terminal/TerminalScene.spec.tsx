@@ -59,6 +59,38 @@ describe("TerminalScene", () => {
       "true",
     );
   });
+
+  it("offers host connection from an empty workspace", () => {
+    const props = {
+      ...sceneProps(createController()),
+      terminals: [],
+      controllers: new Map(),
+      hosts: [],
+    };
+    render(<TerminalScene {...props} overview={false} />);
+    const connectHost = screen.getByRole("button", { name: "Connect a host" });
+
+    fireEvent.click(connectHost);
+
+    expect(props.actions.addHost).toHaveBeenCalledWith(connectHost);
+  });
+
+  it("opens a first terminal from a connected host in the empty workspace", () => {
+    const props = {
+      ...sceneProps(createController()),
+      terminals: [],
+      controllers: new Map(),
+      hosts: [
+        { hostId: "host-1", name: "Donghyeon-Mac" },
+        { hostId: "host-2", name: "Build Server" },
+      ],
+    };
+    render(<TerminalScene {...props} overview={false} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Open terminal on Build Server" }));
+
+    expect(props.actions.addTerminal).toHaveBeenCalledWith("host-2");
+  });
 });
 
 function createController(): TerminalController {

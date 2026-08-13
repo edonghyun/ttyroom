@@ -201,6 +201,25 @@ test("upper-right menus close when the user clicks elsewhere", async ({ alice })
   await expect(alice.page.getByRole("menu", { name: "term-1 actions" })).toBeHidden();
 });
 
+test("an empty workspace guides the first terminal and confirms host command copy", async ({
+  alice,
+}) => {
+  await alice.joinRoom();
+
+  await expect(alice.page.getByRole("heading", { name: "Open your first terminal" })).toBeVisible();
+  await expect(
+    alice.page.getByRole("button", { name: "Open terminal on real-host" }),
+  ).toBeVisible();
+  await alice.page.getByRole("button", { name: "Open room menu" }).click();
+  await alice.page.getByRole("menuitem", { name: "Add host" }).click();
+
+  const drawer = alice.page.getByRole("dialog", { name: "Add Host" });
+  await expect(drawer.getByText("Run the host command")).toBeVisible();
+  await expect(drawer.getByLabel("Host connection command")).toContainText("npx ttyroom join");
+  await drawer.getByRole("button", { name: "Copy command" }).click();
+  await expect(drawer.getByRole("button", { name: "Copied" })).toBeVisible();
+});
+
 test("canvas controls zoom, pan, and preserve terminal interaction coordinates", async ({
   alice,
 }) => {

@@ -32,6 +32,22 @@ describe("AddHostDrawer", () => {
     expect(screen.getByText(/Ctrl\+C stops the Host Agent and its PTYs/)).toBeVisible();
     screen.getByRole("button", { name: "Close Add Host" }).focus();
     await userEvent.tab({ shift: true });
-    expect(screen.getByRole("button", { name: "Copy command" })).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Copied" })).toHaveFocus();
+  });
+
+  it("confirms that the host command was copied", async () => {
+    render(
+      <AddHostDrawer
+        open
+        command="npx ttyroom join https://room"
+        state={{ kind: "waiting" }}
+        copy={vi.fn()}
+        close={vi.fn()}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Copy command" }));
+
+    expect(screen.getByRole("button", { name: "Copied" })).toBeVisible();
   });
 });

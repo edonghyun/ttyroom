@@ -1,3 +1,4 @@
+import { ArrowRight, Terminal } from "react-feather";
 import { Dock } from "../chrome/Dock.js";
 import { Overview } from "../chrome/Overview.js";
 import { WorkspaceCameraControls } from "../chrome/WorkspaceCameraControls.js";
@@ -70,6 +71,55 @@ export function TerminalScene({
             );
           })}
         </div>
+        {!overview && terminals.length === 0 && (
+          <section className="empty-workspace" aria-labelledby="empty-workspace-title">
+            <div className="empty-workspace-card">
+              <span className="empty-workspace-icon" aria-hidden="true">
+                <Terminal size={22} strokeWidth={1.6} />
+              </span>
+              <p className="empty-workspace-eyebrow">
+                {hosts.length === 0
+                  ? "Workspace ready"
+                  : `${hosts.length} ${hosts.length === 1 ? "host" : "hosts"} connected`}
+              </p>
+              <h2 id="empty-workspace-title">
+                {hosts.length === 0
+                  ? "Bring your first terminal into the room"
+                  : "Open your first terminal"}
+              </h2>
+              <p className="empty-workspace-copy">
+                {hosts.length === 0
+                  ? "Connect a Host Agent to share a local shell, then open terminals here for everyone to see."
+                  : "Choose a connected machine. The new shell will open on this shared canvas for everyone in the room."}
+              </p>
+              {hosts.length === 0 ? (
+                <button type="button" onClick={(event) => actions.addHost(event.currentTarget)}>
+                  <Terminal size={16} strokeWidth={1.6} aria-hidden="true" />
+                  Connect a host
+                  <ArrowRight size={15} strokeWidth={1.7} aria-hidden="true" />
+                </button>
+              ) : (
+                <div className="empty-workspace-hosts" aria-label="Connected hosts">
+                  {hosts.map((host) => (
+                    <button
+                      key={host.hostId}
+                      type="button"
+                      aria-label={`Open terminal on ${host.name}`}
+                      onClick={() => actions.addTerminal(host.hostId)}
+                    >
+                      <Terminal size={16} strokeWidth={1.6} aria-hidden="true" />
+                      <span>
+                        <strong>{host.name}</strong>
+                        <small>Open terminal</small>
+                      </span>
+                      <ArrowRight size={15} strokeWidth={1.7} aria-hidden="true" />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+        )}
         <Overview open={overview} exit={actions.exitOverview} />
         {!overview && <WorkspaceCameraControls {...canvas.controls} />}
       </div>
