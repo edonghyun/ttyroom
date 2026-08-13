@@ -19,6 +19,14 @@ test("two participants explicitly take control and share real PTY output", async
   await expect(bob.roomPage.terminalStatus("term-1")).toHaveAccessibleName(
     "Alice controls · View only",
   );
+  const toast = alice.page.getByText("Control acquired · term-1", { exact: true });
+  await expect(toast).toBeVisible();
+  const toastBox = await toast.boundingBox();
+  const canvasControlsBox = await alice.page
+    .getByRole("navigation", { name: "Canvas controls" })
+    .boundingBox();
+  if (!toastBox || !canvasControlsBox) throw new Error("feedback geometry is unavailable");
+  expect(toastBox.y + toastBox.height).toBeLessThanOrEqual(canvasControlsBox.y - 8);
 
   const marker = `TTYROOM_E2E_${Date.now()}`;
   await alice.roomPage.typeInTerminal("term-1", `printf '${marker}\\n'`);
@@ -130,6 +138,50 @@ test("dragging and resizing show a pointer-following ghost before committing geo
   const resized = await terminal.boundingBox();
   expect(resized?.width).toBeCloseTo(moved.width + 70, 0);
   expect(resized?.height).toBeCloseTo(moved.height + 45, 0);
+});
+
+test("canvas controls zoom, pan, and preserve terminal interaction coordinates", async ({
+  alice,
+}) => {
+  await alice.joinRoom();
+  await alice.roomPage.openTerminal("term-1");
+  const terminal = alice.roomPage.terminal("term-1");
+  const before = await terminal.boundingBox();
+  if (!before) throw new Error("terminal geometry is unavailable");
+
+  await alice.page.getByRole("button", { name: "Zoom out" }).click();
+  await expect(alice.page.getByRole("status", { name: "Canvas zoom" })).toHaveText("75%");
+  const zoomed = await terminal.boundingBox();
+  expect(zoomed?.width).toBeCloseTo(before.width * 0.75, 0);
+  expect(zoomed?.height).toBeCloseTo(before.height * 0.75, 0);
+  if (!zoomed) throw new Error("zoomed terminal geometry is unavailable");
+
+  await alice.page.getByRole("button", { name: "Pan tool" }).click();
+  const scene = alice.page.locator(".terminal-scene");
+  const sceneBox = await scene.boundingBox();
+  if (!sceneBox) throw new Error("scene geometry is unavailable");
+  await alice.page.mouse.move(sceneBox.x + sceneBox.width - 80, sceneBox.y + sceneBox.height - 90);
+  await alice.page.mouse.down();
+  await alice.page.mouse.move(sceneBox.x + sceneBox.width - 10, sceneBox.y + sceneBox.height - 50);
+  await alice.page.mouse.up();
+  const panned = await terminal.boundingBox();
+  expect(panned?.x).toBeCloseTo(zoomed.x + 70, 0);
+  expect(panned?.y).toBeCloseTo(zoomed.y + 40, 0);
+
+  await alice.page.getByRole("button", { name: "Select tool" }).click();
+  const titlebar = terminal.locator(".terminal-titlebar");
+  const titlebarBox = await titlebar.boundingBox();
+  if (!titlebarBox || !panned) throw new Error("panned title bar geometry is unavailable");
+  await alice.page.mouse.move(titlebarBox.x + 80, titlebarBox.y + 18);
+  await alice.page.mouse.down();
+  await alice.page.mouse.move(titlebarBox.x + 155, titlebarBox.y + 48);
+  await alice.page.mouse.up();
+  const movedAtZoom = await terminal.boundingBox();
+  expect(movedAtZoom?.x).toBeCloseTo(panned.x + 75, 0);
+  expect(movedAtZoom?.y).toBeCloseTo(panned.y + 30, 0);
+
+  await alice.page.getByRole("button", { name: "Reset zoom to 100%" }).click();
+  await expect(alice.page.getByRole("status", { name: "Canvas zoom" })).toHaveText("100%");
 });
 
 test("moving control to an available terminal requires the explicit Switch action", async ({

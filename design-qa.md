@@ -36,6 +36,14 @@
     viewport, before and after)
   - `artifacts/design-qa/focused-terminal-header-comparison.png` (`2266 x 82`; `1133 x 54` before
     and `1133 x 42` after, bottom-aligned for direct density comparison)
+  - `artifacts/design-qa/canvas-camera/toolbar-comparison.png` compares the user-supplied Figma
+    toolbar language with the TTYRoom camera controls in one normalized-height image.
+- Canvas camera source: `artifacts/design-qa/canvas-camera/reference-toolbar.png` (`1364 x 198`).
+- Canvas camera implementation: `artifacts/design-qa/canvas-camera/implementation-100.png`
+  (`1280 x 720` screenshot, `1280 x 720` CSS viewport, browser-reported DPR `2`; the browser
+  capture is normalized to CSS-pixel output).
+- Canvas camera interaction states: `implementation-25.png` and `implementation-200.png` at the
+  same viewport.
 
 ## Iteration history
 
@@ -116,6 +124,36 @@
   includes TTYRoom's global Top Bar and Dock. The focused comparison removes that framing mismatch
   and is the primary fidelity evidence. No actionable P0/P1/P2 finding remains.
 
+### Iteration 5 — Figma-style canvas camera and floating controls
+
+- Source visual truth: `artifacts/design-qa/canvas-camera/reference-toolbar.png`. The source is a
+  light-theme Figma toolbar crop rather than a complete TTYRoom screen, so the focused toolbar
+  comparison is the fidelity source and the full implementation capture is the product-context
+  evidence.
+- Implementation evidence: `implementation-100.png`, with `implementation-25.png` and
+  `implementation-200.png` covering the extreme zoom states. The floating toolbar remains at a
+  constant readable size while the terminal canvas and grid scale underneath it.
+- Focused comparison: `toolbar-comparison.png` normalizes both toolbar crops to `198` px high.
+  The selected purple pointer, adjacent pan tool, segmented zoom group, rounded container, border,
+  and elevation follow the reference language. TTYRoom intentionally uses its existing dark tokens
+  and React Feather icon family instead of copying Figma's light surface or unrelated creation tools.
+- Primary interactions verified in the isolated live room: zoom steps `100 → 75 → 50 → 25` and
+  `100 → 125 → 150 → 200`; pan changes the camera matrix from `(0, 0)` to `(100, 50)`; Fit recenters
+  the terminal at `100%`; terminal movement at `75%` preserves logical coordinates; console warnings
+  and errors are empty.
+- Required fidelity surfaces: Inter typography and compact 12 px zoom copy remain consistent with
+  TTYRoom; control spacing, 14 px radius, separators, and elevation match the source hierarchy;
+  purple selection and dark surface tokens preserve product semantics and contrast; all icons are
+  library vectors with no generated/raster substitutes; app copy is concise and accessible through
+  explicit control names and live zoom status.
+- Comparison history: the focused toolbar comparison had no toolbar fidelity mismatch, but the
+  first full deterministic capture exposed a P2 collision between the centered success toast and
+  the new persistent toolbar. A browser regression reproduced the overlap before the fix. The toast
+  stack was moved above the toolbar, and refreshed `implementation-final.png` plus
+  `responsive-1024x768.png` show a clear gap at both viewports. The difference between the reference
+  hand glyph and TTYRoom's existing four-way Move glyph is an intentional icon-system adaptation
+  with the explicit accessible name `Pan tool`. No actionable P0/P1/P2 finding remains.
+
 ## Written-spec overrides and resolved P3
 
 - Intentional override, not a defect: the source includes raster-like Dock previews, while the
@@ -141,14 +179,15 @@ recovery surface.
 
 ## Verification
 
-- `pnpm test` — protocol 28, agent 53, Web 113, and server 166 tests passed
-- `pnpm --filter @ttyroom/web test` — 30 files, 113 tests passed
+- `pnpm test` — protocol 29, agent 53, Web 127, and server 171 tests passed
+- `pnpm --filter @ttyroom/web test` — 31 files, 127 tests passed
 - `pnpm --filter @ttyroom/web test:visual` — 1 Chromium visual test passed
-- `pnpm --filter @ttyroom/web test:browser` — 20 Chromium browser tests passed
+- `pnpm --filter @ttyroom/web test:browser` — 23 Chromium browser tests passed
 - `pnpm test:integration` — agent 15 and server 13 integration tests passed
+- `pnpm test:e2e` — 18 system E2E tests passed
 - `pnpm typecheck` — all workspace projects passed
 - `pnpm --filter @ttyroom/server build` — passed and refreshed the server-served Web bundle
-- `pnpm depcruise` — no dependency violations across 190 modules / 381 dependencies
+- `pnpm depcruise` — no dependency violations across 195 modules / 391 dependencies
 - `pnpm format` — passed
 
 Task 25 recaptured the source/implementation comparisons and all responsive viewports after the

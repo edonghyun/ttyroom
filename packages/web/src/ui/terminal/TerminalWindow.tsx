@@ -12,12 +12,20 @@ import {
 import { TerminalStatus, type TerminalStatusValue } from "./TerminalStatus.js";
 
 const SNAP_EDGE_PX = 32;
+const IDENTITY_VIEW_TRANSFORM: WorkspaceViewTransform = { x: 0, y: 0, scale: 1 };
+
+export interface WorkspaceViewTransform {
+  readonly x: number;
+  readonly y: number;
+  readonly scale: number;
+}
 
 interface DragState {
   readonly x: number;
   readonly y: number;
   readonly rect: WindowRect;
   readonly workspace: Viewport & { readonly left: number; readonly top: number };
+  readonly viewTransform: WorkspaceViewTransform;
 }
 
 interface InteractionPreviewState {
@@ -26,6 +34,7 @@ interface InteractionPreviewState {
   readonly rect: WindowRect;
   readonly left: number;
   readonly top: number;
+  readonly viewTransform: WorkspaceViewTransform;
 }
 
 export interface TerminalWindowModel {
@@ -71,6 +80,7 @@ export function TerminalWindow({
   active,
   overview,
   inputBlocked = false,
+  viewTransform = IDENTITY_VIEW_TRANSFORM,
 }: {
   readonly model: TerminalWindowModel;
   readonly controller: TerminalControllerPort;
@@ -78,6 +88,7 @@ export function TerminalWindow({
   readonly active: boolean;
   readonly overview?: boolean;
   readonly inputBlocked?: boolean;
+  readonly viewTransform?: WorkspaceViewTransform;
 }) {
   const terminalRoot = useRef<HTMLDivElement>(null);
   const dragStart = useRef<DragState | null>(null);
@@ -119,7 +130,14 @@ export function TerminalWindow({
       if (start) {
         const viewport = { width: start.workspace.width, height: start.workspace.height };
         const zone = snapZoneAt(
-          { x: event.clientX - start.workspace.left, y: event.clientY - start.workspace.top },
+          {
+            x:
+              (event.clientX - start.workspace.left - start.viewTransform.x) /
+              start.viewTransform.scale,
+            y:
+              (event.clientY - start.workspace.top - start.viewTransform.y) /
+              start.viewTransform.scale,
+          },
           viewport,
         );
         preview({
@@ -130,13 +148,14 @@ export function TerminalWindow({
             : clampRect(
                 {
                   ...start.rect,
-                  x: start.rect.x + event.clientX - start.x,
-                  y: start.rect.y + event.clientY - start.y,
+                  x: start.rect.x + (event.clientX - start.x) / start.viewTransform.scale,
+                  y: start.rect.y + (event.clientY - start.y) / start.viewTransform.scale,
                 },
                 viewport,
               ),
           left: start.workspace.left,
           top: start.workspace.top,
+          viewTransform: start.viewTransform,
         });
         return;
       }
@@ -150,13 +169,16 @@ export function TerminalWindow({
         rect: clampRect(
           {
             ...resizing.rect,
-            width: resizing.rect.width + event.clientX - resizing.x,
-            height: resizing.rect.height + event.clientY - resizing.y,
+            width:
+              resizing.rect.width + (event.clientX - resizing.x) / resizing.viewTransform.scale,
+            height:
+              resizing.rect.height + (event.clientY - resizing.y) / resizing.viewTransform.scale,
           },
           viewport,
         ),
         left: resizing.workspace.left,
         top: resizing.workspace.top,
+        viewTransform: resizing.viewTransform,
       });
     }
 
@@ -269,6 +291,7 @@ export function TerminalWindow({
                     height: bounds.height,
                   }
                 : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight },
+              viewTransform,
             };
             dragStart.current = start;
             const next = {
@@ -277,6 +300,7 @@ export function TerminalWindow({
               rect: model.rect,
               left: start.workspace.left,
               top: start.workspace.top,
+              viewTransform: start.viewTransform,
             };
             interactionTarget.current = next;
             setInteractionPreview(next);
@@ -417,6 +441,7 @@ export function TerminalWindow({
                     height: bounds.height,
                   }
                 : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight },
+              viewTransform,
             };
             resizeStart.current = start;
             const next = {
@@ -425,6 +450,7 @@ export function TerminalWindow({
               rect: model.rect,
               left: start.workspace.left,
               top: start.workspace.top,
+              viewTransform: start.viewTransform,
             };
             interactionTarget.current = next;
             setInteractionPreview(next);
@@ -441,10 +467,16 @@ export function TerminalWindow({
             }
             aria-hidden={interactionPreview.zone ? undefined : true}
             style={{
-              left: interactionPreview.left + interactionPreview.rect.x,
-              top: interactionPreview.top + interactionPreview.rect.y,
-              width: interactionPreview.rect.width,
-              height: interactionPreview.rect.height,
+              left:
+                interactionPreview.left +
+                interactionPreview.viewTransform.x +
+                interactionPreview.rect.x * interactionPreview.viewTransform.scale,
+              top:
+                interactionPreview.top +
+                interactionPreview.viewTransform.y +
+                interactionPreview.rect.y * interactionPreview.viewTransform.scale,
+              width: interactionPreview.rect.width * interactionPreview.viewTransform.scale,
+              height: interactionPreview.rect.height * interactionPreview.viewTransform.scale,
             }}
           >
             <div className="window-interaction-ghost-title">

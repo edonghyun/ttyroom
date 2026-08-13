@@ -61,8 +61,20 @@ Workspace는 Terminal 창이 놓이는 전체 화면 작업면이다.
 - 새 Terminal은 기존 창을 완전히 덮지 않는 cascade 위치에 생성한다.
 - 창의 일부가 화면 밖으로 완전히 사라지지 않도록 title bar 최소 노출 영역을 보장한다.
 - 창을 선택하면 z-order 최상단으로 올리지만 입력권은 바꾸지 않는다.
-- 창이 많아져도 Terminal 출력을 축소 렌더링하지 않는다. 공간이 부족하면 겹치기,
-  최소화, Overview로 해결한다.
+- 기본 배율에서는 Terminal 출력을 축소 렌더링하지 않는다. 사용자가 Canvas 배율을
+  변경한 경우에만 전체 Window를 함께 확대·축소하며 PTY rows/cols는 다시 계산하지 않는다.
+- 선택 도구에서는 기존 Window 조작을, 손 도구·Space 드래그·중간 버튼 드래그에서는
+  Canvas 이동을 수행한다. Ctrl/Cmd+wheel은 포인터 위치를 중심으로 확대·축소한다.
+
+Canvas 하단의 플로팅 제어 바는 다음 로컬 View 동작을 제공한다.
+
+| 요소 | 목적 |
+|---|---|
+| `Select` | Terminal Window 선택·이동·크기 조절 |
+| `Pan` | Terminal과 상호작용하지 않고 Canvas 이동 |
+| `− / +` | 25–200% 단계 확대·축소 |
+| 배율 | 현재 배율 표시 및 100% 복귀 |
+| `Fit` | 열려 있는 모든 Terminal이 보이도록 맞춤 |
 
 ### 3.3 Terminal Window
 

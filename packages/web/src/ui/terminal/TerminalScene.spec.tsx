@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { FakeTerminalAdapterFactory } from "../../test/fake-terminal-adapter.js";
@@ -21,7 +21,69 @@ describe("TerminalScene", () => {
     expect(screen.getByRole("group", { name: "backend terminal" })).toBe(node);
     expect(adapters.created).toHaveLength(1);
   });
+
+  it("zooms the canvas around its center and exposes the current percentage", () => {
+    const controller = createController();
+    const { container } = render(<TerminalScene {...sceneProps(controller)} overview={false} />);
+    const scene = container.querySelector<HTMLElement>(".terminal-scene");
+    if (!scene) throw new Error("terminal scene did not render");
+    vi.spyOn(scene, "getBoundingClientRect").mockReturnValue(bounds(1_200, 700));
+
+    expect(screen.getByRole("status", { name: "Canvas zoom" })).toHaveTextContent("100%");
+    fireEvent.click(screen.getByRole("button", { name: "Zoom in" }));
+
+    expect(screen.getByRole("status", { name: "Canvas zoom" })).toHaveTextContent("125%");
+    expect(container.querySelector(".terminal-camera")).toHaveStyle({
+      transform: "translate(-150px, -87.5px) scale(1.25)",
+    });
+  });
+
+  it("pans with the hand tool without rewriting terminal geometry", () => {
+    const controller = createController();
+    const props = sceneProps(controller);
+    const { container } = render(<TerminalScene {...props} overview={false} />);
+    const scene = container.querySelector<HTMLElement>(".terminal-scene");
+    if (!scene) throw new Error("terminal scene did not render");
+
+    fireEvent.click(screen.getByRole("button", { name: "Pan tool" }));
+    fireEvent.pointerDown(scene, { pointerId: 1, button: 0, clientX: 100, clientY: 100 });
+    fireEvent.pointerMove(scene, { pointerId: 1, clientX: 160, clientY: 140 });
+    fireEvent.pointerUp(scene, { pointerId: 1, clientX: 160, clientY: 140 });
+
+    expect(container.querySelector(".terminal-camera")).toHaveStyle({
+      transform: "translate(60px, 40px) scale(1)",
+    });
+    expect(props.actions.move).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Pan tool" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
 });
+
+function createController(): TerminalController {
+  return new TerminalController(
+    {
+      adapterFactory: new FakeTerminalAdapterFactory(),
+      frameScheduler: { schedule: () => () => undefined },
+    },
+    { terminalId: 11, sendInput: vi.fn(), resize: vi.fn() },
+  );
+}
+
+function bounds(width: number, height: number): DOMRect {
+  return {
+    x: 0,
+    y: 0,
+    left: 0,
+    top: 0,
+    right: width,
+    bottom: height,
+    width,
+    height,
+    toJSON: () => ({}),
+  };
+}
 
 function sceneProps(controller: TerminalController) {
   return {

@@ -172,6 +172,33 @@ describe("TerminalWindow", () => {
     expect(document.body.querySelector(".window-interaction-ghost")).toBeNull();
   });
 
+  it("converts pointer movement through the camera scale while keeping the ghost screen-aligned", () => {
+    const controller = createController();
+    const props = windowProps(controller, vi.fn(), vi.fn());
+    const { container } = render(
+      <div className="terminal-scene">
+        <TerminalWindow {...props} viewTransform={{ x: 50, y: 30, scale: 0.5 }} />
+      </div>,
+    );
+    const scene = container.querySelector<HTMLElement>(".terminal-scene");
+    const titlebar = container.querySelector<HTMLElement>(".terminal-titlebar");
+    if (!scene || !titlebar) throw new Error("terminal scene did not render");
+    mockWorkspaceBounds(scene);
+
+    fireEvent.pointerDown(titlebar, { clientX: 200, clientY: 150 });
+    expect(document.body.querySelector(".window-interaction-ghost")).toHaveStyle({
+      left: "91px",
+      top: "81px",
+      width: "349px",
+      height: "306.5px",
+    });
+
+    fireEvent.pointerMove(window, { clientX: 240, clientY: 180 });
+    fireEvent.pointerUp(window);
+
+    expect(props.actions.move).toHaveBeenCalledWith(11, { x: 142, y: 122 });
+  });
+
   it.each([
     ["left", { x: 1, y: 400 }, { x: 0, y: 0, width: 600, height: 800 }],
     ["right", { x: 1199, y: 400 }, { x: 600, y: 0, width: 600, height: 800 }],
@@ -238,6 +265,16 @@ function mockWorkspaceBounds(scene: HTMLElement): void {
     height: 800,
     toJSON: () => ({}),
   });
+}
+
+function createController(): TerminalController {
+  return new TerminalController(
+    {
+      adapterFactory: new FakeTerminalAdapterFactory(),
+      frameScheduler: { schedule: () => () => undefined },
+    },
+    { terminalId: 11, sendInput: vi.fn(), resize: vi.fn() },
+  );
 }
 
 function windowProps(
