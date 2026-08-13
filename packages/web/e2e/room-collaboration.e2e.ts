@@ -166,6 +166,25 @@ test("terminal geometry stays synchronized for present and reconnecting particip
   await expect.poll(geometryDelta).toBeLessThan(2);
 });
 
+test("terminal names stay synchronized for present and reconnecting participants", async ({
+  alice,
+  bob,
+}) => {
+  await alice.joinRoom();
+  await bob.joinRoom();
+  await alice.roomPage.openTerminal("term-1");
+
+  await alice.roomPage.renameTerminal("term-1", "API logs");
+
+  await expect(alice.roomPage.terminal("API logs")).toBeVisible();
+  await expect(bob.roomPage.terminal("API logs")).toBeVisible();
+  await expect(alice.roomPage.terminal("term-1")).toHaveCount(0);
+  await expect(bob.roomPage.terminal("term-1")).toHaveCount(0);
+
+  await bob.reloadRoom();
+  await expect(bob.roomPage.terminal("API logs")).toBeVisible();
+});
+
 test("canvas controls zoom, pan, and preserve terminal interaction coordinates", async ({
   alice,
 }) => {

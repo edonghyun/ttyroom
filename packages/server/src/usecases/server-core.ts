@@ -13,6 +13,7 @@ import { HandleDisconnect, PendingDisconnects } from "./handle-disconnect.js";
 import { JoinRoom } from "./join-room.js";
 import { OpenTerminal } from "./open-terminal.js";
 import { ReleaseLease } from "./release-lease.js";
+import { RenameTerminal } from "./rename-terminal.js";
 import { ResyncTerminalOutput } from "./resync-terminal-output.js";
 import { ResizeTerminal } from "./resize-terminal.js";
 import { RouteTerminalInput } from "./route-terminal-input.js";
@@ -36,6 +37,7 @@ export class ServerCore {
   private readonly resyncTerminalOutput: ResyncTerminalOutput;
   private readonly focusParticipant: FocusParticipant;
   private readonly updateTerminalGeometry: UpdateTerminalGeometry;
+  private readonly renameTerminal: RenameTerminal;
 
   constructor(
     private readonly deps: {
@@ -97,6 +99,10 @@ export class ServerCore {
       rooms: deps.rooms,
       connections: deps.connections,
     });
+    this.renameTerminal = new RenameTerminal({
+      rooms: deps.rooms,
+      connections: deps.connections,
+    });
   }
 
   handleMessage(conn: Connection, raw: string): void {
@@ -154,6 +160,11 @@ export class ServerCore {
         parsed.message.terminalId,
         parsed.message.geometry,
       );
+      return;
+    }
+
+    if (parsed.message.type === "rename-terminal" && session.role === "participant") {
+      this.renameTerminal.execute(session, parsed.message.terminalId, parsed.message.title);
       return;
     }
 

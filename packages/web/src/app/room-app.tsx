@@ -19,6 +19,7 @@ import { App, type AppState } from "../ui/App.js";
 import { RoomWorkspace } from "../ui/room/RoomWorkspace.js";
 import { TerminalScene } from "../ui/terminal/TerminalScene.js";
 import { CloseTerminalDialog } from "../ui/overlays/CloseTerminalDialog.js";
+import { RenameTerminalDialog } from "../ui/overlays/RenameTerminalDialog.js";
 import { ToastRegion, type ToastMessage } from "../ui/overlays/ToastRegion.js";
 import { AddHostDrawer } from "../ui/overlays/AddHostDrawer.js";
 import { useWorkspaceKeyboard } from "../ui/use-workspace-keyboard.js";
@@ -45,6 +46,7 @@ export interface RoomAppSession {
   openTerminal(hostId: string): void;
   resize(terminalId: number, cols: number, rows: number): void;
   updateGeometry(terminalId: number, geometry: TerminalGeometry): void;
+  renameTerminal(terminalId: number, title: string): void;
   setMode(terminalId: number, mode: "exclusive" | "shared"): void;
   focusTerminal(terminalId: number | null): void;
 }
@@ -350,6 +352,10 @@ export class RoomAppRuntime {
     this.session?.closeTerminal(terminalId);
   }
 
+  renameTerminal(terminalId: number, title: string): void {
+    this.session?.renameTerminal(terminalId, title);
+  }
+
   setMode(terminalId: number, mode: "exclusive" | "shared"): void {
     this.session?.setMode(terminalId, mode);
   }
@@ -492,11 +498,15 @@ function sameRect(left: WindowRect, right: WindowRect): boolean {
 export function RoomApp({ runtime }: { readonly runtime: RoomAppRuntime }) {
   const view = useSyncExternalStore(runtime.subscribe, runtime.view, runtime.view);
   const [closingTerminalId, setClosingTerminalId] = useState<number | null>(null);
+  const [renamingTerminalId, setRenamingTerminalId] = useState<number | null>(null);
   const [addHostOpen, setAddHostOpen] = useState(false);
   const [hostIdsWhenDrawerOpened, setHostIdsWhenDrawerOpened] = useState<readonly string[]>([]);
   const [addHostOpener, setAddHostOpener] = useState<HTMLElement | null>(null);
   const closingTerminal = view.terminals.find(
     (terminal) => terminal.terminalId === closingTerminalId,
+  );
+  const renamingTerminal = view.terminals.find(
+    (terminal) => terminal.terminalId === renamingTerminalId,
   );
   const controlledTerminal = view.terminals.find((terminal) => terminal.status.kind === "mine");
   const connectedHost = view.hosts.find((host) => !hostIdsWhenDrawerOpened.includes(host.hostId));
@@ -506,10 +516,11 @@ export function RoomApp({ runtime }: { readonly runtime: RoomAppRuntime }) {
     setAddHostOpen(true);
   };
   useWorkspaceKeyboard({
-    overlayOpen: addHostOpen || closingTerminalId !== null,
+    overlayOpen: addHostOpen || closingTerminalId !== null || renamingTerminalId !== null,
     closeOverlay: () => {
       setAddHostOpen(false);
       setClosingTerminalId(null);
+      setRenamingTerminalId(null);
     },
     releaseLease: () => {
       if (controlledTerminal) runtime.releaseControl(controlledTerminal.terminalId);
@@ -556,6 +567,7 @@ export function RoomApp({ runtime }: { readonly runtime: RoomAppRuntime }) {
           maximize: (id) => runtime.maximize(id),
           restore: (id) => runtime.restore(id),
           requestClose: (id) => setClosingTerminalId(id),
+          requestRename: (id) => setRenamingTerminalId(id),
           setMode: (id, mode) => runtime.setMode(id, mode),
           exitOverview: () => runtime.exitOverview(),
           addTerminal: (hostId) => runtime.openTerminal(hostId),
@@ -580,6 +592,15 @@ export function RoomApp({ runtime }: { readonly runtime: RoomAppRuntime }) {
         confirm={() => {
           if (closingTerminalId !== null) runtime.closeTerminal(closingTerminalId);
           setClosingTerminalId(null);
+        }}
+      />
+      <RenameTerminalDialog
+        open={Boolean(renamingTerminal)}
+        terminalName={renamingTerminal?.title ?? "terminal"}
+        cancel={() => setRenamingTerminalId(null)}
+        confirm={(title) => {
+          if (renamingTerminalId !== null) runtime.renameTerminal(renamingTerminalId, title);
+          setRenamingTerminalId(null);
         }}
       />
       <ToastRegion toasts={view.toasts} />

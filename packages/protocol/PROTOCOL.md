@@ -6,7 +6,9 @@
 
 ## 버전과 협상
 
-- 현재 버전: `PROTOCOL_VERSION = 4`. 버전은 1 이상의 정수만 유효하다 (0·음수는 hello 파싱 단계에서 거부).
+- 현재 버전: `PROTOCOL_VERSION = 5`. 버전은 1 이상의 정수만 유효하다 (0·음수는 hello 파싱 단계에서 거부).
+- v5는 Room이 소유하는 terminal title을 request·event에 추가했다.
+  구형 서버가 `rename-terminal`을 `bad-message`로 거부하므로 협상 버전을 올렸다.
 - v4는 Room이 소유하는 terminal geometry를 snapshot·request·event에 추가했다.
   구형 서버가 `update-terminal-geometry`를 `bad-message`로 거부하므로 협상 버전을 올렸다.
 - 새 reader는 구형 persisted v1
@@ -92,7 +94,7 @@
 
 | type    | 예시                                                                                                                |
 | ------- | ------------------------------------------------------------------------------------------------------------------- |
-| `hello` | `{"type":"hello","protocolVersion":4,"roomId":"r1","token":"t","clientId":"c1","name":"동현","role":"participant"}` |
+| `hello` | `{"type":"hello","protocolVersion":5,"roomId":"r1","token":"t","clientId":"c1","name":"동현","role":"participant"}` |
 
 `role`은 `"participant"` 또는 `"host"`. 호스트의 `clientId`는 `hostId`로도 쓰인다.
 
@@ -105,6 +107,7 @@
 | `set-terminal-mode`        | `{"type":"set-terminal-mode","terminalId":3,"mode":"shared"}`                                             |
 | `resync-output-request`    | `{"type":"resync-output-request","terminalId":3}`                                                         |
 | `focus-terminal`           | `{"type":"focus-terminal","terminalId":3}`                                                                |
+| `rename-terminal`          | `{"type":"rename-terminal","terminalId":3,"title":"API logs"}`                                            |
 | `acquire-lease`            | `{"type":"acquire-lease","terminalId":3}`                                                                 |
 | `release-lease`            | `{"type":"release-lease","terminalId":3,"leaseId":7}`                                                     |
 | `resize-request`           | `{"type":"resize-request","terminalId":3,"cols":120,"rows":40}`                                           |
@@ -163,6 +166,7 @@
 | `terminal-opened`           | `{"kind":"terminal-opened","terminal":{"terminalId":3,"hostId":"h1","title":"term-3","geometry":{"x":88,"y":88,"width":640,"height":420},"mode":"exclusive","status":"open","exitCode":null,"meta":{"cwd":"/home/kep","gitBranch":"main","fgProcess":"vim"}}}` |
 | `terminal-mode-changed`     | `{"kind":"terminal-mode-changed","terminalId":3,"mode":"shared"}`                                                                                                                                                                                              |
 | `terminal-geometry-changed` | `{"kind":"terminal-geometry-changed","terminalId":3,"geometry":{"x":120,"y":80,"width":720,"height":480}}`                                                                                                                                                     |
+| `terminal-renamed`          | `{"kind":"terminal-renamed","terminalId":3,"title":"API logs"}`                                                                                                                                                                                                |
 | `terminal-closed`           | `{"kind":"terminal-closed","terminalId":3,"exitCode":0}`                                                                                                                                                                                                       |
 | `lease-granted`             | `{"kind":"lease-granted","lease":{"terminalId":3,"leaseId":7,"holderClientId":"c1"}}`                                                                                                                                                                          |
 | `lease-released`            | `{"kind":"lease-released","terminalId":3}`                                                                                                                                                                                                                     |
@@ -179,7 +183,7 @@ RoomSnapshot과 room-event가 공유하는 객체 형태. 표기 `A | null`은 J
 - **TerminalMeta** — `cwd`: string | null, `gitBranch`: string | null, `fgProcess`: string | null
 - **TerminalGeometry** — `x`: -65535..65535, `y`: -65535..65535,
   `width`: 0보다 크고 65535 이하, `height`: 0보다 크고 65535 이하. 모두 유한 number.
-- **TerminalView** — `terminalId`: u32, `hostId`: string, `title`: string,
+- **TerminalView** — `terminalId`: u32, `hostId`: string, `title`: trim 후 1..80자 string,
   `geometry`: TerminalGeometry (구형 payload 기본값 `{"x":24,"y":24,"width":640,"height":420}`),
   `mode`: `"exclusive"` | `"shared"`, `status`: `"open"` | `"exited"`,
   `exitCode`: int | null, `meta`: TerminalMeta
@@ -208,3 +212,5 @@ Room bootstrap HTTP 계약:
 - `update-terminal-geometry`는 participant가 drag·resize·Arrange commit 시 최종 논리 좌표를
   보낸다. 서버는 Room의 최신 geometry를 교체하고 `terminal-geometry-changed`를 참가자 전체에
   방송한다. 동시 갱신은 서버 수신 순서의 last-write-wins이며 이후 welcome snapshot도 최신값을 담는다.
+- `rename-terminal`은 participant가 trim 후 1..80자인 표시 이름을 보낸다. 서버는 Room의 최신
+  이름을 교체하고 `terminal-renamed`를 참가자 전체에 방송한다. 이후 welcome snapshot도 최신값을 담는다.

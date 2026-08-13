@@ -22,7 +22,7 @@ describe("RoomSession — collaborative Room lifecycle", () => {
     expect(transports.hellos).toEqual([
       {
         type: "hello",
-        protocolVersion: 4,
+        protocolVersion: 5,
         roomId: "room-1",
         token: "secret-token",
         clientId: "alice-id",
@@ -167,6 +167,7 @@ describe("RoomSession — collaborative Room lifecycle", () => {
     session.setMode(1, "shared");
     session.resize(1, 120, 40);
     session.updateGeometry(1, { x: 160, y: 88, width: 720, height: 480 });
+    session.renameTerminal(1, "API logs");
 
     expect(transports.latest().controls).toEqual([
       { type: "open-terminal-request", hostId: "host-1" },
@@ -178,6 +179,7 @@ describe("RoomSession — collaborative Room lifecycle", () => {
         terminalId: 1,
         geometry: { x: 160, y: 88, width: 720, height: 480 },
       },
+      { type: "rename-terminal", terminalId: 1, title: "API logs" },
     ]);
   });
 

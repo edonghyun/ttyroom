@@ -60,6 +60,7 @@ class ReferenceRoomSession implements RoomAppSession {
   openTerminal(): void {}
   resize(): void {}
   updateGeometry(): void {}
+  renameTerminal(): void {}
   setMode(): void {}
   focusTerminal(): void {}
 }

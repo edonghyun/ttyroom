@@ -117,6 +117,7 @@ function sceneProps(controller: TerminalController) {
       maximize: vi.fn(),
       restore: vi.fn(),
       requestClose: vi.fn(),
+      requestRename: vi.fn(),
       setMode: vi.fn(),
       exitOverview: vi.fn(),
       addTerminal: vi.fn(),

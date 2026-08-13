@@ -5,6 +5,7 @@ const u32 = z.number().int().min(0).max(0xffffffff);
 const terminalDimension = z.number().int().min(1).max(0xffff);
 const workspaceCoordinate = z.number().finite().min(-0xffff).max(0xffff);
 const workspaceDimension = z.number().finite().positive().max(0xffff);
+export const terminalTitleSchema = z.string().trim().min(1).max(80);
 
 // ── 뷰 타입: RoomSnapshot과 이벤트가 공유하는 유선 형태 ──────────────────────
 
@@ -33,7 +34,7 @@ export const hostViewSchema = z.object({
 export const terminalViewSchema = z.object({
   terminalId: u32,
   hostId: z.string(),
-  title: z.string(),
+  title: terminalTitleSchema,
   geometry: terminalGeometrySchema.default({ x: 24, y: 24, width: 640, height: 420 }),
   mode: z.enum(["exclusive", "shared"]),
   status: z.enum(["open", "exited"]),
@@ -100,6 +101,11 @@ const updateTerminalGeometrySchema = z.object({
   terminalId: u32,
   geometry: terminalGeometrySchema,
 });
+const renameTerminalSchema = z.object({
+  type: z.literal("rename-terminal"),
+  terminalId: u32,
+  title: terminalTitleSchema,
+});
 const acquireLeaseSchema = z.object({ type: z.literal("acquire-lease"), terminalId: u32 });
 const releaseLeaseSchema = z.object({
   type: z.literal("release-lease"),
@@ -136,6 +142,7 @@ export const clientMessageSchema = z.discriminatedUnion("type", [
   resyncOutputRequestSchema,
   focusTerminalSchema,
   updateTerminalGeometrySchema,
+  renameTerminalSchema,
   acquireLeaseSchema,
   releaseLeaseSchema,
   resizeRequestSchema,
@@ -175,6 +182,11 @@ export const roomEventSchema = z.discriminatedUnion("kind", [
     kind: z.literal("terminal-geometry-changed"),
     terminalId: u32,
     geometry: terminalGeometrySchema,
+  }),
+  z.object({
+    kind: z.literal("terminal-renamed"),
+    terminalId: u32,
+    title: terminalTitleSchema,
   }),
   z.object({
     kind: z.literal("terminal-closed"),

@@ -166,6 +166,13 @@ export class Room {
     this.requireTerminal(terminalId).geometry = { ...geometry };
   }
 
+  renameTerminal(terminalId: number, title: string): boolean {
+    const terminal = this.requireTerminal(terminalId);
+    if (terminal.title === title) return false;
+    terminal.title = title;
+    return true;
+  }
+
   terminal(terminalId: number): TerminalView | undefined {
     const terminal = this.terminals.get(terminalId);
     return terminal && copyOfTerminal(terminal);

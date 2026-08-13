@@ -77,6 +77,15 @@ export class RoomPage {
     await this.page.getByRole("menuitem", { name: `Use ${mode.toLowerCase()} input` }).click();
   }
 
+  async renameTerminal(currentTitle: string, nextTitle: string): Promise<void> {
+    await this.terminal(currentTitle)
+      .getByRole("button", { name: `Open ${currentTitle} menu` })
+      .click();
+    await this.page.getByRole("menuitem", { name: "Rename terminal" }).click();
+    await this.page.getByRole("textbox", { name: "Terminal name" }).fill(nextTitle);
+    await this.page.getByRole("button", { name: "Save name" }).click();
+  }
+
   dockTerminals(): Locator {
     return this.page.getByRole("complementary", { name: "Terminal Dock" }).getByRole("button", {
       name: /^(Focus|Restore) term-\d+$/,

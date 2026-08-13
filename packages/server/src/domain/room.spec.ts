@@ -182,6 +182,17 @@ describe("Room — 역할: Room 라이브 상태와 불변식의 소유자", () 
     expect(room.snapshot().terminals[0]?.geometry).toEqual(bobGeometry);
   });
 
+  it("renameTerminal은 마지막 이름을 snapshot에 보존하고 같은 이름은 unchanged로 판정한다", () => {
+    const room = makeRoom();
+    room.connectHost("h1", "h");
+    const terminal = room.openTerminal("h1");
+
+    expect(room.renameTerminal(terminal.terminalId, "API logs")).toBe(true);
+    expect(room.renameTerminal(terminal.terminalId, "API logs")).toBe(false);
+
+    expect(room.snapshot().terminals[0]?.title).toBe("API logs");
+  });
+
   it("openTerminal이 돌려준 뷰를 변경해도 Room 내부 상태는 오염되지 않는다 (구조 복사 불변식)", () => {
     const room = makeRoom();
     room.connectHost("h1", "h");

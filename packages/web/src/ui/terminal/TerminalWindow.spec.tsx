@@ -104,6 +104,17 @@ describe("TerminalWindow", () => {
     expect(screen.getByRole("img", { name: "Shared input mode" })).toHaveTextContent("Shared");
   });
 
+  it("opens terminal rename from the title bar actions menu", async () => {
+    const requestRename = vi.fn();
+    const props = windowProps(createController(), vi.fn(), vi.fn());
+    render(<TerminalWindow {...props} actions={{ ...props.actions, requestRename }} />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Open backend menu" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Rename terminal" }));
+
+    expect(requestRename).toHaveBeenCalledWith(11);
+  });
+
   it("shows a translucent window ghost that follows the pointer and commits move on release", () => {
     const adapters = new FakeTerminalAdapterFactory();
     const controller = new TerminalController(
@@ -309,6 +320,7 @@ function windowProps(
       maximize: vi.fn(),
       restore: vi.fn(),
       requestClose: vi.fn(),
+      requestRename: vi.fn(),
       setMode: vi.fn(),
     },
   };

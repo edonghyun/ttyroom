@@ -39,6 +39,7 @@ describe("RoomApp production composition", () => {
       openTerminal: vi.fn(),
       resize: vi.fn(),
       updateGeometry: vi.fn(),
+      renameTerminal: vi.fn(),
       setMode: vi.fn(),
       focusTerminal: vi.fn(),
     };
@@ -131,6 +132,46 @@ describe("RoomApp production composition", () => {
     expect(session.stop).toHaveBeenCalledOnce();
   });
 
+  it("opens rename from a terminal menu and sends the normalized name through the session", async () => {
+    const projection = new RoomProjection();
+    const renameTerminal = vi.fn();
+    const runtime = new RoomAppRuntime({
+      ...runtimeDeps(projection, new WindowManager({ viewport: { width: 1200, height: 700 } })),
+      createSession: () => ({
+        start: vi.fn(),
+        stop: vi.fn(),
+        subscribe: () => () => undefined,
+        takeControl: vi.fn(),
+        releaseControl: vi.fn(),
+        closeTerminal: vi.fn(),
+        openTerminal: vi.fn(),
+        resize: vi.fn(),
+        updateGeometry: vi.fn(),
+        renameTerminal,
+        setMode: vi.fn(),
+        focusTerminal: vi.fn(),
+      }),
+    });
+    runtime.join("room-1", "Donghyeon");
+    projection.applyServerMessage({
+      type: "welcome",
+      selfClientId: "client-1",
+      snapshot: snapshot([1]),
+    });
+    projection.applyServerMessage({ type: "sync", terminalId: 1, seq: 0 });
+    render(<RoomApp runtime={runtime} />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Open terminal-1 menu" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Rename terminal" }));
+    const input = screen.getByRole("textbox", { name: "Terminal name" });
+    await userEvent.clear(input);
+    await userEvent.type(input, "  API logs  ");
+    await userEvent.click(screen.getByRole("button", { name: "Save name" }));
+
+    expect(renameTerminal).toHaveBeenCalledWith(1, "API logs");
+    runtime.dispose();
+  });
+
   it("reports activated terminal focus and maps focused participants into each title bar", () => {
     const projection = new RoomProjection();
     const focusTerminal = vi.fn();
@@ -146,6 +187,7 @@ describe("RoomApp production composition", () => {
         openTerminal: vi.fn(),
         resize: vi.fn(),
         updateGeometry: vi.fn(),
+        renameTerminal: vi.fn(),
         setMode: vi.fn(),
         focusTerminal,
       }),
@@ -212,6 +254,7 @@ describe("RoomApp production composition", () => {
         openTerminal: vi.fn(),
         resize: vi.fn(),
         updateGeometry,
+        renameTerminal: vi.fn(),
         setMode: vi.fn(),
         focusTerminal: vi.fn(),
       }),
@@ -280,6 +323,7 @@ describe("RoomApp production composition", () => {
         openTerminal: vi.fn(),
         resize: vi.fn(),
         updateGeometry,
+        renameTerminal: vi.fn(),
         setMode: vi.fn(),
         focusTerminal: vi.fn(),
       }),
@@ -367,6 +411,7 @@ function runtimeForToast(
       openTerminal: vi.fn(),
       resize: vi.fn(),
       updateGeometry: vi.fn(),
+      renameTerminal: vi.fn(),
       setMode: vi.fn(),
       focusTerminal: vi.fn(),
     }),
@@ -399,6 +444,7 @@ function runtimeDeps(projection: RoomProjection, windowManager: WindowManager) {
       openTerminal: vi.fn(),
       resize: vi.fn(),
       updateGeometry: vi.fn(),
+      renameTerminal: vi.fn(),
       setMode: vi.fn(),
       focusTerminal: vi.fn(),
     }),

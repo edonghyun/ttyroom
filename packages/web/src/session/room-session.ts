@@ -173,6 +173,10 @@ export class RoomSession {
     this.transport?.sendControl({ type: "update-terminal-geometry", terminalId, geometry });
   }
 
+  renameTerminal(terminalId: number, title: string): void {
+    this.transport?.sendControl({ type: "rename-terminal", terminalId, title });
+  }
+
   subscribe(subscriber: SessionSubscriber): () => void {
     this.subscribers.add(subscriber);
     return () => this.subscribers.delete(subscriber);

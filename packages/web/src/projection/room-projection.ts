@@ -257,6 +257,11 @@ export class RoomProjection {
           ...terminal,
           geometry: { ...event.geometry },
         }));
+      case "terminal-renamed":
+        return this.updateTerminal(event.terminalId, (terminal) => ({
+          ...terminal,
+          title: event.title,
+        }));
       case "terminal-closed":
         return this.updateTerminal(event.terminalId, (terminal) => ({
           ...terminal,
@@ -377,6 +382,7 @@ function existingTerminalTarget(event: RoomEvent): number | null {
   switch (event.kind) {
     case "terminal-mode-changed":
     case "terminal-geometry-changed":
+    case "terminal-renamed":
     case "terminal-closed":
     case "terminal-meta":
     case "lease-released":

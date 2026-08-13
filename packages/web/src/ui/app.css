@@ -832,6 +832,29 @@
   color: var(--danger);
 }
 
+.rename-terminal-dialog > svg {
+  color: var(--purple);
+}
+
+.rename-terminal-dialog form {
+  display: grid;
+  gap: 8px;
+}
+
+.rename-terminal-dialog label {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.rename-terminal-dialog input {
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--terminal);
+  color: var(--text);
+}
+
 .dialog-actions {
   justify-content: flex-end;
   gap: 8px;

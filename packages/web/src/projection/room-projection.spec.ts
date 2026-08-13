@@ -208,6 +208,17 @@ describe("RoomProjection — authoritative Room state", () => {
     expect(projection.terminal(1)?.terminal.geometry).toEqual(geometry);
   });
 
+  it("applies terminal rename events to the authoritative terminal view", () => {
+    const projection = welcomedProjection();
+
+    projection.applyServerMessage({
+      type: "room-event",
+      event: { kind: "terminal-renamed", terminalId: 1, title: "API logs" },
+    });
+
+    expect(projection.terminal(1)?.terminal.title).toBe("API logs");
+  });
+
   it("derives input capability from terminal, host, lease, holder, and self state", () => {
     const projection = welcomedProjection();
 

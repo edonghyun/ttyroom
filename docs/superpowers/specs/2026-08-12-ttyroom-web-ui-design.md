@@ -94,7 +94,7 @@ Title Bar:
 - 현재 작업 디렉터리
 - Git branch
 - 입력권 상태
-- 최소화, 최대화, 닫기, 추가 메뉴
+- 최소화, 최대화, 닫기, 추가 메뉴 (`Rename terminal`, 입력 모드 전환)
 
 Body:
 
@@ -151,6 +151,7 @@ Overview는 동일한 Terminal geometry 위에 얹는 사용자별 표현 상태
 |---|---|
 | Host 및 Terminal 목록 | z-order와 active 창 |
 | Terminal open/exited 상태 | drag·resize ghost와 snap preview |
+| Terminal 표시 이름 | 이름 변경 dialog의 저장 전 입력값 |
 | Terminal 논리 위치와 크기 | 최소화·최대화·Focused 상태 |
 | Participant 상태 | Overview 진입 여부 |
 | Lease와 입력권 소유자 | Canvas pan·zoom·Select/Pan 도구 |
@@ -161,6 +162,10 @@ Overview는 동일한 Terminal geometry 위에 얹는 사용자별 표현 상태
 순서의 last-write-wins다. 늦게 입장하거나 재접속한 사용자는 welcome snapshot의 최신
 geometry를 적용한다. 로컬 geometry commit은 서버 event가 돌아오기 전까지 낙관적으로
 표시하며, 터미널 출력 같은 무관한 event가 이를 이전 좌표로 되돌리지 않는다.
+
+Terminal 이름은 title bar 추가 메뉴에서 바꾼다. trim 후 1..80자인 이름만 저장하며 서버는
+Room 상태를 교체하고 참가자 전체에 방송한다. 동시 변경은 서버 수신 순서의 last-write-wins다.
+늦게 입장하거나 재접속한 사용자는 welcome snapshot의 최신 이름을 적용한다.
 
 브라우저의 `roomId + clientId` localStorage는 z-order·최소화·최대화 같은 개인 표현 상태의
 복구용이다. 저장된 rect가 있더라도 welcome snapshot의 서버 geometry가 우선한다. Room이
@@ -356,6 +361,7 @@ Floating Window에서는 창 선택이 자주 발생하므로, 화면 설계를 
 - 5개 Terminal이 열려 있어도 모든 창을 Dock 또는 Overview에서 찾을 수 있다.
 - 창을 최소화하거나 뒤로 보내도 PTY 프로세스와 출력 수신이 유지된다.
 - 다른 참여자의 창 이동·resize·Arrange가 내 브라우저의 동일 Terminal geometry에 반영된다.
-- 재연결 후 Terminal·Lease·geometry는 서버 snapshot을, z-order·최대화·최소화·Canvas camera는
+- 다른 참여자가 바꾼 Terminal 이름이 현재 title bar와 Dock에 반영되고 재연결 후에도 유지된다.
+- 재연결 후 Terminal·Lease·이름·geometry는 서버 snapshot을, z-order·최대화·최소화·Canvas camera는
   사용자 로컬 상태를 따른다.
 - 상태는 색상만으로 구분하지 않는다.

@@ -8,8 +8,8 @@ import {
 } from "./messages.js";
 
 describe("제어 메시지 스키마 — 역할: JSON 제어 프레임의 검증과 유선 형태 고정", () => {
-  it("shared terminal geometry는 protocol version 4에서 협상한다", () => {
-    expect(PROTOCOL_VERSION).toBe(4);
+  it("terminal rename은 protocol version 5에서 협상한다", () => {
+    expect(PROTOCOL_VERSION).toBe(5);
   });
 
   it("정상 hello 메시지를 파싱해 타입을 부여한다", () => {
@@ -276,6 +276,26 @@ describe("제어 메시지 스키마 — 역할: JSON 제어 프레임의 검증
         }),
       ),
     ).toMatchObject({ kind: "bad-message" });
+  });
+
+  it("terminal 이름 변경은 공백을 정규화하고 1..80자 계약으로 request와 event를 라운드트립한다", () => {
+    const request = { type: "rename-terminal", terminalId: 3, title: "  API logs  " } as const;
+    const changed = {
+      type: "room-event",
+      event: { kind: "terminal-renamed", terminalId: 3, title: "API logs" },
+    } as const;
+
+    expect(parseClientMessage(JSON.stringify(request))).toEqual({
+      kind: "ok",
+      message: { ...request, title: "API logs" },
+    });
+    expect(parseServerMessage(JSON.stringify(changed))).toEqual({ kind: "ok", message: changed });
+    expect(parseClientMessage(JSON.stringify({ ...request, title: "   " }))).toMatchObject({
+      kind: "bad-message",
+    });
+    expect(parseClientMessage(JSON.stringify({ ...request, title: "x".repeat(81) }))).toMatchObject(
+      { kind: "bad-message" },
+    );
   });
 
   it("welcome terminal view는 공유 geometry를 전달하고 구형 payload에는 기본 배치를 채운다", () => {

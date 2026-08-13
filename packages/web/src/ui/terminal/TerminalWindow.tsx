@@ -63,6 +63,7 @@ export interface TerminalWindowActions {
   readonly maximize: (terminalId: number) => void;
   readonly restore: (terminalId: number) => void;
   readonly requestClose: (terminalId: number) => void;
+  readonly requestRename: (terminalId: number) => void;
   readonly setMode: (terminalId: number, mode: "exclusive" | "shared") => void;
   readonly openNew?: (host: string) => void;
 }
@@ -400,6 +401,16 @@ export function TerminalWindow({
           </div>
           {menuOpen && (
             <div className="terminal-menu" role="menu" aria-label={`${model.title} actions`}>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  actions.requestRename(model.terminalId);
+                  setMenuOpen(false);
+                }}
+              >
+                Rename terminal
+              </button>
               <button
                 type="button"
                 role="menuitem"
