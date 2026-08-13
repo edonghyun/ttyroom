@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { Lock, Maximize2, Minimize2, MoreHorizontal, RotateCcw, Users, X } from "react-feather";
 
 import {
+  clampRect,
   snapRect,
   type SnapZone,
   type Viewport,
@@ -19,8 +20,9 @@ interface DragState {
   readonly workspace: Viewport & { readonly left: number; readonly top: number };
 }
 
-interface SnapPreviewState {
-  readonly zone: SnapZone;
+interface InteractionPreviewState {
+  readonly kind: "move" | "resize";
+  readonly zone: SnapZone | null;
   readonly rect: WindowRect;
   readonly left: number;
   readonly top: number;
@@ -79,10 +81,12 @@ export function TerminalWindow({
 }) {
   const terminalRoot = useRef<HTMLDivElement>(null);
   const dragStart = useRef<DragState | null>(null);
-  const resizeStart = useRef<{ x: number; y: number; rect: WindowRect } | null>(null);
-  const snapTarget = useRef<SnapPreviewState | null>(null);
+  const resizeStart = useRef<DragState | null>(null);
+  const interactionTarget = useRef<InteractionPreviewState | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [snapPreview, setSnapPreview] = useState<SnapPreviewState | null>(null);
+  const [interactionPreview, setInteractionPreview] = useState<InteractionPreviewState | null>(
+    null,
+  );
   const inputAllowed = model.status.kind === "mine" || model.status.kind === "shared";
 
   useEffect(() => {
@@ -95,60 +99,116 @@ export function TerminalWindow({
   }, [controller, inputAllowed, inputBlocked, model.minimized, overview]);
 
   useEffect(() => {
+    if (!interactionPreview) return;
+    const previousCursor = document.documentElement.style.cursor;
+    document.documentElement.style.cursor =
+      interactionPreview.kind === "move" ? "grabbing" : "nwse-resize";
+    return () => {
+      document.documentElement.style.cursor = previousCursor;
+    };
+  }, [interactionPreview?.kind]);
+
+  useEffect(() => {
+    const preview = (next: InteractionPreviewState | null) => {
+      interactionTarget.current = next;
+      setInteractionPreview(next);
+    };
+
     function pointerMove(event: PointerEvent) {
       const start = dragStart.current;
-      if (!start) return;
-      const viewport = { width: start.workspace.width, height: start.workspace.height };
-      const zone = snapZoneAt(
-        { x: event.clientX - start.workspace.left, y: event.clientY - start.workspace.top },
-        viewport,
-      );
-      const preview = zone
-        ? {
-            zone,
-            rect: snapRect(zone, viewport),
-            left: start.workspace.left,
-            top: start.workspace.top,
-          }
-        : null;
-      snapTarget.current = preview;
-      setSnapPreview(preview);
+      if (start) {
+        const viewport = { width: start.workspace.width, height: start.workspace.height };
+        const zone = snapZoneAt(
+          { x: event.clientX - start.workspace.left, y: event.clientY - start.workspace.top },
+          viewport,
+        );
+        preview({
+          kind: "move",
+          zone,
+          rect: zone
+            ? snapRect(zone, viewport)
+            : clampRect(
+                {
+                  ...start.rect,
+                  x: start.rect.x + event.clientX - start.x,
+                  y: start.rect.y + event.clientY - start.y,
+                },
+                viewport,
+              ),
+          left: start.workspace.left,
+          top: start.workspace.top,
+        });
+        return;
+      }
+
+      const resizing = resizeStart.current;
+      if (!resizing) return;
+      const viewport = { width: resizing.workspace.width, height: resizing.workspace.height };
+      preview({
+        kind: "resize",
+        zone: null,
+        rect: clampRect(
+          {
+            ...resizing.rect,
+            width: resizing.rect.width + event.clientX - resizing.x,
+            height: resizing.rect.height + event.clientY - resizing.y,
+          },
+          viewport,
+        ),
+        left: resizing.workspace.left,
+        top: resizing.workspace.top,
+      });
     }
 
-    function pointerUp(event: PointerEvent) {
+    function pointerUp() {
       if (dragStart.current) {
-        const start = dragStart.current;
-        const target = snapTarget.current;
-        if (target) {
+        const target = interactionTarget.current;
+        if (target?.zone) {
           actions.move(model.terminalId, { x: target.rect.x, y: target.rect.y });
           actions.resize(model.terminalId, {
             width: target.rect.width,
             height: target.rect.height,
           });
-        } else {
-          actions.move(model.terminalId, {
-            x: start.rect.x + event.clientX - start.x,
-            y: start.rect.y + event.clientY - start.y,
-          });
+        } else if (target) {
+          const start = dragStart.current;
+          if (target.rect.x !== start.rect.x || target.rect.y !== start.rect.y) {
+            actions.move(model.terminalId, {
+              x: target.rect.x,
+              y: target.rect.y,
+            });
+          }
         }
         dragStart.current = null;
-        snapTarget.current = null;
-        setSnapPreview(null);
+        preview(null);
       }
       if (resizeStart.current) {
-        const start = resizeStart.current;
-        actions.resize(model.terminalId, {
-          width: start.rect.width + event.clientX - start.x,
-          height: start.rect.height + event.clientY - start.y,
-        });
+        const target = interactionTarget.current;
+        if (target) {
+          const start = resizeStart.current;
+          if (target.rect.width !== start.rect.width || target.rect.height !== start.rect.height) {
+            actions.resize(model.terminalId, {
+              width: target.rect.width,
+              height: target.rect.height,
+            });
+          }
+        }
         resizeStart.current = null;
+        preview(null);
       }
+    }
+
+    function pointerCancel() {
+      dragStart.current = null;
+      resizeStart.current = null;
+      preview(null);
     }
     window.addEventListener("pointermove", pointerMove);
     window.addEventListener("pointerup", pointerUp);
+    window.addEventListener("pointercancel", pointerCancel);
     return () => {
       window.removeEventListener("pointermove", pointerMove);
       window.removeEventListener("pointerup", pointerUp);
+      window.removeEventListener("pointercancel", pointerCancel);
     };
   }, [actions, model]);
 
@@ -162,6 +222,7 @@ export function TerminalWindow({
         aria-current={active ? "true" : undefined}
         data-terminal-id={model.terminalId}
         data-overview={overview || undefined}
+        data-interacting={interactionPreview?.kind}
         hidden={model.minimized && !overview}
         style={{
           left: model.rect.x,
@@ -188,9 +249,15 @@ export function TerminalWindow({
         <header
           className="terminal-titlebar"
           onPointerDown={(event) => {
+            if (
+              event.target instanceof Element &&
+              event.target.closest("button, [role='menu'], .terminal-focus-presence")
+            ) {
+              return;
+            }
             const scene = event.currentTarget.closest(".terminal-scene");
             const bounds = scene?.getBoundingClientRect();
-            dragStart.current = {
+            const start = {
               x: event.clientX,
               y: event.clientY,
               rect: model.rect,
@@ -203,6 +270,16 @@ export function TerminalWindow({
                   }
                 : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight },
             };
+            dragStart.current = start;
+            const next = {
+              kind: "move" as const,
+              zone: null,
+              rect: model.rect,
+              left: start.workspace.left,
+              top: start.workspace.top,
+            };
+            interactionTarget.current = next;
+            setInteractionPreview(next);
           }}
         >
           <div className="terminal-heading">
@@ -326,24 +403,59 @@ export function TerminalWindow({
           aria-label={`Resize ${model.title}`}
           onPointerDown={(event) => {
             event.stopPropagation();
-            resizeStart.current = { x: event.clientX, y: event.clientY, rect: model.rect };
+            const scene = event.currentTarget.closest(".terminal-scene");
+            const bounds = scene?.getBoundingClientRect();
+            const start = {
+              x: event.clientX,
+              y: event.clientY,
+              rect: model.rect,
+              workspace: bounds
+                ? {
+                    left: bounds.left,
+                    top: bounds.top,
+                    width: bounds.width,
+                    height: bounds.height,
+                  }
+                : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight },
+            };
+            resizeStart.current = start;
+            const next = {
+              kind: "resize" as const,
+              zone: null,
+              rect: model.rect,
+              left: start.workspace.left,
+              top: start.workspace.top,
+            };
+            interactionTarget.current = next;
+            setInteractionPreview(next);
           }}
         />
       </article>
-      {snapPreview &&
+      {interactionPreview &&
         createPortal(
-          <output
-            className="snap-preview"
-            role="status"
-            aria-live="polite"
-            aria-label={`Snap preview: ${snapPreview.zone}`}
+          <div
+            className={`window-interaction-ghost window-interaction-${interactionPreview.kind}${interactionPreview.zone ? " snap-preview" : ""}`}
+            role={interactionPreview.zone ? "status" : undefined}
+            aria-label={
+              interactionPreview.zone ? `Snap preview: ${interactionPreview.zone}` : undefined
+            }
+            aria-hidden={interactionPreview.zone ? undefined : true}
             style={{
-              left: snapPreview.left + snapPreview.rect.x,
-              top: snapPreview.top + snapPreview.rect.y,
-              width: snapPreview.rect.width,
-              height: snapPreview.rect.height,
+              left: interactionPreview.left + interactionPreview.rect.x,
+              top: interactionPreview.top + interactionPreview.rect.y,
+              width: interactionPreview.rect.width,
+              height: interactionPreview.rect.height,
             }}
-          />,
+          >
+            <div className="window-interaction-ghost-title">
+              <strong>{model.title}</strong>
+              <span>
+                {interactionPreview.kind === "move" ? "Moving" : "Resizing"} ·{" "}
+                {Math.round(interactionPreview.rect.width)} ×{" "}
+                {Math.round(interactionPreview.rect.height)}
+              </span>
+            </div>
+          </div>,
           document.body,
         )}
     </>

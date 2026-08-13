@@ -104,6 +104,74 @@ describe("TerminalWindow", () => {
     expect(screen.getByRole("img", { name: "Shared input mode" })).toHaveTextContent("Shared");
   });
 
+  it("shows a translucent window ghost that follows the pointer and commits move on release", () => {
+    const adapters = new FakeTerminalAdapterFactory();
+    const controller = new TerminalController(
+      { adapterFactory: adapters, frameScheduler: { schedule: () => () => undefined } },
+      { terminalId: 11, sendInput: vi.fn(), resize: vi.fn() },
+    );
+    const props = windowProps(controller, vi.fn(), vi.fn());
+    const { container } = render(
+      <div className="terminal-scene">
+        <TerminalWindow {...props} />
+      </div>,
+    );
+    const scene = container.querySelector<HTMLElement>(".terminal-scene");
+    const titlebar = container.querySelector<HTMLElement>(".terminal-titlebar");
+    if (!scene || !titlebar) throw new Error("terminal scene did not render");
+    mockWorkspaceBounds(scene);
+
+    fireEvent.pointerDown(titlebar, { clientX: 400, clientY: 200 });
+    expect(document.body.querySelector(".window-interaction-ghost")).toHaveStyle({
+      left: "72px",
+      top: "82px",
+      width: "698px",
+      height: "613px",
+    });
+    expect(props.actions.move).not.toHaveBeenCalled();
+
+    fireEvent.pointerMove(window, { clientX: 440, clientY: 230 });
+    expect(document.body.querySelector(".window-interaction-ghost")).toHaveStyle({
+      left: "112px",
+      top: "112px",
+    });
+    expect(props.actions.move).not.toHaveBeenCalled();
+
+    fireEvent.pointerUp(window, { clientX: 440, clientY: 230 });
+    expect(props.actions.move).toHaveBeenCalledWith(11, { x: 102, y: 92 });
+    expect(document.body.querySelector(".window-interaction-ghost")).toBeNull();
+  });
+
+  it("shows a resize ghost with live dimensions and commits size on release", () => {
+    const adapters = new FakeTerminalAdapterFactory();
+    const controller = new TerminalController(
+      { adapterFactory: adapters, frameScheduler: { schedule: () => () => undefined } },
+      { terminalId: 11, sendInput: vi.fn(), resize: vi.fn() },
+    );
+    const props = windowProps(controller, vi.fn(), vi.fn());
+    const { container } = render(
+      <div className="terminal-scene">
+        <TerminalWindow {...props} />
+      </div>,
+    );
+    const scene = container.querySelector<HTMLElement>(".terminal-scene");
+    const handle = screen.getByRole("button", { name: "Resize backend" });
+    if (!scene) throw new Error("terminal scene did not render");
+    mockWorkspaceBounds(scene);
+
+    fireEvent.pointerDown(handle, { clientX: 760, clientY: 675 });
+    fireEvent.pointerMove(window, { clientX: 800, clientY: 700 });
+
+    const ghost = document.body.querySelector(".window-interaction-ghost");
+    expect(ghost).toHaveStyle({ width: "738px", height: "638px" });
+    expect(ghost).toHaveTextContent("738 × 638");
+    expect(props.actions.resize).not.toHaveBeenCalled();
+
+    fireEvent.pointerUp(window, { clientX: 800, clientY: 700 });
+    expect(props.actions.resize).toHaveBeenCalledWith(11, { width: 738, height: 638 });
+    expect(document.body.querySelector(".window-interaction-ghost")).toBeNull();
+  });
+
   it.each([
     ["left", { x: 1, y: 400 }, { x: 0, y: 0, width: 600, height: 800 }],
     ["right", { x: 1199, y: 400 }, { x: 600, y: 0, width: 600, height: 800 }],
@@ -157,6 +225,20 @@ describe("TerminalWindow", () => {
     },
   );
 });
+
+function mockWorkspaceBounds(scene: HTMLElement): void {
+  vi.spyOn(scene, "getBoundingClientRect").mockReturnValue({
+    x: 10,
+    y: 20,
+    left: 10,
+    top: 20,
+    right: 1210,
+    bottom: 820,
+    width: 1200,
+    height: 800,
+    toJSON: () => ({}),
+  });
+}
 
 function windowProps(
   controller: TerminalController,

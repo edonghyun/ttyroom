@@ -74,6 +74,64 @@ test("terminal title bars show who currently has each terminal focused", async (
   await expect(alice.roomPage.terminal("term-1").getByRole("tooltip")).toHaveText("Bob");
 });
 
+test("dragging and resizing show a pointer-following ghost before committing geometry", async ({
+  alice,
+}) => {
+  await alice.joinRoom();
+  await alice.roomPage.openTerminal("term-1");
+  const terminal = alice.roomPage.terminal("term-1");
+  const titlebar = terminal.locator(".terminal-titlebar");
+  const beforeMove = await terminal.boundingBox();
+  const titlebarBox = await titlebar.boundingBox();
+  if (!beforeMove || !titlebarBox) throw new Error("terminal geometry is unavailable");
+
+  await alice.page.mouse.move(titlebarBox.x + 80, titlebarBox.y + 18);
+  await alice.page.mouse.down();
+  await alice.page.mouse.move(titlebarBox.x + 160, titlebarBox.y + 68);
+
+  const moveGhost = alice.page.locator(".window-interaction-ghost");
+  await expect(moveGhost).toBeVisible();
+  await expect(moveGhost).toContainText("Moving");
+  expect(await terminal.boundingBox()).toEqual(beforeMove);
+  const moveGhostBox = await moveGhost.boundingBox();
+  expect(moveGhostBox?.x).toBeCloseTo(beforeMove.x + 80, 0);
+  expect(moveGhostBox?.y).toBeCloseTo(beforeMove.y + 50, 0);
+
+  await alice.page.mouse.up();
+  await expect(moveGhost).toBeHidden();
+  const moved = await terminal.boundingBox();
+  expect(moved?.x).toBeCloseTo(beforeMove.x + 80, 0);
+  expect(moved?.y).toBeCloseTo(beforeMove.y + 50, 0);
+  if (!moved) throw new Error("moved terminal geometry is unavailable");
+
+  const resizeHandle = terminal.getByRole("button", { name: "Resize term-1" });
+  const handleBox = await resizeHandle.boundingBox();
+  if (!handleBox) throw new Error("resize handle geometry is unavailable");
+  await alice.page.mouse.move(
+    handleBox.x + handleBox.width / 2,
+    handleBox.y + handleBox.height / 2,
+  );
+  await alice.page.mouse.down();
+  await alice.page.mouse.move(
+    handleBox.x + handleBox.width / 2 + 70,
+    handleBox.y + handleBox.height / 2 + 45,
+  );
+
+  const resizeGhost = alice.page.locator(".window-interaction-resize");
+  await expect(resizeGhost).toBeVisible();
+  await expect(resizeGhost).toContainText("Resizing");
+  expect(await terminal.boundingBox()).toEqual(moved);
+  const resizeGhostBox = await resizeGhost.boundingBox();
+  expect(resizeGhostBox?.width).toBeCloseTo(moved.width + 70, 0);
+  expect(resizeGhostBox?.height).toBeCloseTo(moved.height + 45, 0);
+
+  await alice.page.mouse.up();
+  await expect(resizeGhost).toBeHidden();
+  const resized = await terminal.boundingBox();
+  expect(resized?.width).toBeCloseTo(moved.width + 70, 0);
+  expect(resized?.height).toBeCloseTo(moved.height + 45, 0);
+});
+
 test("moving control to an available terminal requires the explicit Switch action", async ({
   alice,
   bob,
