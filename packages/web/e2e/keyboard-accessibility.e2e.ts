@@ -56,6 +56,14 @@ test("window focus and terminal input focus remain visibly distinct", async ({ a
       .getByLabel("term-1 output")
       .evaluate((element) => element.matches(":focus-within")),
   ).toBe(true);
+  expect(await terminal.evaluate((element) => getComputedStyle(element).boxShadow)).toContain(
+    "rgb(117, 214, 182)",
+  );
+  expect(
+    await terminal
+      .getByLabel("term-1 output")
+      .evaluate((element) => getComputedStyle(element).boxShadow),
+  ).not.toContain("rgb(117, 214, 182)");
   await expect(terminal).toHaveAttribute("aria-current", "true");
 });
 
