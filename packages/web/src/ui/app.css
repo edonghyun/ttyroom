@@ -437,8 +437,9 @@
   height: var(--dock-height);
   display: flex;
   align-items: center;
-  gap: 20px;
-  padding: 16px 22px;
+  gap: 12px;
+  padding: 6px 12px;
+  overflow: hidden;
   border-top: 1px solid #34383e;
   background: var(--dock);
 }
@@ -447,30 +448,40 @@
   min-width: 0;
   flex: 1;
   display: flex;
-  gap: 9px;
+  gap: 6px;
   overflow-x: auto;
+  scrollbar-width: none;
 }
 
-.dock-terminals button {
+.dock-terminals > button {
   min-width: 152px;
-  height: 88px;
+  height: 36px;
   display: flex;
-  align-items: flex-start;
-  gap: 9px;
-  padding: 10px;
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px;
   text-align: left;
   border: 1px solid #42464d;
   border-radius: 7px;
   background: #20242a;
 }
 
-.dock-terminals button > span {
-  display: grid;
-  gap: 5px;
+.dock-terminals > button > span {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
 }
 
 .dock-terminals small {
   color: var(--muted);
+  font-size: 11px;
+}
+
+.dock-terminals small:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .dock-terminals .dock-active {
@@ -478,23 +489,28 @@
 }
 
 .dock-terminals .add-terminal {
-  min-width: 142px;
+  min-width: 124px;
   align-items: center;
   justify-content: center;
+  white-space: nowrap;
   border-style: dashed;
 }
 
 .participant-presence {
   width: 220px;
-  display: grid;
-  gap: 5px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   margin: 0;
   padding: 0;
   color: var(--muted);
   font-size: 12px;
   list-style: none;
   border-left: 1px solid #34383e;
-  padding-left: 20px;
+  padding-left: 12px;
+  white-space: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

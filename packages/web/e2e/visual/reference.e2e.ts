@@ -45,6 +45,17 @@ test("reference room renders five production terminal surfaces with stable colla
   await expect(page.locator(".terminal-window")).toHaveCount(5);
   await expect(page.locator(".dock-terminals > button:not(.add-terminal)")).toHaveCount(5);
   await expect(page.locator(".terminal-window .xterm")).toHaveCount(5);
+  await expect
+    .poll(() =>
+      page.locator(".dock").evaluate((dock) => ({
+        dockHeight: dock.getBoundingClientRect().height,
+        terminalButtonHeight:
+          dock.querySelector<HTMLButtonElement>(".dock-terminals > button")?.getBoundingClientRect()
+            .height ?? 0,
+      })),
+    )
+    .toEqual({ dockHeight: 48, terminalButtonHeight: 36 });
+  await expect(page.locator(".add-terminal")).toHaveCSS("white-space", "nowrap");
 
   await expect(page.getByRole("status", { name: "You control · Esc to release" })).toBeVisible();
   await expect(page.getByRole("status", { name: "Minsu controls · View only" })).toBeVisible();

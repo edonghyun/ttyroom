@@ -4,6 +4,11 @@
 
 - Reference: `docs/superpowers/specs/assets/ttyroom-floating-terminal-workspace.png`
 - Reference dimensions: `1487 x 1058` physical pixels
+- User Dock before-state: `artifacts/design-qa/dock-before-user.png` (`3456 x 290` at DPR `2`,
+  equivalent to `1728 x 145` CSS pixels)
+- User Dock height cue: `artifacts/design-qa/dock-height-reference-at-2x.png` (`3456 x 84` at
+  DPR `2`, equivalent to `1728 x 42` CSS pixels). This is a browser-chrome density cue, not a
+  request to copy its content or colors.
 - Implementation dimensions: `1487 x 1058` CSS/physical pixels
 - Browser density: Chromium, DPR `1`
 - Deterministic state: `Payment Debug`; `backend` mine; `frontend` held by Minsu;
@@ -18,6 +23,9 @@
   - `artifacts/design-qa/focused-backend-header-status-comparison.png`
   - `artifacts/design-qa/focused-tests-take-control-comparison.png`
   - `artifacts/design-qa/focused-dock-participants-comparison.png`
+  - `artifacts/design-qa/focused-user-dock-height-comparison.png` (`2974 x 76`; the user cue was
+    downsampled to DPR `1` and center-cropped to `1487 x 42`, while the rendered Dock was captured
+    at DPR `1` as `1487 x 48`)
 
 ## Iteration history
 
@@ -59,6 +67,25 @@
   lease switch, kill switch, recovery, layout persistence, keyboard flow, focus, and Axe serious /
   critical checks.
 
+### Iteration 3 — user-directed compact Dock
+
+- Evidence: the two user screenshots, refreshed `artifacts/design-qa/implementation-final.png`,
+  and `artifacts/design-qa/focused-user-dock-height-comparison.png`.
+- P1, Dock height: the live Dock measured `144` CSS px and its terminal buttons measured `88` CSS
+  px, while the user requested the density of a `42` CSS px browser bar. A visual regression was
+  written first for a `48` px Dock and `36` px controls; RED observed with `144` and `88`. Minimum
+  fix: reduce the shared `--dock-height` token to `48px`, use `6px` vertical padding, and lay terminal
+  metadata and participant presence out in a single row.
+- P2, Add terminal wrapping: the first compact render wrapped `Add terminal` to two lines. A second
+  regression was written first for `white-space: nowrap`; RED observed as `normal`. Minimum fix:
+  keep the action on one line without increasing Dock height.
+- Post-fix comparison: the implementation is `6` CSS px taller than the `42` px cue, providing
+  enough room for a `36` px interactive target and focus ring while retaining the requested compact
+  profile. No actionable P0/P1/P2 mismatch remains.
+- Live production-server verification at `657 x 813`: Dock `48` px, action `36` px, Add terminal
+  `nowrap`, zero document overflow, and zero console errors. The narrow viewport correctly retains
+  the existing desktop-width input guard while the Dock remains usable.
+
 ## Written-spec overrides and resolved P3
 
 - Intentional override, not a defect: the source includes raster-like Dock previews, while the
@@ -84,13 +111,19 @@ recovery surface.
 
 ## Verification
 
-- `pnpm --filter @ttyroom/web test` — 30 files, 112 tests passed
+- `pnpm test` — protocol 28, agent 53, Web 113, and server 166 tests passed
+- `pnpm --filter @ttyroom/web test` — 30 files, 113 tests passed
 - `pnpm --filter @ttyroom/web test:visual` — 1 Chromium visual test passed
-- `pnpm --filter @ttyroom/web test:browser` — 19 Chromium browser tests passed
-- `pnpm --filter @ttyroom/web typecheck` — passed
+- `pnpm --filter @ttyroom/web test:browser` — 20 Chromium browser tests passed
+- `pnpm test:integration` — agent 15 and server 13 integration tests passed
+- `pnpm typecheck` — all workspace projects passed
+- `pnpm --filter @ttyroom/server build` — passed and refreshed the server-served Web bundle
+- `pnpm depcruise` — no dependency violations across 190 modules / 381 dependencies
+- `pnpm format` — passed
 
 Task 25 recaptured the source/implementation comparisons and all responsive viewports after the
 Overview, snap, host chooser, and focus-order fixes. The closed Room menu leaves the reference-state
 Top Bar hierarchy unchanged; the refreshed comparisons remain within the passed visual target.
+The user-directed compact Dock supersedes the original reference image's tall Dock footprint.
 
 final result: passed
