@@ -37,6 +37,17 @@ describe("Room — 역할: Room 라이브 상태와 불변식의 소유자", () 
     expect(t1).toMatchObject({ hostId: "h1", mode: "exclusive", status: "open", exitCode: null });
   });
 
+  it("새 터미널은 Room이 결정한 겹치지 않는 공유 geometry로 열린다", () => {
+    const room = makeRoom();
+    room.connectHost("h1", "동현-Mac");
+
+    const first = room.openTerminal("h1");
+    const second = room.openTerminal("h1");
+
+    expect(first.geometry).toEqual({ x: 24, y: 24, width: 640, height: 420 });
+    expect(second.geometry).toEqual({ x: 56, y: 56, width: 640, height: 420 });
+  });
+
   it("없는 Host에 openTerminal하면 throw한다 (프로그래머 오류)", () => {
     expect(() => makeRoom().openTerminal("nope")).toThrow();
   });
@@ -156,6 +167,19 @@ describe("Room — 역할: Room 라이브 상태와 불변식의 소유자", () 
       gitBranch: "main",
       fgProcess: "vim",
     });
+  });
+
+  it("updateTerminalGeometry는 마지막 갱신을 snapshot의 공유 배치로 보존한다", () => {
+    const room = makeRoom();
+    room.connectHost("h1", "h");
+    const terminal = room.openTerminal("h1");
+    const aliceGeometry = { x: 140, y: 90, width: 700, height: 460 };
+    const bobGeometry = { x: 260, y: 120, width: 760, height: 520 };
+
+    room.updateTerminalGeometry(terminal.terminalId, aliceGeometry);
+    room.updateTerminalGeometry(terminal.terminalId, bobGeometry);
+
+    expect(room.snapshot().terminals[0]?.geometry).toEqual(bobGeometry);
   });
 
   it("openTerminal이 돌려준 뷰를 변경해도 Room 내부 상태는 오염되지 않는다 (구조 복사 불변식)", () => {

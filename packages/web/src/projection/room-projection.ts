@@ -101,7 +101,7 @@ export class RoomProjection {
     };
 
     return {
-      terminal: { ...terminal, meta: { ...terminal.meta } },
+      terminal: { ...terminal, geometry: { ...terminal.geometry }, meta: { ...terminal.meta } },
       host: host && { ...host },
       lease: lease && { ...lease },
       holder: holder && { ...holder },
@@ -252,6 +252,11 @@ export class RoomProjection {
           ...terminal,
           mode: event.mode,
         }));
+      case "terminal-geometry-changed":
+        return this.updateTerminal(event.terminalId, (terminal) => ({
+          ...terminal,
+          geometry: { ...event.geometry },
+        }));
       case "terminal-closed":
         return this.updateTerminal(event.terminalId, (terminal) => ({
           ...terminal,
@@ -371,6 +376,7 @@ function replaceBy<T>(items: T[], matches: (item: T) => boolean, replacement: T)
 function existingTerminalTarget(event: RoomEvent): number | null {
   switch (event.kind) {
     case "terminal-mode-changed":
+    case "terminal-geometry-changed":
     case "terminal-closed":
     case "terminal-meta":
     case "lease-released":
@@ -389,6 +395,7 @@ function copyRoom(room: RoomSnapshot): RoomSnapshot {
     hosts: room.hosts.map((host) => ({ ...host })),
     terminals: room.terminals.map((terminal) => ({
       ...terminal,
+      geometry: { ...terminal.geometry },
       meta: { ...terminal.meta },
     })),
     leases: room.leases.map((lease) => ({ ...lease })),
@@ -400,6 +407,7 @@ function freezeView(view: RoomProjectionView): RoomProjectionView {
     for (const participant of view.room.participants) Object.freeze(participant);
     for (const host of view.room.hosts) Object.freeze(host);
     for (const terminal of view.room.terminals) {
+      Object.freeze(terminal.geometry);
       Object.freeze(terminal.meta);
       Object.freeze(terminal);
     }

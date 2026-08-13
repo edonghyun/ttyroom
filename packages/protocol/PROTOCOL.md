@@ -6,12 +6,13 @@
 
 ## 버전과 협상
 
-- 현재 버전: `PROTOCOL_VERSION = 3`. 버전은 1 이상의 정수만 유효하다 (0·음수는 hello 파싱 단계에서 거부).
-- v3는 participant의 terminal focus presence를 snapshot·request·event에 추가했다.
-  구형 서버가 `focus-terminal`을 `bad-message`로 거부하므로 협상 버전을 올렸다.
+- 현재 버전: `PROTOCOL_VERSION = 4`. 버전은 1 이상의 정수만 유효하다 (0·음수는 hello 파싱 단계에서 거부).
+- v4는 Room이 소유하는 terminal geometry를 snapshot·request·event에 추가했다.
+  구형 서버가 `update-terminal-geometry`를 `bad-message`로 거부하므로 협상 버전을 올렸다.
 - 새 reader는 구형 persisted v1
   `RoomSnapshot.name` 누락을 `"Quick Room"`, `HostView.remoteInputAllowed` 누락을 `true`,
-  `ParticipantView.focusedTerminalId` 누락을 `null`로
+  `ParticipantView.focusedTerminalId` 누락을 `null`, `TerminalView.geometry` 누락을
+  `{"x":24,"y":24,"width":640,"height":420}`로
   정규화하고, 구형 reader는 zod object의 알 수 없는 필드 제거 규칙으로 새 필드를 무시한다.
 - 클라이언트(참여자·호스트)는 연결 후 첫 메시지 `hello`에 `protocolVersion`을 싣는다.
 - 서버가 수용하지 못하는 버전이면 `error { code: "unsupported-protocol-version" }`를 보내고
@@ -91,22 +92,23 @@
 
 | type    | 예시                                                                                                                |
 | ------- | ------------------------------------------------------------------------------------------------------------------- |
-| `hello` | `{"type":"hello","protocolVersion":3,"roomId":"r1","token":"t","clientId":"c1","name":"동현","role":"participant"}` |
+| `hello` | `{"type":"hello","protocolVersion":4,"roomId":"r1","token":"t","clientId":"c1","name":"동현","role":"participant"}` |
 
 `role`은 `"participant"` 또는 `"host"`. 호스트의 `clientId`는 `hostId`로도 쓰인다.
 
 ### 참여자 → 서버
 
-| type                     | 예시                                                            |
-| ------------------------ | --------------------------------------------------------------- |
-| `open-terminal-request`  | `{"type":"open-terminal-request","hostId":"h1"}`                |
-| `close-terminal-request` | `{"type":"close-terminal-request","terminalId":3}`              |
-| `set-terminal-mode`      | `{"type":"set-terminal-mode","terminalId":3,"mode":"shared"}`   |
-| `resync-output-request`  | `{"type":"resync-output-request","terminalId":3}`               |
-| `focus-terminal`         | `{"type":"focus-terminal","terminalId":3}`                      |
-| `acquire-lease`          | `{"type":"acquire-lease","terminalId":3}`                       |
-| `release-lease`          | `{"type":"release-lease","terminalId":3,"leaseId":7}`           |
-| `resize-request`         | `{"type":"resize-request","terminalId":3,"cols":120,"rows":40}` |
+| type                       | 예시                                                                                                      |
+| -------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `open-terminal-request`    | `{"type":"open-terminal-request","hostId":"h1"}`                                                          |
+| `close-terminal-request`   | `{"type":"close-terminal-request","terminalId":3}`                                                        |
+| `set-terminal-mode`        | `{"type":"set-terminal-mode","terminalId":3,"mode":"shared"}`                                             |
+| `resync-output-request`    | `{"type":"resync-output-request","terminalId":3}`                                                         |
+| `focus-terminal`           | `{"type":"focus-terminal","terminalId":3}`                                                                |
+| `acquire-lease`            | `{"type":"acquire-lease","terminalId":3}`                                                                 |
+| `release-lease`            | `{"type":"release-lease","terminalId":3,"leaseId":7}`                                                     |
+| `resize-request`           | `{"type":"resize-request","terminalId":3,"cols":120,"rows":40}`                                           |
+| `update-terminal-geometry` | `{"type":"update-terminal-geometry","terminalId":3,"geometry":{"x":120,"y":80,"width":720,"height":480}}` |
 
 ### 호스트 → 서버
 
@@ -149,21 +151,22 @@
 
 `room-event.event`에 실리는 형태. `kind`가 판별자다.
 
-| kind                        | 예시                                                                                                                                                                                                       |
-| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `participant-joined`        | `{"kind":"participant-joined","participant":{"clientId":"c2","name":"민수"}}`                                                                                                                              |
-| `participant-left`          | `{"kind":"participant-left","clientId":"c2"}`                                                                                                                                                              |
-| `participant-focus-changed` | `{"kind":"participant-focus-changed","clientId":"c2","focusedTerminalId":3}`                                                                                                                               |
-| `host-connected`            | `{"kind":"host-connected","host":{"hostId":"h1","name":"dev-server","online":true,"remoteInputAllowed":true}}`                                                                                             |
-| `host-offline`              | `{"kind":"host-offline","hostId":"h1"}`                                                                                                                                                                    |
-| `host-removed`              | `{"kind":"host-removed","hostId":"h1"}`                                                                                                                                                                    |
-| `host-input-state-changed`  | `{"kind":"host-input-state-changed","hostId":"h1","remoteInputAllowed":false}`                                                                                                                             |
-| `terminal-opened`           | `{"kind":"terminal-opened","terminal":{"terminalId":3,"hostId":"h1","title":"term-3","mode":"exclusive","status":"open","exitCode":null,"meta":{"cwd":"/home/kep","gitBranch":"main","fgProcess":"vim"}}}` |
-| `terminal-mode-changed`     | `{"kind":"terminal-mode-changed","terminalId":3,"mode":"shared"}`                                                                                                                                          |
-| `terminal-closed`           | `{"kind":"terminal-closed","terminalId":3,"exitCode":0}`                                                                                                                                                   |
-| `lease-granted`             | `{"kind":"lease-granted","lease":{"terminalId":3,"leaseId":7,"holderClientId":"c1"}}`                                                                                                                      |
-| `lease-released`            | `{"kind":"lease-released","terminalId":3}`                                                                                                                                                                 |
-| `terminal-meta`             | `{"kind":"terminal-meta","terminalId":3,"meta":{"cwd":"/home/kep","gitBranch":null,"fgProcess":null}}`                                                                                                     |
+| kind                        | 예시                                                                                                                                                                                                                                                           |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `participant-joined`        | `{"kind":"participant-joined","participant":{"clientId":"c2","name":"민수"}}`                                                                                                                                                                                  |
+| `participant-left`          | `{"kind":"participant-left","clientId":"c2"}`                                                                                                                                                                                                                  |
+| `participant-focus-changed` | `{"kind":"participant-focus-changed","clientId":"c2","focusedTerminalId":3}`                                                                                                                                                                                   |
+| `host-connected`            | `{"kind":"host-connected","host":{"hostId":"h1","name":"dev-server","online":true,"remoteInputAllowed":true}}`                                                                                                                                                 |
+| `host-offline`              | `{"kind":"host-offline","hostId":"h1"}`                                                                                                                                                                                                                        |
+| `host-removed`              | `{"kind":"host-removed","hostId":"h1"}`                                                                                                                                                                                                                        |
+| `host-input-state-changed`  | `{"kind":"host-input-state-changed","hostId":"h1","remoteInputAllowed":false}`                                                                                                                                                                                 |
+| `terminal-opened`           | `{"kind":"terminal-opened","terminal":{"terminalId":3,"hostId":"h1","title":"term-3","geometry":{"x":88,"y":88,"width":640,"height":420},"mode":"exclusive","status":"open","exitCode":null,"meta":{"cwd":"/home/kep","gitBranch":"main","fgProcess":"vim"}}}` |
+| `terminal-mode-changed`     | `{"kind":"terminal-mode-changed","terminalId":3,"mode":"shared"}`                                                                                                                                                                                              |
+| `terminal-geometry-changed` | `{"kind":"terminal-geometry-changed","terminalId":3,"geometry":{"x":120,"y":80,"width":720,"height":480}}`                                                                                                                                                     |
+| `terminal-closed`           | `{"kind":"terminal-closed","terminalId":3,"exitCode":0}`                                                                                                                                                                                                       |
+| `lease-granted`             | `{"kind":"lease-granted","lease":{"terminalId":3,"leaseId":7,"holderClientId":"c1"}}`                                                                                                                                                                          |
+| `lease-released`            | `{"kind":"lease-released","terminalId":3}`                                                                                                                                                                                                                     |
+| `terminal-meta`             | `{"kind":"terminal-meta","terminalId":3,"meta":{"cwd":"/home/kep","gitBranch":null,"fgProcess":null}}`                                                                                                                                                         |
 
 ## 뷰 타입 형태
 
@@ -174,7 +177,10 @@ RoomSnapshot과 room-event가 공유하는 객체 형태. 표기 `A | null`은 J
 - **HostView** — `hostId`: string, `name`: string, `online`: boolean,
   `remoteInputAllowed`: boolean (구형 v1 payload 기본값 `true`)
 - **TerminalMeta** — `cwd`: string | null, `gitBranch`: string | null, `fgProcess`: string | null
+- **TerminalGeometry** — `x`: -65535..65535, `y`: -65535..65535,
+  `width`: 0보다 크고 65535 이하, `height`: 0보다 크고 65535 이하. 모두 유한 number.
 - **TerminalView** — `terminalId`: u32, `hostId`: string, `title`: string,
+  `geometry`: TerminalGeometry (구형 payload 기본값 `{"x":24,"y":24,"width":640,"height":420}`),
   `mode`: `"exclusive"` | `"shared"`, `status`: `"open"` | `"exited"`,
   `exitCode`: int | null, `meta`: TerminalMeta
 - **LeaseView** — `terminalId`: u32, `leaseId`: u32, `holderClientId`: string
@@ -199,3 +205,6 @@ Room bootstrap HTTP 계약:
   폐기하고 요청자에게 `lease-invalid{reason:"remote-input-disabled"}`를 보낸다.
 - `set-terminal-mode`는 participant가 명시적으로 보낸다. 터미널이 열려 있고 owning host가
   online일 때만 적용하며, 변경 시 `terminal-mode-changed`를 Room 전체에 방송한다.
+- `update-terminal-geometry`는 participant가 drag·resize·Arrange commit 시 최종 논리 좌표를
+  보낸다. 서버는 Room의 최신 geometry를 교체하고 `terminal-geometry-changed`를 참가자 전체에
+  방송한다. 동시 갱신은 서버 수신 순서의 last-write-wins이며 이후 welcome snapshot도 최신값을 담는다.

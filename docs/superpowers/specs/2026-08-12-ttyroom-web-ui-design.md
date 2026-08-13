@@ -59,7 +59,8 @@ Workspace는 Terminal 창이 놓이는 전체 화면 작업면이다.
 
 - 기본 배경은 저대비 grid를 사용해 창의 이동과 크기를 인지할 수 있게 한다.
 - 새 Terminal은 기존 창을 완전히 덮지 않는 cascade 위치에 생성한다.
-- 창의 일부가 화면 밖으로 완전히 사라지지 않도록 title bar 최소 노출 영역을 보장한다.
+- 로컬 drag commit은 현재 viewport에서 title bar 최소 노출 영역을 보장한다. 다른 크기의
+  viewport는 Room의 동일 논리 좌표를 그대로 투영하고, 화면 밖 창은 Pan 또는 Fit으로 찾는다.
 - 창을 선택하면 z-order 최상단으로 올리지만 입력권은 바꾸지 않는다.
 - 기본 배율에서는 Terminal 출력을 축소 렌더링하지 않는다. 사용자가 Canvas 배율을
   변경한 경우에만 전체 Window를 함께 확대·축소하며 PTY rows/cols는 다시 계산하지 않는다.
@@ -139,8 +140,8 @@ Dock item은 이름, 상태, 최근 activity만으로 시작하고 실제 thumbn
 - **Arranged:** 현재 viewport에서 모든 열린 창을 자동 grid로 정렬.
 - **Focused:** 한 창을 최대화하고 나머지는 Dock으로 접근.
 
-이들은 별개의 화면이나 서버 상태가 아니다. 동일한 Terminal Window들의 사용자별 표현
-상태다.
+Floating과 Arranged의 논리 위치·크기는 Room의 공유 geometry다. Focused(최대화), 최소화,
+Overview는 동일한 Terminal geometry 위에 얹는 사용자별 표현 상태다.
 
 ### 4.3 배치 상태의 소유권
 
@@ -148,15 +149,22 @@ Dock item은 이름, 상태, 최근 activity만으로 시작하고 실제 thumbn
 
 | 서버 authoritative | 브라우저 사용자별 상태 |
 |---|---|
-| Host 및 Terminal 목록 | 창 위치와 크기 |
-| Terminal open/exited 상태 | z-order |
-| Participant 상태 | 최소화·최대화·snap 상태 |
-| Lease와 입력권 소유자 | Floating·Arranged·Focused 선택 |
-| Terminal 출력 seq와 scrollback | 마지막 viewport별 레이아웃 |
+| Host 및 Terminal 목록 | z-order와 active 창 |
+| Terminal open/exited 상태 | drag·resize ghost와 snap preview |
+| Terminal 논리 위치와 크기 | 최소화·최대화·Focused 상태 |
+| Participant 상태 | Overview 진입 여부 |
+| Lease와 입력권 소유자 | Canvas pan·zoom·Select/Pan 도구 |
+| Terminal 출력 seq와 scrollback | viewport 크기와 localStorage 표현 캐시 |
 
-한 사용자가 창을 이동해도 다른 참여자의 화면은 움직이지 않는다. 브라우저 배치는
-`roomId + clientId` 기준 localStorage에 저장하고, Room이 사라지거나 Terminal이 제거되면
-해당 항목을 정리한다. 공유 레이아웃은 MVP 범위에 포함하지 않는다.
+한 사용자가 drag·resize를 놓거나 `Arrange`를 실행하면 최종 논리 geometry를 서버에 한 번
+보낸다. 서버는 이를 Room 상태로 저장하고 참가자 전체에 방송한다. 동시 변경은 서버 수신
+순서의 last-write-wins다. 늦게 입장하거나 재접속한 사용자는 welcome snapshot의 최신
+geometry를 적용한다. 로컬 geometry commit은 서버 event가 돌아오기 전까지 낙관적으로
+표시하며, 터미널 출력 같은 무관한 event가 이를 이전 좌표로 되돌리지 않는다.
+
+브라우저의 `roomId + clientId` localStorage는 z-order·최소화·최대화 같은 개인 표현 상태의
+복구용이다. 저장된 rect가 있더라도 welcome snapshot의 서버 geometry가 우선한다. Room이
+사라지거나 Terminal이 제거되면 해당 항목을 정리한다.
 
 ## 5. 입력권 UX
 
@@ -257,8 +265,9 @@ Overview에서는 Terminal 입력을 허용하지 않는다.
 | protocol 불일치 | 현재 클라이언트 또는 Agent 업데이트 안내 |
 | Room 소멸 | `Room Gone` 전체 화면 |
 
-재연결 중에는 창 위치를 초기화하지 않는다. 같은 `clientId`가 participant grace 기간 안에
-돌아오면 snapshot과 scrollback replay 후 기존 배치를 그대로 사용한다.
+재연결 중에는 현재 창을 유지한다. 같은 `clientId`가 participant grace 기간 안에 돌아오면
+snapshot과 scrollback replay 후 서버의 최신 공유 geometry를 적용하고 개인 z-order·최대화·
+최소화·Canvas camera는 유지한다.
 
 ## 8. 시각 언어
 
@@ -293,6 +302,8 @@ Overview에서는 Terminal 입력을 허용하지 않는다.
 - 다시 표시할 때 현재 snapshot 또는 누적 출력으로 xterm.js를 동기화한다.
 - 창 resize는 연속 pointer event를 그대로 서버에 보내지 않고 제한된 주기로 PTY resize를
   반영한다.
+- 창 geometry는 pointer 이동 중 ghost로만 미리 보고, pointer up commit에 최종 rect 하나를
+  서버에 보낸다. `Arrange`는 visible Terminal의 최종 rect를 각각 보낸다.
 - z-order 변경과 단순 이동은 React 전체 tree를 다시 렌더링하지 않도록 Window Manager가
   소유한다.
 - 4–6개의 동시 Terminal을 MVP 품질 기준으로 삼는다. 그 이상의 동시 표시 한계는 실제
@@ -310,11 +321,11 @@ Overview에서는 Terminal 입력을 허용하지 않는다.
 - Participant presence
 - Add Host drawer
 - 재연결, Host offline, shell exited, Room gone 상태
-- 사용자별 레이아웃 저장
+- Room 공유 창 geometry와 사용자별 표현 상태 저장
 
 ## 12. MVP 제외 범위
 
-- 공유되는 창 배치와 발표자 레이아웃
+- 발표자 전용 레이아웃과 개인/공유 레이아웃 전환 모드
 - 범용 채팅
 - 파일 탐색기와 IDE 편집 기능
 - 명령 기록 및 감사 타임라인
@@ -344,6 +355,7 @@ Floating Window에서는 창 선택이 자주 발생하므로, 화면 설계를 
 - 사용자 의도 없이 기존 Lease가 해제되지 않는다.
 - 5개 Terminal이 열려 있어도 모든 창을 Dock 또는 Overview에서 찾을 수 있다.
 - 창을 최소화하거나 뒤로 보내도 PTY 프로세스와 출력 수신이 유지된다.
-- 다른 참여자의 창 이동이 내 브라우저 배치에 영향을 주지 않는다.
-- 재연결 후 Terminal과 Lease는 서버 snapshot을, 창 배치는 사용자 로컬 상태를 따른다.
+- 다른 참여자의 창 이동·resize·Arrange가 내 브라우저의 동일 Terminal geometry에 반영된다.
+- 재연결 후 Terminal·Lease·geometry는 서버 snapshot을, z-order·최대화·최소화·Canvas camera는
+  사용자 로컬 상태를 따른다.
 - 상태는 색상만으로 구분하지 않는다.

@@ -8,8 +8,8 @@ import {
 } from "./messages.js";
 
 describe("제어 메시지 스키마 — 역할: JSON 제어 프레임의 검증과 유선 형태 고정", () => {
-  it("participant focus presence는 protocol version 3에서 협상한다", () => {
-    expect(PROTOCOL_VERSION).toBe(3);
+  it("shared terminal geometry는 protocol version 4에서 협상한다", () => {
+    expect(PROTOCOL_VERSION).toBe(4);
   });
 
   it("정상 hello 메시지를 파싱해 타입을 부여한다", () => {
@@ -255,6 +255,69 @@ describe("제어 메시지 스키마 — 역할: JSON 제어 프레임의 검증
     expect(parseServerMessage(serializeServerMessage(changed))).toEqual({
       kind: "ok",
       message: changed,
+    });
+  });
+
+  it("participant의 terminal geometry 갱신과 Room broadcast event를 검증해 라운드트립한다", () => {
+    const geometry = { x: -120, y: 48, width: 720, height: 480 };
+    const request = { type: "update-terminal-geometry", terminalId: 3, geometry } as const;
+    const changed = {
+      type: "room-event",
+      event: { kind: "terminal-geometry-changed", terminalId: 3, geometry },
+    } as const;
+
+    expect(parseClientMessage(JSON.stringify(request))).toEqual({ kind: "ok", message: request });
+    expect(parseServerMessage(JSON.stringify(changed))).toEqual({ kind: "ok", message: changed });
+    expect(
+      parseClientMessage(
+        JSON.stringify({
+          ...request,
+          geometry: { ...geometry, width: 0 },
+        }),
+      ),
+    ).toMatchObject({ kind: "bad-message" });
+  });
+
+  it("welcome terminal view는 공유 geometry를 전달하고 구형 payload에는 기본 배치를 채운다", () => {
+    const terminal = {
+      terminalId: 3,
+      hostId: "h1",
+      title: "term-3",
+      mode: "exclusive",
+      status: "open",
+      exitCode: null,
+      meta: { cwd: null, gitBranch: null, fgProcess: null },
+    } as const;
+    const welcome = (item: object) =>
+      parseServerMessage(
+        JSON.stringify({
+          type: "welcome",
+          selfClientId: "c1",
+          snapshot: {
+            roomId: "r1",
+            participants: [],
+            hosts: [],
+            terminals: [item],
+            leases: [],
+          },
+        }),
+      );
+
+    expect(
+      welcome({ ...terminal, geometry: { x: 88, y: 64, width: 720, height: 480 } }),
+    ).toMatchObject({
+      kind: "ok",
+      message: {
+        snapshot: {
+          terminals: [{ geometry: { x: 88, y: 64, width: 720, height: 480 } }],
+        },
+      },
+    });
+    expect(welcome(terminal)).toMatchObject({
+      kind: "ok",
+      message: {
+        snapshot: { terminals: [{ geometry: { x: 24, y: 24, width: 640, height: 420 } }] },
+      },
     });
   });
 });

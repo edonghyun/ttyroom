@@ -155,4 +155,15 @@ export class RoomPage {
     await this.page.mouse.move(start.x + delta.x, start.y + delta.y);
     await this.page.mouse.up();
   }
+
+  async resizeTerminal(title: string, delta: { width: number; height: number }): Promise<void> {
+    const handle = this.terminal(title).getByRole("button", { name: `Resize ${title}` });
+    const rect = await handle.boundingBox();
+    if (!rect) throw new Error(`${title} resize handle is not visible`);
+    const start = { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+    await this.page.mouse.move(start.x, start.y);
+    await this.page.mouse.down();
+    await this.page.mouse.move(start.x + delta.width, start.y + delta.height);
+    await this.page.mouse.up();
+  }
 }

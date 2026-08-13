@@ -140,6 +140,32 @@ test("dragging and resizing show a pointer-following ghost before committing geo
   expect(resized?.height).toBeCloseTo(moved.height + 45, 0);
 });
 
+test("terminal geometry stays synchronized for present and reconnecting participants", async ({
+  alice,
+  bob,
+}) => {
+  await alice.joinRoom();
+  await bob.joinRoom();
+  await alice.roomPage.openTerminal("term-1");
+
+  await alice.roomPage.moveTerminal("term-1", { x: 96, y: 54 });
+  await alice.roomPage.resizeTerminal("term-1", { width: 72, height: 46 });
+  const aliceRect = await alice.roomPage.terminalRect("term-1");
+  const geometryDelta = async () => {
+    const bobRect = await bob.roomPage.terminalRect("term-1");
+    return Math.max(
+      Math.abs(aliceRect.x - bobRect.x),
+      Math.abs(aliceRect.y - bobRect.y),
+      Math.abs(aliceRect.width - bobRect.width),
+      Math.abs(aliceRect.height - bobRect.height),
+    );
+  };
+
+  await expect.poll(geometryDelta).toBeLessThan(2);
+  await bob.reloadRoom();
+  await expect.poll(geometryDelta).toBeLessThan(2);
+});
+
 test("canvas controls zoom, pan, and preserve terminal interaction coordinates", async ({
   alice,
 }) => {
@@ -289,10 +315,7 @@ test("the real agent kill switch makes terminals read-only and rejects remote in
   expect(await bob.roomPage.terminalText("term-1")).not.toContain(blockedMarker);
 });
 
-test("Dock and Overview expose five terminals while each participant keeps a local layout", async ({
-  alice,
-  bob,
-}) => {
+test("Dock and Overview keep minimize and overview participant-local", async ({ alice, bob }) => {
   await alice.joinRoom();
   await bob.joinRoom();
   for (let terminalId = 1; terminalId <= 5; terminalId += 1) {

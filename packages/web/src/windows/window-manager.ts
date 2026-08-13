@@ -73,6 +73,22 @@ export class WindowManager {
     this.#publish();
   }
 
+  syncSharedGeometry(
+    terminals: readonly { readonly terminalId: number; readonly geometry: WindowRect }[],
+  ): void {
+    const geometryById = new Map(
+      terminals.map(({ terminalId, geometry }) => [terminalId, { ...geometry }]),
+    );
+    this.#windows = this.#windows.map((window) => {
+      const geometry = geometryById.get(window.terminalId);
+      if (!geometry) return window;
+      return window.maximized
+        ? { ...window, restoreRect: geometry }
+        : { ...window, rect: geometry };
+    });
+    this.#publish();
+  }
+
   activate(terminalId: number): void {
     this.#raise(terminalId);
     this.#publish();
@@ -167,8 +183,7 @@ export class WindowManager {
     this.#viewport = viewport;
     this.#windows = this.#windows.map((window) => ({
       ...window,
-      rect: window.maximized ? { x: 0, y: 0, ...viewport } : clampRect(window.rect, viewport),
-      restoreRect: window.restoreRect ? clampRect(window.restoreRect, viewport) : undefined,
+      rect: window.maximized ? { x: 0, y: 0, ...viewport } : window.rect,
     }));
     this.#publish();
   }

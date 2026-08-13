@@ -19,6 +19,7 @@ import { RouteTerminalInput } from "./route-terminal-input.js";
 import { SetTerminalMode } from "./set-terminal-mode.js";
 import { SyncLateJoiner } from "./sync-late-joiner.js";
 import { UpdateHostInputState } from "./update-host-input-state.js";
+import { UpdateTerminalGeometry } from "./update-terminal-geometry.js";
 
 // 어댑터가 아는 유일한 진입점 — 프레임을 유즈케이스로 라우팅한다
 export class ServerCore {
@@ -34,6 +35,7 @@ export class ServerCore {
   private readonly setTerminalMode: SetTerminalMode;
   private readonly resyncTerminalOutput: ResyncTerminalOutput;
   private readonly focusParticipant: FocusParticipant;
+  private readonly updateTerminalGeometry: UpdateTerminalGeometry;
 
   constructor(
     private readonly deps: {
@@ -91,6 +93,10 @@ export class ServerCore {
       rooms: deps.rooms,
       connections: deps.connections,
     });
+    this.updateTerminalGeometry = new UpdateTerminalGeometry({
+      rooms: deps.rooms,
+      connections: deps.connections,
+    });
   }
 
   handleMessage(conn: Connection, raw: string): void {
@@ -139,6 +145,15 @@ export class ServerCore {
 
     if (parsed.message.type === "focus-terminal" && session.role === "participant") {
       this.focusParticipant.execute(conn, session, parsed.message.terminalId);
+      return;
+    }
+
+    if (parsed.message.type === "update-terminal-geometry" && session.role === "participant") {
+      this.updateTerminalGeometry.execute(
+        session,
+        parsed.message.terminalId,
+        parsed.message.geometry,
+      );
       return;
     }
 

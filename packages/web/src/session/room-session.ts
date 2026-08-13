@@ -6,6 +6,7 @@ import type {
   InputFrame,
   OutputFrame,
   ServerMessage,
+  TerminalGeometry,
   TerminalView,
 } from "@ttyroom/protocol";
 import type { ProjectionEffect, RoomProjection } from "../projection/room-projection.js";
@@ -166,6 +167,10 @@ export class RoomSession {
 
   resize(terminalId: number, cols: number, rows: number): void {
     this.transport?.sendControl({ type: "resize-request", terminalId, cols, rows });
+  }
+
+  updateGeometry(terminalId: number, geometry: TerminalGeometry): void {
+    this.transport?.sendControl({ type: "update-terminal-geometry", terminalId, geometry });
   }
 
   subscribe(subscriber: SessionSubscriber): () => void {

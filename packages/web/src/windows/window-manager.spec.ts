@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { WindowManager } from "./window-manager.js";
 
-describe("WindowManager — participant-local terminal windows", () => {
+describe("WindowManager — shared geometry and participant-local presentation", () => {
   it("reconciles new terminals into a deterministic cascade", () => {
     const first = new WindowManager({ viewport: { width: 1200, height: 700 } });
     const second = new WindowManager({ viewport: { width: 1200, height: 700 } });
@@ -146,19 +146,14 @@ describe("WindowManager — participant-local terminal windows", () => {
     ]);
   });
 
-  it("clamps every window when the workspace viewport changes", () => {
+  it("preserves shared floating geometry when the participant viewport changes", () => {
     const manager = new WindowManager({ viewport: { width: 1920, height: 1080 } });
     manager.reconcile([11]);
     manager.move(11, { x: 1800, y: 1000 });
 
     manager.setViewport({ width: 1024, height: 768 });
 
-    expect(manager.view().windows[0]?.rect).toEqual({
-      x: 976,
-      y: 720,
-      width: 640,
-      height: 420,
-    });
+    expect(manager.view().windows[0]?.rect).toEqual({ x: 1800, y: 1000, width: 640, height: 420 });
   });
 
   it("enters and exits overview without rewriting window geometry", () => {
@@ -184,5 +179,29 @@ describe("WindowManager — participant-local terminal windows", () => {
 
     expect(views).toHaveLength(1);
     expect(views[0]).toMatchObject({ windows: [{ terminalId: 11 }] });
+  });
+
+  it("applies shared geometry while preserving participant-local maximized state", () => {
+    const manager = new WindowManager({ viewport: { width: 1200, height: 700 } });
+    manager.reconcile([11, 12]);
+    manager.maximize(12);
+    const first = { x: 180, y: 96, width: 700, height: 460 };
+    const second = { x: 940, y: 120, width: 680, height: 440 };
+
+    manager.syncSharedGeometry([
+      { terminalId: 11, geometry: first },
+      { terminalId: 12, geometry: second },
+    ]);
+
+    expect(manager.view().windows.find(({ terminalId }) => terminalId === 11)?.rect).toEqual(first);
+    expect(manager.view().windows.find(({ terminalId }) => terminalId === 12)).toMatchObject({
+      rect: { x: 0, y: 0, width: 1200, height: 700 },
+      restoreRect: second,
+      maximized: true,
+    });
+    manager.restore(12);
+    expect(manager.view().windows.find(({ terminalId }) => terminalId === 12)?.rect).toEqual(
+      second,
+    );
   });
 });

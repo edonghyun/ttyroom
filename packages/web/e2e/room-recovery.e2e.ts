@@ -1,6 +1,6 @@
 import { expect, test } from "./fixtures/actors.js";
 
-test("reload keeps participant identity, restores its lease, and restores only its local geometry", async ({
+test("reload keeps participant identity, restores its lease, and restores shared geometry", async ({
   alice,
   bob,
 }) => {
@@ -9,12 +9,10 @@ test("reload keeps participant identity, restores its lease, and restores only i
   await alice.roomPage.openTerminal();
   await alice.roomPage.takeControl("term-1");
   const clientId = await alice.clientId();
-  const bobRect = await bob.roomPage.terminalRect("term-1");
 
   await alice.roomPage.moveTerminal("term-1", { x: 130, y: 90 });
   const movedRect = await alice.roomPage.terminalRect("term-1");
-  expect(movedRect.x).not.toBe(bobRect.x);
-  expect(movedRect.y).not.toBe(bobRect.y);
+  await expect.poll(() => bob.roomPage.terminalRect("term-1")).toEqual(movedRect);
 
   await alice.reloadRoom();
 
@@ -23,7 +21,7 @@ test("reload keeps participant identity, restores its lease, and restores only i
     "You control · Esc to release",
   );
   await expect.poll(() => alice.roomPage.terminalRect("term-1")).toEqual(movedRect);
-  await expect.poll(() => bob.roomPage.terminalRect("term-1")).toEqual(bobRect);
+  await expect.poll(() => bob.roomPage.terminalRect("term-1")).toEqual(movedRect);
 });
 
 test("output produced during one disconnect is replayed exactly once", async ({ alice, bob }) => {

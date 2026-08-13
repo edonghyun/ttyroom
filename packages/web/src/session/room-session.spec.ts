@@ -22,7 +22,7 @@ describe("RoomSession — collaborative Room lifecycle", () => {
     expect(transports.hellos).toEqual([
       {
         type: "hello",
-        protocolVersion: 3,
+        protocolVersion: 4,
         roomId: "room-1",
         token: "secret-token",
         clientId: "alice-id",
@@ -166,12 +166,18 @@ describe("RoomSession — collaborative Room lifecycle", () => {
     session.closeTerminal(1);
     session.setMode(1, "shared");
     session.resize(1, 120, 40);
+    session.updateGeometry(1, { x: 160, y: 88, width: 720, height: 480 });
 
     expect(transports.latest().controls).toEqual([
       { type: "open-terminal-request", hostId: "host-1" },
       { type: "close-terminal-request", terminalId: 1 },
       { type: "set-terminal-mode", terminalId: 1, mode: "shared" },
       { type: "resize-request", terminalId: 1, cols: 120, rows: 40 },
+      {
+        type: "update-terminal-geometry",
+        terminalId: 1,
+        geometry: { x: 160, y: 88, width: 720, height: 480 },
+      },
     ]);
   });
 
@@ -512,6 +518,7 @@ function roomSnapshot(): Extract<ServerMessage, { type: "welcome" }>["snapshot"]
         terminalId: 1,
         hostId: "host-1",
         title: "backend",
+        geometry: { x: 24, y: 24, width: 640, height: 420 },
         mode: "exclusive",
         status: "open",
         exitCode: null,
@@ -521,6 +528,7 @@ function roomSnapshot(): Extract<ServerMessage, { type: "welcome" }>["snapshot"]
         terminalId: 2,
         hostId: "host-1",
         title: "tests",
+        geometry: { x: 56, y: 56, width: 640, height: 420 },
         mode: "exclusive",
         status: "open",
         exitCode: null,

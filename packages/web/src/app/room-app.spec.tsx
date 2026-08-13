@@ -38,6 +38,7 @@ describe("RoomApp production composition", () => {
       closeTerminal: vi.fn(),
       openTerminal: vi.fn(),
       resize: vi.fn(),
+      updateGeometry: vi.fn(),
       setMode: vi.fn(),
       focusTerminal: vi.fn(),
     };
@@ -144,6 +145,7 @@ describe("RoomApp production composition", () => {
         closeTerminal: vi.fn(),
         openTerminal: vi.fn(),
         resize: vi.fn(),
+        updateGeometry: vi.fn(),
         setMode: vi.fn(),
         focusTerminal,
       }),
@@ -175,7 +177,139 @@ describe("RoomApp production composition", () => {
     runtime.dispose();
   });
 
-  it("clamps local windows and updates the desktop input guard when the viewport changes", () => {
+  it("projects welcome and room-event geometry into the visible terminal window", () => {
+    const projection = new RoomProjection();
+    const windowManager = new WindowManager({ viewport: { width: 1200, height: 700 } });
+    const runtime = new RoomAppRuntime(runtimeDeps(projection, windowManager));
+    const initial = { x: 180, y: 92, width: 720, height: 470 };
+    const moved = { x: 320, y: 144, width: 760, height: 510 };
+    const room = snapshot([1]);
+    room.terminals[0]!.geometry = initial;
+
+    projection.applyServerMessage({ type: "welcome", selfClientId: "client-1", snapshot: room });
+    expect(runtime.view().terminals[0]?.rect).toEqual(initial);
+
+    projection.applyServerMessage({
+      type: "room-event",
+      event: { kind: "terminal-geometry-changed", terminalId: 1, geometry: moved },
+    });
+    expect(runtime.view().terminals[0]?.rect).toEqual(moved);
+    runtime.dispose();
+  });
+
+  it("publishes the committed full geometry after local move and resize", () => {
+    const projection = new RoomProjection();
+    const updateGeometry = vi.fn();
+    const runtime = new RoomAppRuntime({
+      ...runtimeDeps(projection, new WindowManager({ viewport: { width: 1200, height: 700 } })),
+      createSession: () => ({
+        start: vi.fn(),
+        stop: vi.fn(),
+        subscribe: () => () => undefined,
+        takeControl: vi.fn(),
+        releaseControl: vi.fn(),
+        closeTerminal: vi.fn(),
+        openTerminal: vi.fn(),
+        resize: vi.fn(),
+        updateGeometry,
+        setMode: vi.fn(),
+        focusTerminal: vi.fn(),
+      }),
+    });
+    runtime.join("room-1", "Donghyeon");
+    projection.applyServerMessage({
+      type: "welcome",
+      selfClientId: "client-1",
+      snapshot: snapshot([1]),
+    });
+
+    runtime.move(1, { x: 180, y: 92 });
+    runtime.resize(1, { width: 720, height: 480 });
+
+    expect(updateGeometry).toHaveBeenNthCalledWith(1, 1, {
+      x: 180,
+      y: 92,
+      width: 640,
+      height: 420,
+    });
+    expect(updateGeometry).toHaveBeenNthCalledWith(2, 1, {
+      x: 180,
+      y: 92,
+      width: 720,
+      height: 480,
+    });
+    runtime.dispose();
+  });
+
+  it("does not roll back a local geometry commit on unrelated terminal output", () => {
+    const projection = new RoomProjection();
+    const runtime = new RoomAppRuntime(
+      runtimeDeps(projection, new WindowManager({ viewport: { width: 1200, height: 700 } })),
+    );
+    projection.applyServerMessage({
+      type: "welcome",
+      selfClientId: "client-1",
+      snapshot: snapshot([1]),
+    });
+    projection.applyServerMessage({ type: "sync", terminalId: 1, seq: 0 });
+    runtime.move(1, { x: 180, y: 92 });
+
+    projection.applyOutput({
+      kind: "output",
+      terminalId: 1,
+      seq: 1,
+      payload: new Uint8Array([65]),
+    });
+
+    expect(runtime.view().terminals[0]?.rect).toMatchObject({ x: 180, y: 92 });
+    runtime.dispose();
+  });
+
+  it("publishes every visible terminal geometry after Arrange", () => {
+    const projection = new RoomProjection();
+    const updateGeometry = vi.fn();
+    const runtime = new RoomAppRuntime({
+      ...runtimeDeps(projection, new WindowManager({ viewport: { width: 1200, height: 700 } })),
+      createSession: () => ({
+        start: vi.fn(),
+        stop: vi.fn(),
+        subscribe: () => () => undefined,
+        takeControl: vi.fn(),
+        releaseControl: vi.fn(),
+        closeTerminal: vi.fn(),
+        openTerminal: vi.fn(),
+        resize: vi.fn(),
+        updateGeometry,
+        setMode: vi.fn(),
+        focusTerminal: vi.fn(),
+      }),
+    });
+    runtime.join("room-1", "Donghyeon");
+    projection.applyServerMessage({
+      type: "welcome",
+      selfClientId: "client-1",
+      snapshot: snapshot([1, 2]),
+    });
+
+    runtime.arrange();
+
+    expect(updateGeometry).toHaveBeenCalledTimes(2);
+    expect(updateGeometry).toHaveBeenCalledWith(1, {
+      x: 0,
+      y: 0,
+      width: 600,
+      height: 700,
+    });
+    expect(updateGeometry).toHaveBeenCalledWith(2, {
+      x: 600,
+      y: 0,
+      width: 600,
+      height: 700,
+    });
+    runtime.dispose();
+  });
+
+  it("preserves canvas geometry and updates the desktop input guard when the viewport changes", () => {
     const projection = new RoomProjection();
     const windowManager = new WindowManager({ viewport: { width: 1200, height: 700 } });
     const runtime = runtimeForViewport({ projection, windowManager });
@@ -184,7 +318,7 @@ describe("RoomApp production composition", () => {
 
     runtime.resizeViewport({ width: 900, height: 574 });
 
-    expect(windowManager.view().windows[0]?.rect).toMatchObject({ x: 852, y: 526 });
+    expect(windowManager.view().windows[0]?.rect).toMatchObject({ x: 1100, y: 650 });
     expect(runtime.inputBlocked()).toBe(true);
 
     runtime.resizeViewport({ width: 1280, height: 606 });
@@ -232,6 +366,7 @@ function runtimeForToast(
       closeTerminal: vi.fn(),
       openTerminal: vi.fn(),
       resize: vi.fn(),
+      updateGeometry: vi.fn(),
       setMode: vi.fn(),
       focusTerminal: vi.fn(),
     }),
@@ -263,6 +398,7 @@ function runtimeDeps(projection: RoomProjection, windowManager: WindowManager) {
       closeTerminal: vi.fn(),
       openTerminal: vi.fn(),
       resize: vi.fn(),
+      updateGeometry: vi.fn(),
       setMode: vi.fn(),
       focusTerminal: vi.fn(),
     }),
@@ -290,6 +426,12 @@ function snapshot(terminalIds: readonly number[]): RoomSnapshot {
       terminalId,
       hostId: "host-1",
       title: `terminal-${terminalId}`,
+      geometry: {
+        x: 24 + (terminalId - 1) * 32,
+        y: 24 + (terminalId - 1) * 32,
+        width: 640,
+        height: 420,
+      },
       mode: "exclusive",
       status: "open",
       exitCode: null,

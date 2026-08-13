@@ -3,6 +3,8 @@ import { z } from "zod";
 const u32 = z.number().int().min(0).max(0xffffffff);
 // 터미널 치수는 pty가 u16으로 받는다 — 상한 없는 정수를 호스트까지 흘리지 않는다
 const terminalDimension = z.number().int().min(1).max(0xffff);
+const workspaceCoordinate = z.number().finite().min(-0xffff).max(0xffff);
+const workspaceDimension = z.number().finite().positive().max(0xffff);
 
 // ── 뷰 타입: RoomSnapshot과 이벤트가 공유하는 유선 형태 ──────────────────────
 
@@ -10,6 +12,12 @@ export const terminalMetaSchema = z.object({
   cwd: z.string().nullable(),
   gitBranch: z.string().nullable(),
   fgProcess: z.string().nullable(),
+});
+export const terminalGeometrySchema = z.object({
+  x: workspaceCoordinate,
+  y: workspaceCoordinate,
+  width: workspaceDimension,
+  height: workspaceDimension,
 });
 export const participantViewSchema = z.object({
   clientId: z.string(),
@@ -26,6 +34,7 @@ export const terminalViewSchema = z.object({
   terminalId: u32,
   hostId: z.string(),
   title: z.string(),
+  geometry: terminalGeometrySchema.default({ x: 24, y: 24, width: 640, height: 420 }),
   mode: z.enum(["exclusive", "shared"]),
   status: z.enum(["open", "exited"]),
   exitCode: z.number().int().nullable(),
@@ -46,6 +55,7 @@ export const roomSnapshotSchema = z.object({
 });
 
 export type TerminalMeta = z.infer<typeof terminalMetaSchema>;
+export type TerminalGeometry = z.infer<typeof terminalGeometrySchema>;
 export type ParticipantView = z.infer<typeof participantViewSchema>;
 export type HostView = z.infer<typeof hostViewSchema>;
 export type TerminalView = z.infer<typeof terminalViewSchema>;
@@ -85,6 +95,11 @@ const focusTerminalSchema = z.object({
   type: z.literal("focus-terminal"),
   terminalId: u32.nullable(),
 });
+const updateTerminalGeometrySchema = z.object({
+  type: z.literal("update-terminal-geometry"),
+  terminalId: u32,
+  geometry: terminalGeometrySchema,
+});
 const acquireLeaseSchema = z.object({ type: z.literal("acquire-lease"), terminalId: u32 });
 const releaseLeaseSchema = z.object({
   type: z.literal("release-lease"),
@@ -120,6 +135,7 @@ export const clientMessageSchema = z.discriminatedUnion("type", [
   setTerminalModeSchema,
   resyncOutputRequestSchema,
   focusTerminalSchema,
+  updateTerminalGeometrySchema,
   acquireLeaseSchema,
   releaseLeaseSchema,
   resizeRequestSchema,
@@ -154,6 +170,11 @@ export const roomEventSchema = z.discriminatedUnion("kind", [
     kind: z.literal("terminal-mode-changed"),
     terminalId: u32,
     mode: z.enum(["exclusive", "shared"]),
+  }),
+  z.object({
+    kind: z.literal("terminal-geometry-changed"),
+    terminalId: u32,
+    geometry: terminalGeometrySchema,
   }),
   z.object({
     kind: z.literal("terminal-closed"),

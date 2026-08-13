@@ -1,4 +1,10 @@
-import type { LeaseView, RoomSnapshot, TerminalMeta, TerminalView } from "@ttyroom/protocol";
+import type {
+  LeaseView,
+  RoomSnapshot,
+  TerminalGeometry,
+  TerminalMeta,
+  TerminalView,
+} from "@ttyroom/protocol";
 
 // 스펙 불변식: exclusive 터미널 유효 임대 최대 1·선착순·1인 1임대(새 획득 시 기존 자동 해제)·재도착 멱등
 export type AcquireDecision =
@@ -99,6 +105,7 @@ export class Room {
       terminalId,
       hostId,
       title: `term-${terminalId}`,
+      geometry: initialTerminalGeometry(terminalId),
       mode: "exclusive",
       status: "open",
       exitCode: null,
@@ -153,6 +160,10 @@ export class Room {
 
   updateTerminalMeta(terminalId: number, meta: TerminalMeta): void {
     this.requireTerminal(terminalId).meta = { ...meta };
+  }
+
+  updateTerminalGeometry(terminalId: number, geometry: TerminalGeometry): void {
+    this.requireTerminal(terminalId).geometry = { ...geometry };
   }
 
   terminal(terminalId: number): TerminalView | undefined {
@@ -261,5 +272,10 @@ export class Room {
 
 // 구조 복사 — Room 밖으로 나가는 터미널 뷰가 내부 상태로의 역참조를 갖지 않게 차단
 function copyOfTerminal(view: TerminalView): TerminalView {
-  return { ...view, meta: { ...view.meta } };
+  return { ...view, geometry: { ...view.geometry }, meta: { ...view.meta } };
+}
+
+function initialTerminalGeometry(terminalId: number): TerminalGeometry {
+  const offset = (terminalId - 1) * 32;
+  return { x: 24 + offset, y: 24 + offset, width: 640, height: 420 };
 }

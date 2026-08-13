@@ -1,4 +1,5 @@
 import { useState, useSyncExternalStore } from "react";
+import type { TerminalGeometry } from "@ttyroom/protocol";
 
 import type { RoomRoute } from "./room-route.js";
 import { parseRoomRoute } from "./room-route.js";
@@ -11,6 +12,7 @@ import { BrowserTransport } from "../transport/browser-transport.js";
 import { NativeBrowserSocketFactory } from "../transport/browser-socket.js";
 import { LayoutRepository, type LayoutScope } from "../layout/layout-repository.js";
 import { WindowManager } from "../windows/window-manager.js";
+import type { WindowRect } from "../windows/window-geometry.js";
 import { TerminalController } from "../terminal/terminal-controller.js";
 import { XtermAdapter } from "../terminal/xterm-adapter.js";
 import { App, type AppState } from "../ui/App.js";
@@ -42,6 +44,7 @@ export interface RoomAppSession {
   closeTerminal(terminalId: number): void;
   openTerminal(hostId: string): void;
   resize(terminalId: number, cols: number, rows: number): void;
+  updateGeometry(terminalId: number, geometry: TerminalGeometry): void;
   setMode(terminalId: number, mode: "exclusive" | "shared"): void;
   focusTerminal(terminalId: number | null): void;
 }
@@ -121,6 +124,7 @@ export class RoomAppRuntime {
   private layoutPersistenceStopped = false;
   private narrowViewport: boolean;
   private readonly cancelToastTimers = new Set<() => void>();
+  private readonly projectedGeometryByTerminal = new Map<number, WindowRect>();
   private nextToastId = 0;
 
   constructor(private readonly deps: RoomAppRuntimeDeps) {
@@ -289,6 +293,9 @@ export class RoomAppRuntime {
 
   arrange(): void {
     this.deps.windowManager.arrange();
+    for (const window of this.deps.windowManager.view().windows) {
+      if (!window.minimized) this.session?.updateGeometry(window.terminalId, window.rect);
+    }
   }
 
   enterOverview(): void {
@@ -314,10 +321,12 @@ export class RoomAppRuntime {
 
   move(terminalId: number, position: { x: number; y: number }): void {
     this.deps.windowManager.move(terminalId, position);
+    this.publishGeometry(terminalId);
   }
 
   resize(terminalId: number, size: { width: number; height: number }): void {
     this.deps.windowManager.resize(terminalId, size);
+    this.publishGeometry(terminalId);
   }
 
   resizeViewport(viewport: { readonly width: number; readonly height: number }): void {
@@ -410,9 +419,17 @@ export class RoomAppRuntime {
     this.publish();
   }
 
+  private publishGeometry(terminalId: number): void {
+    const geometry = this.deps.windowManager
+      .view()
+      .windows.find((window) => window.terminalId === terminalId)?.rect;
+    if (geometry) this.session?.updateGeometry(terminalId, geometry);
+  }
+
   private reconcileTerminals(): void {
-    const terminalIds =
-      this.deps.projection.view().room?.terminals.map((item) => item.terminalId) ?? [];
+    const projection = this.deps.projection.view();
+    const terminals = projection.room?.terminals ?? [];
+    const terminalIds = terminals.map((item) => item.terminalId);
     const retained = new Set(terminalIds);
     for (const [terminalId, controller] of this.controllers) {
       if (!retained.has(terminalId)) {
@@ -425,6 +442,20 @@ export class RoomAppRuntime {
         this.controllers.set(terminalId, this.deps.createController(terminalId));
     }
     this.deps.windowManager.reconcile(terminalIds);
+    if (projection.connection !== "live") {
+      this.projectedGeometryByTerminal.clear();
+      return;
+    }
+
+    const changed = terminals.filter((terminal) => {
+      const previous = this.projectedGeometryByTerminal.get(terminal.terminalId);
+      this.projectedGeometryByTerminal.set(terminal.terminalId, { ...terminal.geometry });
+      return !previous || !sameRect(previous, terminal.geometry);
+    });
+    for (const terminalId of this.projectedGeometryByTerminal.keys()) {
+      if (!retained.has(terminalId)) this.projectedGeometryByTerminal.delete(terminalId);
+    }
+    if (changed.length > 0) this.deps.windowManager.syncSharedGeometry(changed);
   }
 
   private screenState(): AppState {
@@ -447,6 +478,15 @@ export class RoomAppRuntime {
     this.currentView = this.computeView();
     for (const subscriber of this.subscribers) subscriber();
   }
+}
+
+function sameRect(left: WindowRect, right: WindowRect): boolean {
+  return (
+    left.x === right.x &&
+    left.y === right.y &&
+    left.width === right.width &&
+    left.height === right.height
+  );
 }
 
 export function RoomApp({ runtime }: { readonly runtime: RoomAppRuntime }) {

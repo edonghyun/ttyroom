@@ -21,6 +21,7 @@ const snapshot: RoomSnapshot = {
       terminalId: 1,
       hostId: "host-1",
       title: "backend",
+      geometry: { x: 24, y: 24, width: 640, height: 420 },
       mode: "exclusive",
       status: "open",
       exitCode: null,
@@ -85,6 +86,7 @@ describe("RoomProjection — authoritative Room state", () => {
           terminalId: 2,
           hostId: "host-2",
           title: "frontend",
+          geometry: { x: 56, y: 56, width: 640, height: 420 },
           mode: "exclusive",
           status: "open",
           exitCode: null,
@@ -156,6 +158,7 @@ describe("RoomProjection — authoritative Room state", () => {
           terminalId: 2,
           hostId: "host-2",
           title: "frontend",
+          geometry: { x: 56, y: 56, width: 640, height: 420 },
           mode: "exclusive",
           status: "open",
           exitCode: null,
@@ -191,6 +194,18 @@ describe("RoomProjection — authoritative Room state", () => {
       focusedTerminalId: 1,
     });
     expect(projection.terminal(1)?.lease).toBeNull();
+  });
+
+  it("applies shared terminal geometry events to the authoritative terminal view", () => {
+    const projection = welcomedProjection();
+    const geometry = { x: 168, y: 112, width: 740, height: 490 };
+
+    projection.applyServerMessage({
+      type: "room-event",
+      event: { kind: "terminal-geometry-changed", terminalId: 1, geometry },
+    });
+
+    expect(projection.terminal(1)?.terminal.geometry).toEqual(geometry);
   });
 
   it("derives input capability from terminal, host, lease, holder, and self state", () => {
@@ -287,6 +302,7 @@ describe("RoomProjection — authoritative Room state", () => {
     expect(Object.isFrozen(welcomeView.room)).toBe(true);
     expect(Object.isFrozen(welcomeView.room.participants)).toBe(true);
     expect(Object.isFrozen(welcomeView.room.participants[0])).toBe(true);
+    expect(Object.isFrozen(welcomeView.room.terminals[0]?.geometry)).toBe(true);
     expect(welcomeView.room.participants).toEqual([
       { clientId: "alice-id", name: "Alice", focusedTerminalId: null },
     ]);

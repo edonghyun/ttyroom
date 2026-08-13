@@ -47,7 +47,7 @@
 
 - 브라우저와 Agent는 모두 서버로 아웃바운드 연결한다. 직접 연결은 없다.
 - 서버가 웹 정적 파일도 직접 서빙한다. 배포물은 프로세스 하나다.
-- Room·Host·Terminal·Lease의 라이브 상태는 **서버 메모리가 authoritative**이며,
+- Room·Host·Terminal(공유 geometry 포함)·Lease의 라이브 상태는 **서버 메모리가 authoritative**이며,
   도메인 이벤트는 단일 스레드에서 순차 처리한다 (입력권 경합에 레이스 없음).
 
 ### 모노레포 구성
@@ -100,7 +100,8 @@ packages/server/src/
 ### 유즈케이스 목록
 
 `joinRoom`, `connectHost`, `openTerminal`, `acquireLease`, `releaseLease`,
-`routeTerminalInput`, `broadcastTerminalOutput`, `handleDisconnect`, `syncLateJoiner`.
+`routeTerminalInput`, `broadcastTerminalOutput`, `updateTerminalGeometry`, `handleDisconnect`,
+`syncLateJoiner`.
 테스트도 이 단위로 작성한다.
 
 ### 포트
@@ -132,7 +133,8 @@ packages/server/src/
 연결 위를 흐르는 것은 두 종류다.
 
 - **제어 프레임(JSON)** — join, 터미널 생성, 임대 요청/획득/해제, 참여자 변동,
-  터미널 메타데이터(cwd·git 브랜치·포그라운드 프로세스명), resize, sync, 에러.
+  터미널 메타데이터(cwd·git 브랜치·포그라운드 프로세스명), 공유 창 geometry, resize,
+  sync, 에러.
   zod 스키마가 단일 진실.
 - **데이터 프레임(바이너리)** — 출력(Agent→서버→브라우저):
   `[frameType(1B)][terminalId(4B)][seq(4B)][payload...]`,
@@ -203,7 +205,7 @@ Web UI는 이번 구현 범위에서 분리한다. 예시 화면 설계를 먼�
 서버·Agent는 플로우 e2e(실제 ws 클라이언트)로 검증하므로 web 없이 완결적으로 개발할 수 있다.
 
 화면 설계 기준은 `2026-08-12-ttyroom-web-ui-design.md`를 따른다. 이 문서는 여러 Terminal을
-자유롭게 이동·겹치기·정렬할 수 있는 브라우저 데스크톱, 사용자별 창 배치, Dock과 Overview,
+자유롭게 이동·겹치기·정렬할 수 있는 브라우저 데스크톱, Room 공유 창 배치, Dock과 Overview,
 입력권 상태 표현을 정의한다.
 
 Web 트랙에 승계되는 설계 결정:
@@ -211,6 +213,9 @@ Web 트랙에 승계되는 설계 결정:
 - 프레임워크: React + Vite, 터미널 렌더링은 xterm.js.
 - 서버가 보내는 스냅샷·이벤트가 유일한 진실이고 웹은 렌더링만 한다.
   낙관적 업데이트는 임대 획득 같은 지연 민감 지점에만 제한적으로 쓴다.
+- Terminal의 논리 위치·크기는 Room 공유 상태다. drag·resize·Arrange commit을 서버에 보내고
+  서버 수신 순서의 last-write-wins로 전체 참가자와 late join snapshot에 반영한다.
+  z-order·최소화·최대화·Overview·Canvas pan/zoom은 참가자별 로컬 표현 상태로 둔다.
 - 입력권 시각 상태(내 소유 / 타인 소유 / 빈 Terminal / Read-only)의 강한 피드백,
   Floating Terminal Window · Dock · Arrange · Overview 구조.
 - `packages/protocol`과 Transport 브라우저 어댑터를 통해서만 서버와 통신한다.
