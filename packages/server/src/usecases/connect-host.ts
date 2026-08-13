@@ -1,4 +1,5 @@
 import type { Room } from "../domain/room.js";
+import type { RoomRegistry } from "../domain/room-registry.js";
 import type { Connection } from "../ports/transport.js";
 import type { ConnectionRegistry } from "./connection-registry.js";
 import type { PendingDisconnects } from "./handle-disconnect.js";
@@ -8,6 +9,7 @@ export class ConnectHost {
     private readonly deps: {
       connections: ConnectionRegistry;
       pending: PendingDisconnects;
+      rooms: RoomRegistry;
     },
   ) {}
 
@@ -25,7 +27,8 @@ export class ConnectHost {
       existing.connection.close();
     }
 
-    room.connectHost(hostId, displayName);
+    room.beginHostRecovery(hostId, displayName);
+    this.deps.rooms.save(room);
     const host = room.snapshot().hosts.find((candidate) => candidate.hostId === hostId);
     if (!host) throw new Error(`방금 연결한 host가 snapshot에 없다: ${hostId}`);
     this.deps.connections.register({
@@ -36,12 +39,5 @@ export class ConnectHost {
       role: "host",
     });
     connection.send({ type: "welcome", selfClientId: hostId, snapshot: room.snapshot() });
-    this.deps.connections.broadcast(room.roomId, {
-      type: "room-event",
-      event: {
-        kind: "host-connected",
-        host,
-      },
-    });
   }
 }

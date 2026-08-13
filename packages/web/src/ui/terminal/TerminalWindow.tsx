@@ -71,6 +71,7 @@ export interface TerminalWindowActions {
 
 export interface TerminalControllerPort {
   mount(container: HTMLElement): void;
+  requestFit(): void;
   setInputAllowed(allowed: boolean): void;
   setVisible(visible: boolean): void;
 }
@@ -105,6 +106,15 @@ export function TerminalWindow({
 
   useEffect(() => {
     if (terminalRoot.current) controller.mount(terminalRoot.current);
+  }, [controller]);
+
+  useEffect(() => {
+    const renderer = terminalRoot.current;
+    if (!renderer || typeof ResizeObserver === "undefined") return;
+
+    const observer = new ResizeObserver(() => controller.requestFit());
+    observer.observe(renderer);
+    return () => observer.disconnect();
   }, [controller]);
 
   useEffect(() => {

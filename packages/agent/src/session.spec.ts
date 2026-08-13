@@ -206,12 +206,12 @@ describe("AgentSession — 역할: 서버 연결 수명주기", () => {
 
     session.start();
     await transport.settle();
-    session.send({ type: "terminal-opened", terminalId: 1 });
+    session.send({ type: "terminal-opened", terminalId: 1, runtimeId: "runtime-1" });
     session.sendData({ kind: "output", terminalId: 1, seq: 1, payload: new Uint8Array([7]) });
 
     expect(transport.lastConnection().sent).toMatchObject([
       { type: "hello" },
-      { type: "terminal-opened", terminalId: 1 },
+      { type: "terminal-opened", terminalId: 1, runtimeId: "runtime-1" },
     ]);
     expect(transport.lastConnection().sentData).toMatchObject([{ kind: "output", seq: 1 }]);
   });
@@ -223,7 +223,7 @@ describe("AgentSession — 역할: 서버 연결 수명주기", () => {
     await transport.settle();
     transport.lastConnection().emitClose();
 
-    session.send({ type: "terminal-opened", terminalId: 1 });
+    session.send({ type: "terminal-opened", terminalId: 1, runtimeId: "runtime-1" });
     session.sendData({ kind: "output", terminalId: 1, seq: 1, payload: new Uint8Array([7]) });
     clock.advance(500);
     await transport.settle();
@@ -317,7 +317,7 @@ describe("AgentSession — 역할: 서버 연결 수명주기", () => {
     await transport.settle();
     session.stop();
 
-    session.send({ type: "terminal-opened", terminalId: 1 });
+    session.send({ type: "terminal-opened", terminalId: 1, runtimeId: "runtime-1" });
     session.sendData({ kind: "output", terminalId: 1, seq: 1, payload: new Uint8Array([7]) });
 
     expect(transport.lastConnection().sent).toMatchObject([{ type: "hello" }]);
@@ -375,12 +375,12 @@ describe("AgentSession — 역할: 서버 연결 수명주기", () => {
     await transport.settle();
 
     first.emitClose();
-    session.send({ type: "terminal-opened", terminalId: 1 });
+    session.send({ type: "terminal-opened", terminalId: 1, runtimeId: "runtime-1" });
 
     expect(clock.pendingTimerCount()).toBe(0);
     expect(transport.lastConnection().sent).toMatchObject([
       { type: "hello" },
-      { type: "terminal-opened", terminalId: 1 },
+      { type: "terminal-opened", terminalId: 1, runtimeId: "runtime-1" },
     ]);
   });
 

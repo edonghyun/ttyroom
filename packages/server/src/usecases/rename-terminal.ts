@@ -8,6 +8,7 @@ export class RenameTerminal {
     const room = this.deps.rooms.get(session.roomId);
     if (!room?.terminal(terminalId)) return;
     if (!room.renameTerminal(terminalId, title)) return;
+    this.deps.rooms.save(room);
 
     this.deps.connections.broadcast(room.roomId, {
       type: "room-event",

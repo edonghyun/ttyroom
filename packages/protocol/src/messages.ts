@@ -96,6 +96,14 @@ const focusTerminalSchema = z.object({
   type: z.literal("focus-terminal"),
   terminalId: u32.nullable(),
 });
+const cursorPositionSchema = z.object({
+  x: workspaceCoordinate,
+  y: workspaceCoordinate,
+});
+const moveCursorSchema = z.object({
+  type: z.literal("move-cursor"),
+  position: cursorPositionSchema.nullable(),
+});
 const updateTerminalGeometrySchema = z.object({
   type: z.literal("update-terminal-geometry"),
   terminalId: u32,
@@ -118,7 +126,11 @@ const resizeRequestSchema = z.object({
   cols: terminalDimension,
   rows: terminalDimension,
 });
-const terminalOpenedSchema = z.object({ type: z.literal("terminal-opened"), terminalId: u32 });
+const terminalOpenedSchema = z.object({
+  type: z.literal("terminal-opened"),
+  terminalId: u32,
+  runtimeId: z.string().min(1),
+});
 const terminalClosedSchema = z.object({
   type: z.literal("terminal-closed"),
   terminalId: u32,
@@ -133,6 +145,22 @@ const hostInputStateSchema = z.object({
   type: z.literal("host-input-state"),
   remoteInputAllowed: z.boolean(),
 });
+const hostInventorySchema = z.object({
+  type: z.literal("host-inventory"),
+  terminals: z.array(
+    z.object({
+      terminalId: u32,
+      runtimeId: z.string().min(1),
+      firstRetainedSeq: u32,
+      lastOutputSeq: u32,
+    }),
+  ),
+});
+const terminalReplayCompleteSchema = z.object({
+  type: z.literal("terminal-replay-complete"),
+  terminalId: u32,
+  lastOutputSeq: u32,
+});
 
 export const clientMessageSchema = z.discriminatedUnion("type", [
   helloSchema,
@@ -141,6 +169,7 @@ export const clientMessageSchema = z.discriminatedUnion("type", [
   setTerminalModeSchema,
   resyncOutputRequestSchema,
   focusTerminalSchema,
+  moveCursorSchema,
   updateTerminalGeometrySchema,
   renameTerminalSchema,
   acquireLeaseSchema,
@@ -150,6 +179,8 @@ export const clientMessageSchema = z.discriminatedUnion("type", [
   terminalClosedSchema,
   terminalMetaMessageSchema,
   hostInputStateSchema,
+  hostInventorySchema,
+  terminalReplayCompleteSchema,
 ]);
 export type ClientMessage = z.infer<typeof clientMessageSchema>;
 export type HelloMessage = z.infer<typeof helloSchema>;
@@ -221,6 +252,11 @@ const welcomeSchema = z.object({
   snapshot: roomSnapshotSchema,
 });
 const roomEventMessageSchema = z.object({ type: z.literal("room-event"), event: roomEventSchema });
+const participantCursorSchema = z.object({
+  type: z.literal("participant-cursor"),
+  clientId: z.string(),
+  position: cursorPositionSchema.nullable(),
+});
 const leaseResultMessageSchema = z.object({
   type: z.literal("lease-result"),
   terminalId: u32,
@@ -262,10 +298,20 @@ const resizeSchema = z.object({
   cols: terminalDimension,
   rows: terminalDimension,
 });
+const hostReadySchema = z.object({
+  type: z.literal("host-ready"),
+  terminals: z.array(
+    z.object({
+      terminalId: u32,
+      replayAfterSeq: u32,
+    }),
+  ),
+});
 
 export const serverMessageSchema = z.discriminatedUnion("type", [
   welcomeSchema,
   roomEventMessageSchema,
+  participantCursorSchema,
   leaseResultMessageSchema,
   leaseInvalidSchema,
   terminalRequestRejectedSchema,
@@ -275,6 +321,7 @@ export const serverMessageSchema = z.discriminatedUnion("type", [
   openTerminalSchema,
   closeTerminalSchema,
   resizeSchema,
+  hostReadySchema,
 ]);
 export type ServerMessage = z.infer<typeof serverMessageSchema>;
 

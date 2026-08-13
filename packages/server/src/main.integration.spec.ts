@@ -9,7 +9,7 @@ import { startServer } from "./main.js";
 
 describe("startServer — 역할: 조립과 HTTP 경계", () => {
   it("포트 0으로 부팅해 healthz가 200 ok다", async () => {
-    const server = await startServer(loadConfig({}));
+    const server = await startServer(testConfig());
     try {
       const response = await fetch(`${server.httpBaseUrl}/healthz`);
       expect(response.status).toBe(200);
@@ -20,7 +20,7 @@ describe("startServer — 역할: 조립과 HTTP 경계", () => {
   });
 
   it("POST /api/rooms가 roomId·token·joinUrl을 발급한다", async () => {
-    const server = await startServer(loadConfig({}));
+    const server = await startServer(testConfig());
     try {
       const response = await fetch(`${server.httpBaseUrl}/api/rooms`, { method: "POST" });
       const body = (await response.json()) as Record<string, unknown>;
@@ -37,7 +37,7 @@ describe("startServer — 역할: 조립과 HTTP 경계", () => {
   });
 
   it("POST /api/rooms의 표시 이름이 생성 응답과 welcome snapshot까지 이어진다", async () => {
-    const server = await startServer(loadConfig({}));
+    const server = await startServer(testConfig());
     let socket: WebSocket | undefined;
     try {
       const issued = await fetch(`${server.httpBaseUrl}/api/rooms`, {
@@ -81,7 +81,7 @@ describe("startServer — 역할: 조립과 HTTP 경계", () => {
 
   it("GET /와 /r/:roomId가 CSP와 no-store를 가진 동일한 SPA를 제공한다", async () => {
     const webRoot = await webFixture();
-    const server = await startServer(loadConfig({}), { webRoot });
+    const server = await startServer(testConfig(), { webRoot });
     try {
       const root = await fetch(`${server.httpBaseUrl}/`);
       const room = await fetch(`${server.httpBaseUrl}/r/room-1`);
@@ -98,7 +98,7 @@ describe("startServer — 역할: 조립과 HTTP 경계", () => {
 
   it("정적 fallback이 API 또는 없는 asset을 가로채지 않는다", async () => {
     const webRoot = await webFixture();
-    const server = await startServer(loadConfig({}), { webRoot });
+    const server = await startServer(testConfig(), { webRoot });
     try {
       const api = await fetch(`${server.httpBaseUrl}/api/missing`);
       const asset = await fetch(`${server.httpBaseUrl}/assets/missing-Ab12.js`);
@@ -113,7 +113,7 @@ describe("startServer — 역할: 조립과 HTTP 경계", () => {
   });
 
   it("발급받은 Room에 실제 ws로 hello하면 welcome이 온다", async () => {
-    const server = await startServer(loadConfig({}));
+    const server = await startServer(testConfig());
     let socket: WebSocket | undefined;
     try {
       const issued = await fetch(`${server.httpBaseUrl}/api/rooms`, { method: "POST" });
@@ -157,7 +157,7 @@ describe("startServer — 역할: 조립과 HTTP 경계", () => {
   });
 
   it("열린 WebSocket이 남아 있어도 서버 종료가 연결을 닫고 완료된다", async () => {
-    const server = await startServer(loadConfig({}));
+    const server = await startServer(testConfig());
     const socket = new WebSocket(`${server.httpBaseUrl.replace("http", "ws")}/ws`);
     await new Promise<void>((resolve, reject) => {
       socket.once("open", resolve);
@@ -181,7 +181,62 @@ describe("startServer — 역할: 조립과 HTTP 경계", () => {
       await closing;
     }
   });
+
+  it("같은 SQLite로 재시작하면 기존 Room 인증과 이름을 복원한다", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "ttyroom-server-restart-"));
+    const statePath = join(directory, "state.sqlite");
+    const config = loadConfig({ file: { port: 0, statePath }, env: {} });
+    let room: { roomId: string; token: string };
+    const first = await startServer(config);
+    try {
+      const issued = await fetch(`${first.httpBaseUrl}/api/rooms`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name: "Restart Safe" }),
+      });
+      room = (await issued.json()) as { roomId: string; token: string };
+    } finally {
+      await first.close();
+    }
+
+    const second = await startServer(config);
+    const socket = new WebSocket(`${second.httpBaseUrl.replace("http", "ws")}/ws`);
+    try {
+      await new Promise<void>((resolve, reject) => {
+        socket.once("open", resolve);
+        socket.once("error", reject);
+      });
+      socket.send(
+        serializeClientMessage({
+          type: "hello",
+          protocolVersion: PROTOCOL_VERSION,
+          roomId: room.roomId,
+          token: room.token,
+          clientId: "alice-after-restart",
+          name: "alice",
+          role: "participant",
+        }),
+      );
+      const raw = await new Promise<string>((resolve, reject) => {
+        socket.once("message", (data) => resolve(data.toString()));
+        socket.once("error", reject);
+      });
+
+      expect(parseServerMessage(raw)).toMatchObject({
+        kind: "ok",
+        message: { type: "welcome", snapshot: { name: "Restart Safe" } },
+      });
+    } finally {
+      socket.terminate();
+      await second.close();
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
 });
+
+function testConfig() {
+  return loadConfig({ file: { statePath: ":memory:" }, env: {} });
+}
 
 async function webFixture(): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), "ttyroom-main-web-"));

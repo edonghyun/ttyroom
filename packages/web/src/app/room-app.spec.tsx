@@ -17,6 +17,40 @@ vi.mock("@xterm/xterm", () => ({ Terminal: class {} }));
 vi.mock("@xterm/addon-fit", () => ({ FitAddon: class {} }));
 
 describe("RoomApp production composition", () => {
+  it("automatically rejoins a room when the browser has a saved nickname", () => {
+    const projection = new RoomProjection();
+    const start = vi.fn();
+
+    const runtime = new RoomAppRuntime({
+      ...runtimeDeps(projection, new WindowManager({ viewport: { width: 1200, height: 700 } })),
+      identity: {
+        clientId: () => "client-1",
+        nickname: () => "Donghyeon",
+        saveNickname: vi.fn(),
+      },
+      createSession: () => ({
+        start,
+        stop: vi.fn(),
+        subscribe: () => () => undefined,
+        takeControl: vi.fn(),
+        releaseControl: vi.fn(),
+        closeTerminal: vi.fn(),
+        openTerminal: vi.fn(),
+        resize: vi.fn(),
+        updateGeometry: vi.fn(),
+        renameTerminal: vi.fn(),
+        setMode: vi.fn(),
+        focusTerminal: vi.fn(),
+        moveCursor: vi.fn(),
+      }),
+    });
+
+    expect(runtime.view().state).toBe("joining");
+    expect(start).toHaveBeenCalledOnce();
+
+    runtime.dispose();
+  });
+
   it("joins through the stable session boundary and reconciles terminal-scoped controller lifetimes", async () => {
     const projection = new RoomProjection();
     let sessionEvent:
@@ -42,6 +76,7 @@ describe("RoomApp production composition", () => {
       renameTerminal: vi.fn(),
       setMode: vi.fn(),
       focusTerminal: vi.fn(),
+      moveCursor: vi.fn(),
     };
     const controllers = new Map<
       number,
@@ -56,6 +91,7 @@ describe("RoomApp production composition", () => {
       createController: (terminalId) => {
         const controller = {
           mount: vi.fn(),
+          requestFit: vi.fn(),
           setInputAllowed: vi.fn(),
           setVisible: vi.fn(),
           acceptOutput: vi.fn(),
@@ -150,6 +186,7 @@ describe("RoomApp production composition", () => {
         renameTerminal,
         setMode: vi.fn(),
         focusTerminal: vi.fn(),
+        moveCursor: vi.fn(),
       }),
     });
     runtime.join("room-1", "Donghyeon");
@@ -190,6 +227,7 @@ describe("RoomApp production composition", () => {
         renameTerminal: vi.fn(),
         setMode: vi.fn(),
         focusTerminal,
+        moveCursor: vi.fn(),
       }),
     });
     runtime.join("room-1", "Donghyeon");
@@ -217,6 +255,65 @@ describe("RoomApp production composition", () => {
     runtime.activate(1);
     expect(focusTerminal).toHaveBeenCalledWith(1);
     runtime.dispose();
+  });
+
+  it("shows remote participant cursors briefly and never retains the local cursor", () => {
+    vi.useFakeTimers();
+    const projection = new RoomProjection();
+    let sessionEvent: Parameters<RoomAppSession["subscribe"]>[0] | undefined;
+    const runtime = new RoomAppRuntime({
+      ...runtimeDeps(projection, new WindowManager({ viewport: { width: 1200, height: 700 } })),
+      createSession: () => ({
+        start: vi.fn(),
+        stop: vi.fn(),
+        subscribe: (subscriber) => {
+          sessionEvent = subscriber;
+          return () => undefined;
+        },
+        takeControl: vi.fn(),
+        releaseControl: vi.fn(),
+        closeTerminal: vi.fn(),
+        openTerminal: vi.fn(),
+        resize: vi.fn(),
+        updateGeometry: vi.fn(),
+        renameTerminal: vi.fn(),
+        setMode: vi.fn(),
+        focusTerminal: vi.fn(),
+        moveCursor: vi.fn(),
+      }),
+    });
+    runtime.join("room-1", "Donghyeon");
+    projection.applyServerMessage({
+      type: "welcome",
+      selfClientId: "client-1",
+      snapshot: {
+        ...snapshot([]),
+        participants: [
+          { clientId: "client-1", name: "Donghyeon", focusedTerminalId: null },
+          { clientId: "bob", name: "Bob", focusedTerminalId: null },
+        ],
+      },
+    });
+
+    sessionEvent?.({
+      kind: "participant-cursor",
+      clientId: "bob",
+      position: { x: 320, y: 180 },
+    });
+    sessionEvent?.({
+      kind: "participant-cursor",
+      clientId: "client-1",
+      position: { x: 80, y: 40 },
+    });
+
+    expect(runtime.view().cursors).toEqual([
+      { clientId: "bob", name: "Bob", position: { x: 320, y: 180 } },
+    ]);
+
+    vi.advanceTimersByTime(2_000);
+    expect(runtime.view().cursors).toEqual([]);
+    runtime.dispose();
+    vi.useRealTimers();
   });
 
   it("projects welcome and room-event geometry into the visible terminal window", () => {
@@ -257,6 +354,7 @@ describe("RoomApp production composition", () => {
         renameTerminal: vi.fn(),
         setMode: vi.fn(),
         focusTerminal: vi.fn(),
+        moveCursor: vi.fn(),
       }),
     });
     runtime.join("room-1", "Donghyeon");
@@ -326,6 +424,7 @@ describe("RoomApp production composition", () => {
         renameTerminal: vi.fn(),
         setMode: vi.fn(),
         focusTerminal: vi.fn(),
+        moveCursor: vi.fn(),
       }),
     });
     runtime.join("room-1", "Donghyeon");
@@ -414,6 +513,7 @@ function runtimeForToast(
       renameTerminal: vi.fn(),
       setMode: vi.fn(),
       focusTerminal: vi.fn(),
+      moveCursor: vi.fn(),
     }),
   });
 }
@@ -447,9 +547,11 @@ function runtimeDeps(projection: RoomProjection, windowManager: WindowManager) {
       renameTerminal: vi.fn(),
       setMode: vi.fn(),
       focusTerminal: vi.fn(),
+      moveCursor: vi.fn(),
     }),
     createController: () => ({
       mount: vi.fn(),
+      requestFit: vi.fn(),
       setInputAllowed: vi.fn(),
       setVisible: vi.fn(),
       acceptOutput: vi.fn(),

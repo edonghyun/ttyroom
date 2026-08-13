@@ -5,11 +5,51 @@ import {
   parseServerMessage,
   serializeClientMessage,
   serializeServerMessage,
+  type ClientMessage,
+  type ServerMessage,
 } from "./messages.js";
 
 describe("제어 메시지 스키마 — 역할: JSON 제어 프레임의 검증과 유선 형태 고정", () => {
-  it("terminal rename은 protocol version 5에서 협상한다", () => {
-    expect(PROTOCOL_VERSION).toBe(5);
+  it("recovery handshake와 participant cursor는 protocol version 7에서 협상한다", () => {
+    expect(PROTOCOL_VERSION).toBe(7);
+  });
+
+  it("Host inventory·ready·replay 완료와 runtimeId가 라운드트립한다", () => {
+    const inventory: ClientMessage = {
+      type: "host-inventory",
+      terminals: [{ terminalId: 3, runtimeId: "runtime-3", firstRetainedSeq: 4, lastOutputSeq: 9 }],
+    };
+    const opened: ClientMessage = {
+      type: "terminal-opened",
+      terminalId: 3,
+      runtimeId: "runtime-3",
+    };
+    const ready: ServerMessage = {
+      type: "host-ready",
+      terminals: [{ terminalId: 3, replayAfterSeq: 5 }],
+    };
+    const replayed: ClientMessage = {
+      type: "terminal-replay-complete",
+      terminalId: 3,
+      lastOutputSeq: 9,
+    };
+
+    expect(parseClientMessage(serializeClientMessage(inventory))).toEqual({
+      kind: "ok",
+      message: inventory,
+    });
+    expect(parseClientMessage(serializeClientMessage(opened))).toEqual({
+      kind: "ok",
+      message: opened,
+    });
+    expect(parseServerMessage(serializeServerMessage(ready))).toEqual({
+      kind: "ok",
+      message: ready,
+    });
+    expect(parseClientMessage(serializeClientMessage(replayed))).toEqual({
+      kind: "ok",
+      message: replayed,
+    });
   });
 
   it("정상 hello 메시지를 파싱해 타입을 부여한다", () => {
@@ -255,6 +295,26 @@ describe("제어 메시지 스키마 — 역할: JSON 제어 프레임의 검증
     expect(parseServerMessage(serializeServerMessage(changed))).toEqual({
       kind: "ok",
       message: changed,
+    });
+  });
+
+  it("participant cursor를 일시 좌표 또는 canvas 이탈로 라운드트립한다", () => {
+    const move = { type: "move-cursor", position: { x: -120.5, y: 48.25 } } as const;
+    const leave = { type: "move-cursor", position: null } as const;
+    const shared = {
+      type: "participant-cursor",
+      clientId: "c1",
+      position: { x: -120.5, y: 48.25 },
+    } as const;
+
+    expect(parseClientMessage(serializeClientMessage(move))).toEqual({ kind: "ok", message: move });
+    expect(parseClientMessage(serializeClientMessage(leave))).toEqual({
+      kind: "ok",
+      message: leave,
+    });
+    expect(parseServerMessage(serializeServerMessage(shared))).toEqual({
+      kind: "ok",
+      message: shared,
     });
   });
 

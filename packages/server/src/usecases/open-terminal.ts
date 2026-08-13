@@ -18,6 +18,9 @@ export class OpenTerminal {
     }
 
     const terminal = room.openTerminal(hostId);
+    // Agent에 부작용을 요청하기 전에 terminalId를 내구화한다. commit 뒤 전송 전에
+    // 서버가 죽으면 다음 inventory reconciliation이 pending 터미널을 정리한다.
+    this.deps.rooms.save(room);
     host.connection.send({
       type: "open-terminal",
       terminalId: terminal.terminalId,
@@ -61,7 +64,12 @@ export class OpenTerminal {
     host.connection.send({ type: "close-terminal", terminalId });
   }
 
-  confirmOpened(connection: Connection, session: Session, terminalId: number): void {
+  confirmOpened(
+    connection: Connection,
+    session: Session,
+    terminalId: number,
+    runtimeId: string,
+  ): void {
     const room = this.deps.rooms.get(session.roomId);
     const terminal = room?.terminal(terminalId);
     if (!room || !terminal || terminal.hostId !== session.hostId) {
@@ -73,6 +81,8 @@ export class OpenTerminal {
       return;
     }
     if (terminal.status !== "open") return;
+    room.confirmTerminalOpened(terminalId, runtimeId);
+    this.deps.rooms.save(room);
 
     const confirmed = this.confirmedByRoom.get(room) ?? new Set<number>();
     if (confirmed.has(terminalId)) return;
@@ -105,6 +115,7 @@ export class OpenTerminal {
     if (terminal.status === "exited") return;
 
     room.markTerminalExited(terminalId, exitCode);
+    this.deps.rooms.save(room);
     this.deps.connections.broadcast(room.roomId, {
       type: "room-event",
       event: { kind: "terminal-closed", terminalId, exitCode },
@@ -137,6 +148,7 @@ export class OpenTerminal {
     }
 
     room.updateTerminalMeta(terminalId, meta);
+    this.deps.rooms.save(room);
     this.deps.connections.broadcast(room.roomId, {
       type: "room-event",
       event: { kind: "terminal-meta", terminalId, meta },

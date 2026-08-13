@@ -51,6 +51,11 @@ export type RoomSessionEvent =
       bytes: Uint8Array;
       replace: boolean;
     }
+  | {
+      kind: "participant-cursor";
+      clientId: string;
+      position: Extract<ServerMessage, { type: "participant-cursor" }>["position"];
+    }
   | { kind: "reset-terminal-output"; terminalId: number };
 
 type SessionSubscriber = (event: RoomSessionEvent) => void;
@@ -165,6 +170,10 @@ export class RoomSession {
     this.transport?.sendControl({ type: "focus-terminal", terminalId });
   }
 
+  moveCursor(position: Extract<ClientMessage, { type: "move-cursor" }>["position"]): void {
+    this.transport?.sendControl({ type: "move-cursor", position });
+  }
+
   resize(terminalId: number, cols: number, rows: number): void {
     this.transport?.sendControl({ type: "resize-request", terminalId, cols, rows });
   }
@@ -229,6 +238,14 @@ export class RoomSession {
   private handleTransport(event: SessionTransportEvent): void {
     if (event.kind === "server-message") {
       const message = event.message;
+      if (message.type === "participant-cursor") {
+        this.publish({
+          kind: "participant-cursor",
+          clientId: message.clientId,
+          position: message.position,
+        });
+        return;
+      }
       if (message.type === "error" && message.code === "room-not-found") {
         this.finish("gone");
         return;

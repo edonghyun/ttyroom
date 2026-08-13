@@ -82,6 +82,34 @@ test("terminal title bars show who currently has each terminal focused", async (
   await expect(alice.roomPage.terminal("term-1").getByRole("tooltip")).toHaveText("Bob");
 });
 
+test("participant cursors are shared live and disappear after leaving the canvas", async ({
+  alice,
+  bob,
+}) => {
+  await alice.joinRoom();
+  await bob.joinRoom();
+  const scene = alice.page.locator(".terminal-scene");
+  const sceneBox = await scene.boundingBox();
+  if (!sceneBox) throw new Error("scene geometry is unavailable");
+
+  await alice.page.mouse.move(sceneBox.x + 420, sceneBox.y + 260);
+
+  await expect(bob.page.getByLabel("Alice cursor")).toBeVisible();
+  await expect(alice.page.getByLabel("Alice cursor")).toHaveCount(0);
+
+  await alice.page.mouse.move(8, 8);
+  await expect(bob.page.getByLabel("Alice cursor")).toBeHidden();
+});
+
+test("refresh rejoins with the saved nickname without showing the join form", async ({ alice }) => {
+  await alice.joinRoom();
+
+  await alice.page.reload();
+
+  await expect(alice.page.getByRole("region", { name: "Terminal workspace" })).toBeVisible();
+  await expect(alice.page.getByRole("textbox", { name: "Nickname" })).toHaveCount(0);
+});
+
 test("dragging and resizing show a pointer-following ghost before committing geometry", async ({
   alice,
 }) => {

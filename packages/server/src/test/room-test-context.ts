@@ -5,7 +5,6 @@ import {
   type ClientMessage,
 } from "@ttyroom/protocol";
 import { LinkAuth } from "../adapters/link-auth/link-auth.js";
-import { NoopSnapshotStore } from "../adapters/memory/noop-snapshot-store.js";
 import { RoomRegistry } from "../domain/room-registry.js";
 import { DEFAULT_POLICY, type Policy } from "../ports/policy.js";
 import { ConnectionRegistry } from "../usecases/connection-registry.js";
@@ -25,11 +24,14 @@ export interface HostHandle {
   hostId: string;
   clientId: string;
   conn: RecordingConnection;
-  send(msg: ClientMessage): void;
+  send(msg: HostTestMessage): void;
   sendOutput(terminalId: number, seq: number, text: string): void;
   allowAgentData(): void;
   disconnect(): void;
 }
+
+type HostTestMessage =
+  ClientMessage | { type: "terminal-opened"; terminalId: number; runtimeId?: string };
 
 // 테스트 컴포지션 루트 — 실제 부팅(main.ts)과 같은 배선을 FakeClock·기록 연결로 재현한다
 export class RoomTestContext {
@@ -50,7 +52,6 @@ export class RoomTestContext {
         connections: this.connections,
         identity: new LinkAuth(),
         clock: this.clock,
-        snapshots: new NoopSnapshotStore(),
       },
       { policy: { ...DEFAULT_POLICY, ...options?.policy } },
     );
@@ -145,9 +146,28 @@ export class RoomTestContext {
     const id = hostId ?? `h-${this.nextHostNumber}`;
     this.nextHostNumber += 1;
     const clientId = id;
+    const aggregate = this.rooms.get(room.roomId);
+    const existingInventory =
+      aggregate
+        ?.snapshot()
+        .terminals.filter((terminal) => terminal.hostId === id && terminal.status === "open")
+        .map((terminal) => ({
+          terminalId: terminal.terminalId,
+          runtimeId:
+            aggregate.terminalRuntimeId(terminal.terminalId) ?? `runtime-${terminal.terminalId}`,
+          firstRetainedSeq: 0,
+          lastOutputSeq: 0,
+        })) ?? [];
 
-    const send = (msg: ClientMessage): void => {
-      this.core.handleMessage(conn, serializeClientMessage(msg));
+    const send = (msg: HostTestMessage): void => {
+      const normalized: ClientMessage =
+        msg.type === "terminal-opened"
+          ? {
+              ...msg,
+              runtimeId: msg.runtimeId ?? `runtime-${msg.terminalId}`,
+            }
+          : msg;
+      this.core.handleMessage(conn, serializeClientMessage(normalized));
     };
     send({
       type: "hello",
@@ -158,6 +178,8 @@ export class RoomTestContext {
       name,
       role: "host",
     });
+    send({ type: "host-inventory", terminals: existingInventory });
+    send({ type: "host-input-state", remoteInputAllowed: true });
 
     return {
       hostId: id,

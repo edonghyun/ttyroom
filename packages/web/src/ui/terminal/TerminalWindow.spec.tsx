@@ -104,6 +104,35 @@ describe("TerminalWindow", () => {
     expect(screen.getByRole("img", { name: "Shared input mode" })).toHaveTextContent("Shared");
   });
 
+  it("refits the terminal when its renderer changes size", () => {
+    let notifyResize: (() => void) | undefined;
+    const disconnect = vi.fn();
+    class FakeResizeObserver {
+      constructor(callback: ResizeObserverCallback) {
+        notifyResize = () => callback([], this as unknown as ResizeObserver);
+      }
+
+      observe() {}
+      unobserve() {}
+      disconnect() {
+        disconnect();
+      }
+    }
+    vi.stubGlobal("ResizeObserver", FakeResizeObserver);
+
+    const controller = createController();
+    const requestFit = vi.spyOn(controller, "requestFit");
+    const { unmount } = render(<TerminalWindow {...windowProps(controller, vi.fn(), vi.fn())} />);
+    requestFit.mockClear();
+
+    notifyResize?.();
+
+    expect(requestFit).toHaveBeenCalledOnce();
+    unmount();
+    expect(disconnect).toHaveBeenCalledOnce();
+    vi.unstubAllGlobals();
+  });
+
   it("opens terminal rename from the title bar actions menu", async () => {
     const requestRename = vi.fn();
     const props = windowProps(createController(), vi.fn(), vi.fn());

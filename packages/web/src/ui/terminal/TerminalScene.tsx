@@ -1,9 +1,11 @@
-import { ArrowRight, Terminal } from "react-feather";
+import { useRef, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
+import { ArrowRight, MousePointer, Terminal } from "react-feather";
 import { Dock } from "../chrome/Dock.js";
 import { Overview } from "../chrome/Overview.js";
 import { WorkspaceCameraControls } from "../chrome/WorkspaceCameraControls.js";
 import { useWorkspaceCamera } from "../use-workspace-camera.js";
 import { DEFAULT_CAMERA } from "../workspace-camera.js";
+import { viewportPointToWorkspace } from "../workspace-camera.js";
 import { terminalStatusLabel } from "./TerminalStatus.js";
 import {
   TerminalWindow,
@@ -16,6 +18,7 @@ export function TerminalScene({
   terminals,
   controllers,
   participants,
+  cursors,
   hosts,
   activeTerminalId,
   actions,
@@ -25,28 +28,54 @@ export function TerminalScene({
   readonly terminals: readonly TerminalWindowModel[];
   readonly controllers: ReadonlyMap<number, TerminalControllerPort>;
   readonly participants: readonly string[];
+  readonly cursors: readonly {
+    readonly clientId: string;
+    readonly name: string;
+    readonly position: { readonly x: number; readonly y: number };
+  }[];
   readonly hosts: readonly { readonly hostId: string; readonly name: string }[];
   readonly activeTerminalId: number | null;
   readonly actions: TerminalWindowActions & {
     readonly exitOverview: () => void;
     readonly addTerminal: (hostId: string) => void;
     readonly addHost: (opener?: HTMLElement) => void;
+    readonly moveCursor: (position: { readonly x: number; readonly y: number } | null) => void;
   };
   readonly overview: boolean;
   readonly inputBlocked?: boolean;
 }) {
+  const lastCursorReportAt = useRef(Number.NEGATIVE_INFINITY);
   const canvas = useWorkspaceCamera({
     overview,
     terminalRects: terminals
       .filter((terminal) => !terminal.minimized)
       .map((terminal) => terminal.rect),
   });
+  const reportCursor = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (overview) return;
+    const now = performance.now();
+    if (now - lastCursorReportAt.current < 40) return;
+    lastCursorReportAt.current = now;
+    const bounds = event.currentTarget.getBoundingClientRect();
+    actions.moveCursor(
+      viewportPointToWorkspace(
+        { x: event.clientX, y: event.clientY },
+        { left: bounds.left, top: bounds.top },
+        canvas.camera,
+      ),
+    );
+  };
 
   return (
     <>
       <div
         className={`terminal-scene${overview ? " is-overview" : ""}`}
         {...canvas.viewportBindings}
+        onPointerMove={(event) => {
+          canvas.viewportBindings.onPointerMove(event);
+          reportCursor(event);
+        }}
+        onPointerLeave={() => actions.moveCursor(null)}
       >
         <div
           className="terminal-camera"
@@ -71,6 +100,26 @@ export function TerminalScene({
             );
           })}
         </div>
+        {!overview &&
+          cursors.map((cursor) => {
+            const color = participantCursorColor(cursor.clientId);
+            return (
+              <div
+                key={cursor.clientId}
+                className="participant-cursor"
+                aria-label={`${cursor.name} cursor`}
+                style={
+                  {
+                    transform: `translate(${canvas.camera.x + cursor.position.x * canvas.camera.scale}px, ${canvas.camera.y + cursor.position.y * canvas.camera.scale}px)`,
+                    "--participant-cursor-color": color,
+                  } as CSSProperties
+                }
+              >
+                <MousePointer size={20} strokeWidth={2.2} aria-hidden="true" />
+                <span>{cursor.name}</span>
+              </div>
+            );
+          })}
         {!overview && terminals.length === 0 && (
           <section className="empty-workspace" aria-labelledby="empty-workspace-title">
             <div className="empty-workspace-card">
@@ -143,4 +192,11 @@ export function TerminalScene({
       />
     </>
   );
+}
+
+const PARTICIPANT_CURSOR_COLORS = ["#9d6bdb", "#3fb8af", "#e28b4b", "#e06387", "#5b8def"];
+
+function participantCursorColor(clientId: string): string {
+  const hash = [...clientId].reduce((value, character) => value + character.charCodeAt(0), 0);
+  return PARTICIPANT_CURSOR_COLORS[hash % PARTICIPANT_CURSOR_COLORS.length] ?? "#9d6bdb";
 }

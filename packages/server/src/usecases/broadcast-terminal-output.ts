@@ -33,6 +33,11 @@ export class BroadcastTerminalOutput {
     }
 
     const output = this.outputFor(room, incoming.terminalId);
+    // Agent source seq는 reconnect replay 중복 제거용이고, 브라우저 seq는 서버 수명 안에서
+    // 연속적으로 다시 부여한다. 서버 재시작 뒤 welcome이 브라우저 projection을 reset하므로
+    // retained Agent frame이 source seq 중간부터 시작해도 1부터 끊김 없이 복구된다.
+    if (incoming.seq <= output.lastSourceSeq) return;
+    output.lastSourceSeq = incoming.seq;
     const seq = output.lastSeq + 1;
     output.lastSeq = seq;
     const frame: OutputFrame = { ...incoming, seq };
@@ -79,6 +84,22 @@ export class BroadcastTerminalOutput {
     return this.outputByRoom.get(room)?.get(terminalId)?.lastSeq ?? 0;
   }
 
+  lastSourceSeqFor(room: Room, terminalId: number): number {
+    return this.outputByRoom.get(room)?.get(terminalId)?.lastSourceSeq ?? 0;
+  }
+
+  acknowledgeSourceSeq(room: Room, terminalId: number, sourceSeq: number): void {
+    const output = this.outputFor(room, terminalId);
+    output.lastSourceSeq = Math.max(output.lastSourceSeq, sourceSeq);
+  }
+
+  syncParticipants(room: Room, terminalId: number): void {
+    const seq = this.lastSeqFor(room, terminalId);
+    for (const participant of this.deps.connections.participantsOf(room.roomId)) {
+      participant.connection.send({ type: "sync", terminalId, seq });
+    }
+  }
+
   private outputFor(room: Room, terminalId: number): TerminalOutput {
     let roomOutput = this.outputByRoom.get(room);
     if (!roomOutput) {
@@ -92,6 +113,7 @@ export class BroadcastTerminalOutput {
           maxBytes: this.options.policy.scrollbackBytesPerTerminal,
         }),
         lastSeq: 0,
+        lastSourceSeq: 0,
       };
       roomOutput.set(terminalId, output);
     }
@@ -102,4 +124,5 @@ export class BroadcastTerminalOutput {
 interface TerminalOutput {
   buffer: ScrollbackBuffer;
   lastSeq: number;
+  lastSourceSeq: number;
 }

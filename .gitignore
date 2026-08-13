@@ -2,6 +2,7 @@ node_modules/
 dist/
 *.tsbuildinfo
 .env
+.ttyroom/
 refs/sshx/
 packages/web/playwright-report/
 packages/web/test-results/

@@ -4,6 +4,115 @@ import { Room } from "./room.js";
 const makeRoom = () => new Room({ roomId: "r1", token: "tok" });
 
 describe("Room — 역할: Room 라이브 상태와 불변식의 소유자", () => {
+  it("내구 레코드로 복원하면 Room·터미널은 유지하고 presence·lease는 초기화한다", () => {
+    const room = new Room({ roomId: "r1", token: "tok", name: "Payment Debug" });
+    room.connectHost("h1", "동현-Mac");
+    room.addParticipant("c1", "동현");
+    const terminal = room.openTerminal("h1");
+    room.confirmTerminalOpened(terminal.terminalId, "runtime-1");
+    room.renameTerminal(terminal.terminalId, "API logs");
+    room.updateTerminalGeometry(terminal.terminalId, {
+      x: 120,
+      y: 80,
+      width: 720,
+      height: 480,
+    });
+    room.acquireLease("c1", terminal.terminalId);
+
+    const restored = Room.restore(room.record());
+
+    expect(restored.matchesToken("tok")).toBe(true);
+    expect(restored.matchesToken("wrong")).toBe(false);
+    expect(restored.snapshot()).toMatchObject({
+      roomId: "r1",
+      name: "Payment Debug",
+      participants: [],
+      leases: [],
+      hosts: [
+        {
+          hostId: "h1",
+          name: "동현-Mac",
+          online: false,
+          remoteInputAllowed: false,
+        },
+      ],
+      terminals: [
+        {
+          terminalId: terminal.terminalId,
+          title: "API logs",
+          geometry: { x: 120, y: 80, width: 720, height: 480 },
+          status: "open",
+        },
+      ],
+    });
+    expect(restored.terminalRuntimeId(terminal.terminalId)).toBe("runtime-1");
+
+    restored.connectHost("h1", "동현-Mac");
+    expect(restored.openTerminal("h1").terminalId).toBe(2);
+  });
+
+  it("내구 레코드에는 Room token 원문 대신 digest만 저장한다", () => {
+    const record = makeRoom().record();
+
+    expect(record).not.toHaveProperty("token");
+    expect(record).toMatchObject({ tokenHash: expect.stringMatching(/^[a-f0-9]{64}$/) });
+  });
+
+  it("Agent inventory로 기존 PTY를 복구하고 누락·Agent-only PTY를 명시적으로 조정한다", () => {
+    const room = makeRoom();
+    room.connectHost("h1", "동현-Mac");
+    const kept = room.openTerminal("h1");
+    room.confirmTerminalOpened(kept.terminalId, "runtime-kept");
+    const missing = room.openTerminal("h1");
+    room.confirmTerminalOpened(missing.terminalId, "runtime-missing");
+
+    const result = room.reconcileHostTerminals("h1", [
+      { terminalId: kept.terminalId, runtimeId: "runtime-kept" },
+      { terminalId: 7, runtimeId: "runtime-recovered" },
+    ]);
+
+    expect(result.activeTerminalIds).toEqual([kept.terminalId, 7]);
+    expect(result.closedTerminalIds).toEqual([missing.terminalId]);
+    expect(result.recoveredTerminals).toMatchObject([{ terminalId: 7, hostId: "h1" }]);
+    expect(room.terminal(missing.terminalId)).toMatchObject({ status: "exited" });
+    expect(room.terminalRuntimeId(7)).toBe("runtime-recovered");
+    expect(room.snapshot().hosts).toMatchObject([
+      { hostId: "h1", online: true, remoteInputAllowed: false },
+    ]);
+    expect(room.openTerminal("h1").terminalId).toBe(8);
+  });
+
+  it("동일 terminalId의 runtime이 충돌하면 서버 상태를 종료하고 Agent PTY도 닫도록 반환한다", () => {
+    const room = makeRoom();
+    room.connectHost("h1", "동현-Mac");
+    const terminal = room.openTerminal("h1");
+    room.confirmTerminalOpened(terminal.terminalId, "runtime-before-restart");
+
+    const result = room.reconcileHostTerminals("h1", [
+      { terminalId: terminal.terminalId, runtimeId: "different-runtime" },
+    ]);
+
+    expect(result.activeTerminalIds).toEqual([]);
+    expect(result.closedTerminalIds).toEqual([terminal.terminalId]);
+    expect(result.agentTerminalIdsToClose).toEqual([terminal.terminalId]);
+    expect(room.terminal(terminal.terminalId)).toMatchObject({ status: "exited" });
+  });
+
+  it("이미 종료된 terminalId를 Agent가 보고하면 고아로 두지 않고 닫도록 반환한다", () => {
+    const room = makeRoom();
+    room.connectHost("h1", "동현-Mac");
+    const terminal = room.openTerminal("h1");
+    room.confirmTerminalOpened(terminal.terminalId, "runtime-1");
+    room.markTerminalExited(terminal.terminalId, 0);
+
+    const result = room.reconcileHostTerminals("h1", [
+      { terminalId: terminal.terminalId, runtimeId: "runtime-still-alive" },
+    ]);
+
+    expect(result.agentTerminalIdsToClose).toEqual([terminal.terminalId]);
+    expect(result.recoveredTerminals).toEqual([]);
+  });
+
   it("Room 표시 이름은 스냅샷에 포함되고 미지정 시 안전한 기본값을 사용한다", () => {
     const named = new Room({ roomId: "named", token: "tok", name: "Payment Debug" });
 

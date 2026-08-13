@@ -71,10 +71,10 @@ ttyroom/
 packages/server/src/
 ├── domain/      # Room·Host·Terminal·Lease 엔티티와 불변식. 순수 함수. 포트를 모름
 ├── usecases/    # 실질적 플로우의 주인. 포트를 호출하는 유일한 레이어
-├── ports/       # Transport · SnapshotStore · Identity · Clock 인터페이스 + Policy 타입
+├── ports/       # Transport · RoomRepository · Identity · Clock 인터페이스 + Policy 타입
 ├── adapters/
 │   ├── ws/           # WebSocket Transport 어댑터 (송신 버퍼 감시 → 백프레셔 신호)
-│   ├── memory/       # SnapshotStore no-op 어댑터
+│   ├── sqlite/       # Room durable record 저장소
 │   ├── link-auth/    # Room 토큰 + clientId Identity 어댑터
 │   └── system-clock/
 ├── config.ts    # zod 스키마 단일 진실 (아래 설정 계층 참조)
@@ -109,8 +109,10 @@ packages/server/src/
 - **Transport** — 연결 하나의 프레임 송수신. 의미론 계약을 인터페이스에 명시한다:
   프레임 순서 보장, 연결별 백프레셔 신호(송신 버퍼 수위), 재연결은 전송이 숨기지 않고
   "새 연결 + 세션 재개 프로토콜"로 처리. MVP 어댑터는 WebSocket.
-- **SnapshotStore** — 라이브 상태 저장소가 아니라 스냅샷 영속화 전용.
-  MVP 어댑터는 no-op. SQLite 어댑터를 붙이면 서버 재시작 복구와 Team Room이 열린다.
+- **RoomRepository** — Room·Host·Terminal의 durable record를 저장한다. SQLite 어댑터가
+  생성·변경을 즉시 upsert하며 서버 부팅 전에 모두 복원한다. Participant presence·Lease는
+  프로세스 수명 상태라 저장하지 않고 재접속으로 다시 구성한다. Room token은 원문 대신
+  SHA-256 digest만 저장하고 인증 비교도 timing-safe 방식으로 수행한다.
 - **Identity** — 연결 → (안정적 clientId, 표시 이름) 매핑. 브라우저는 localStorage,
   Agent는 로컬 파일에 clientId를 보관한다. MVP 어댑터는 Room 토큰 + 닉네임.
   Tailscale identity·SSO 어댑터로 교체·병행 가능.
@@ -245,7 +247,7 @@ Web 트랙에 승계되는 설계 결정:
 | 브라우저 새로고침·단절 | clientId로 재접속 → 스냅샷 + replay. 유예(15초) 내 복귀면 임대 복원 |
 | Agent 네트워크 단절 | PTY·프로세스는 로컬 유지. Host "연결 끊김" 표시, 유예(30초) 내 재접속이면 세션 지속, 초과 시 Host 제거 |
 | Agent 프로세스 종료 (Ctrl+C 포함) | PTY도 함께 종료. 의도된 동작 |
-| 서버 재시작 | MVP에서 Room 소멸. `room-not-found`와 명확한 안내. SnapshotStore 어댑터 장착 시 복구로 업그레이드 |
+| 서버 재시작 | SQLite에서 Room·Host·Terminal 상태를 복원. Agent inventory와 `runtimeId`를 대조한 뒤 일치 PTY를 재연결하고, 누락·충돌 PTY는 종료 상태로 확정. 단절 중 출력은 Agent의 bounded replay buffer에서 재전송 |
 | 셸 종료 | 터미널 카드 "종료됨 (exit N)" 상태, 닫기/새로 열기 제공 |
 | 입력 거부 | 폐기 + 보낸 사람에게만 이유가 담긴 토스트 |
 | 프로토콜 버전 불일치 | hello에서 거부 + 업그레이드 안내 |
@@ -260,7 +262,7 @@ Web 트랙에 승계되는 설계 결정:
    `*.spec.ts`(유닛) / `*.integration.spec.ts`(실제 인프라) / `*.e2e.ts`(플로우).
    레이어별 vitest config 분리. 접미사 규칙은 처음부터 하나로 통일한다.
 2. **테스트 컴포지션 루트 `RoomTestContext`** — 가짜 포트 일습(FakeClock, 메모리 Transport 쌍,
-   no-op SnapshotStore)을 꽂고 아웃바운드를 배열로 캡처(`getBroadcastFrames()`, `getAgentWrites()`).
+   선택적 RoomRepository)을 꽂고 아웃바운드를 배열로 캡처(`getBroadcastFrames()`, `getAgentWrites()`).
    **예상 못 한 협력자 호출(허용 안 된 Agent 쓰기·브로드캐스트)은 즉시 throw** — 원격 머신에
    바이트를 쓰는 제품에서 "조용히 뭔가 실행됨"이 통과하는 것이 최대 리스크이므로.
 3. **배포급 fake + 공개 테스트 킷** — `InMemoryTransportPair`, `FakeClock`, `FakePtySpawner`를
@@ -300,12 +302,13 @@ Web UI는 별도 트랙이므로, 아래 "포함" 중 UI 관련 항목(터미널
 - Exclusive 입력권 (클릭 획득), 터미널별 Shared 모드 옵트인
 - 참여자·입력권 소유자 표시
 - 재접속 복구 (스냅샷 + replay), 유예 기반 임대 회수
+- 서버 재시작 복구 (SQLite durable record + Agent inventory reconciliation + bounded output replay)
 - Host Owner Kill Switch
 - 백프레셔 처리, 프로토콜 버전 협상
 
 ### 후속 검토 (설계가 경로를 열어둔 것)
 
-- SnapshotStore 어댑터 → 서버 재시작 복구, Team Room
+- Team Room 수명 정책과 SQLite schema migration/운영 백업
 - Identity 어댑터 → Tailscale identity, SSO
 - E2E 암호화 (페이로드 불투명성이 전제 조건을 마련)
 - Agent 데몬 모드 (`ttyroom up`), 기존 세션/tmux attach

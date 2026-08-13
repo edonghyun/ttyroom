@@ -9,7 +9,7 @@ describe("broadcastTerminalOutput — 역할: 출력 팬아웃과 느린 참여�
     const { alice, bob, host, terminalId } = setupOpenTerminal();
 
     host.sendOutput(terminalId, 41, "first");
-    host.sendOutput(terminalId, 3, "second");
+    host.sendOutput(terminalId, 42, "second");
 
     expect(alice.conn.dataFrames).toMatchObject([
       { kind: "output", terminalId, seq: 1 },
@@ -58,7 +58,7 @@ describe("broadcastTerminalOutput — 역할: 출력 팬아웃과 느린 참여�
     const { alice, host, terminalId } = setupOpenTerminal(ctx);
 
     host.sendOutput(terminalId, 100, "oversized");
-    host.sendOutput(terminalId, 100, "x");
+    host.sendOutput(terminalId, 101, "x");
 
     expect(alice.conn.dataFrames).toMatchObject([{ seq: 1 }, { seq: 2 }]);
   });

@@ -60,6 +60,34 @@ describe("TerminalScene", () => {
     );
   });
 
+  it("renders named remote cursors and reports local pointers in workspace coordinates", () => {
+    const controller = createController();
+    const props = {
+      ...sceneProps(controller),
+      cursors: [{ clientId: "bob", name: "Bob", position: { x: 320, y: 180 } }],
+    };
+    const { container } = render(<TerminalScene {...props} overview={false} />);
+    const scene = container.querySelector<HTMLElement>(".terminal-scene");
+    if (!scene) throw new Error("terminal scene did not render");
+    vi.spyOn(scene, "getBoundingClientRect").mockReturnValue({
+      ...bounds(1_200, 700),
+      left: 20,
+      top: 10,
+      right: 1_220,
+      bottom: 710,
+    });
+
+    expect(screen.getByLabelText("Bob cursor")).toHaveStyle({
+      transform: "translate(320px, 180px)",
+    });
+
+    fireEvent.pointerMove(scene, { pointerId: 1, clientX: 120, clientY: 60 });
+    fireEvent.pointerLeave(scene, { pointerId: 1 });
+
+    expect(props.actions.moveCursor).toHaveBeenNthCalledWith(1, { x: 100, y: 50 });
+    expect(props.actions.moveCursor).toHaveBeenNthCalledWith(2, null);
+  });
+
   it("offers host connection from an empty workspace", () => {
     const props = {
       ...sceneProps(createController()),
@@ -138,6 +166,7 @@ function sceneProps(controller: TerminalController) {
     ],
     controllers: new Map([[11, controller]]),
     participants: ["You → backend"],
+    cursors: [],
     hosts: [{ hostId: "host-1", name: "Donghyeon-Mac" }],
     activeTerminalId: 11,
     actions: {
@@ -154,6 +183,7 @@ function sceneProps(controller: TerminalController) {
       exitOverview: vi.fn(),
       addTerminal: vi.fn(),
       addHost: vi.fn(),
+      moveCursor: vi.fn(),
     },
   };
 }

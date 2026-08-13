@@ -22,6 +22,7 @@ export class JoinRoom {
     this.connectHost = new ConnectHost({
       connections: this.deps.connections,
       pending: this.deps.pending,
+      rooms: this.deps.rooms,
     });
   }
 

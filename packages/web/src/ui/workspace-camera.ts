@@ -51,6 +51,17 @@ export function panCamera(camera: WorkspaceCamera, delta: Point): WorkspaceCamer
   return { ...camera, x: camera.x + delta.x, y: camera.y + delta.y };
 }
 
+export function viewportPointToWorkspace(
+  viewportPoint: Point,
+  viewportOrigin: { readonly left: number; readonly top: number },
+  camera: WorkspaceCamera,
+): Point {
+  return {
+    x: (viewportPoint.x - viewportOrigin.left - camera.x) / camera.scale,
+    y: (viewportPoint.y - viewportOrigin.top - camera.y) / camera.scale,
+  };
+}
+
 export function fitCamera(
   rects: readonly WindowRect[],
   viewport: Viewport,

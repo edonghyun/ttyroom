@@ -9,7 +9,7 @@ import type { AuthResult, Identity } from "../../ports/identity.js";
 export class LinkAuth implements Identity {
   authenticate(hello: HelloMessage, room: Room | undefined): AuthResult {
     if (!room) return { kind: "rejected", code: "room-not-found" };
-    if (hello.token !== room.token) return { kind: "rejected", code: "invalid-token" };
+    if (!room.matchesToken(hello.token)) return { kind: "rejected", code: "invalid-token" };
     return { kind: "ok", clientId: hello.clientId, displayName: hello.name };
   }
 }

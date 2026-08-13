@@ -1,7 +1,9 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { createRequire } from "node:module";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
-import { dirname, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import {
   PROTOCOL_VERSION,
   decodeDataFrame,
@@ -44,6 +46,11 @@ export interface ParticipantClient {
   acquire(terminalId: number): Promise<LeaseResult>;
   closeTerminal(terminalId: number): Promise<void>;
   setMode(terminalId: number, mode: "exclusive" | "shared"): Promise<void>;
+  rename(terminalId: number, title: string): Promise<void>;
+  updateGeometry(
+    terminalId: number,
+    geometry: { x: number; y: number; width: number; height: number },
+  ): Promise<void>;
   resyncOutput(terminalId: number): Promise<void>;
   type(terminalId: number, text: string): void;
   outputText(terminalId: number): string;
@@ -55,6 +62,7 @@ export interface ParticipantClient {
 
 export interface TestServer {
   room(name?: string): Promise<TestRoom>;
+  restart(downtimeMs?: number): Promise<void>;
   close(): Promise<void>;
   [Symbol.asyncDispose](): Promise<void>;
 }
@@ -71,7 +79,11 @@ class E2eServer implements TestServer {
   private agentStartup = Promise.resolve();
   private closed = false;
 
-  constructor(private readonly running: Awaited<ReturnType<typeof startServer>>) {}
+  constructor(
+    private running: Awaited<ReturnType<typeof startServer>>,
+    private readonly config: ServerConfig,
+    private readonly stateDirectory: string,
+  ) {}
 
   async room(name?: string): Promise<TestRoom> {
     const response = await fetch(`${this.running.httpBaseUrl}/api/rooms`, {
@@ -153,6 +165,26 @@ class E2eServer implements TestServer {
     return participant;
   }
 
+  async restart(downtimeMs = 0): Promise<void> {
+    if (this.closed) throw new Error("닫힌 테스트 서버는 재시작할 수 없다");
+    const baseUrl = this.running.httpBaseUrl;
+    const port = this.running.port;
+    await this.running.close();
+    if (downtimeMs > 0) {
+      await new Promise<void>((resolveDelay) => setTimeout(resolveDelay, downtimeMs));
+    }
+    this.running = await startServer(
+      loadConfig({
+        file: { ...this.config, port, statePath: this.config.statePath },
+        env: {},
+      }),
+    );
+    if (this.running.httpBaseUrl !== baseUrl) {
+      throw new Error(`재시작 서버 주소가 바뀌었다: ${baseUrl} -> ${this.running.httpBaseUrl}`);
+    }
+    serversByBaseUrl.set(baseUrl, this);
+  }
+
   async close(): Promise<void> {
     if (this.closed) return;
     this.closed = true;
@@ -164,6 +196,7 @@ class E2eServer implements TestServer {
       serversByBaseUrl.delete(this.running.httpBaseUrl);
       for (const participant of [...this.participants]) participant.close();
       await Promise.all([...this.children].map((child) => terminateChild(child)));
+      await rm(this.stateDirectory, { recursive: true, force: true });
     }
   }
 
@@ -265,6 +298,34 @@ class WsParticipant implements ParticipantClient {
         message.event.kind === "terminal-mode-changed" &&
         message.event.terminalId === terminalId &&
         message.event.mode === mode,
+      before,
+    );
+  }
+
+  async rename(terminalId: number, title: string): Promise<void> {
+    const before = this.messages.length;
+    this.send({ type: "rename-terminal", terminalId, title });
+    await this.waitForMessage(
+      (message) =>
+        message.type === "room-event" &&
+        message.event.kind === "terminal-renamed" &&
+        message.event.terminalId === terminalId &&
+        message.event.title === title,
+      before,
+    );
+  }
+
+  async updateGeometry(
+    terminalId: number,
+    geometry: { x: number; y: number; width: number; height: number },
+  ): Promise<void> {
+    const before = this.messages.length;
+    this.send({ type: "update-terminal-geometry", terminalId, geometry });
+    await this.waitForMessage(
+      (message) =>
+        message.type === "room-event" &&
+        message.event.kind === "terminal-geometry-changed" &&
+        message.event.terminalId === terminalId,
       before,
     );
   }
@@ -394,7 +455,16 @@ class WsParticipant implements ParticipantClient {
       throw new Error(`서버가 잘못된 제어 메시지를 보냈다: ${parsed.reason}`);
     const message = parsed.message;
     this.messages.push(message);
-    if (message.type === "welcome") this.currentSnapshot = structuredClone(message.snapshot);
+    if (message.type === "welcome") {
+      this.currentSnapshot = structuredClone(message.snapshot);
+      for (const terminal of message.snapshot.terminals) this.output.delete(terminal.terminalId);
+      this.leases.clear();
+      for (const lease of message.snapshot.leases) {
+        if (lease.holderClientId === this.clientId) {
+          this.leases.set(lease.terminalId, lease.leaseId);
+        }
+      }
+    }
     if (message.type === "room-event" && this.currentSnapshot) {
       applyRoomEvent(this.currentSnapshot, message.event);
     }
@@ -404,9 +474,13 @@ class WsParticipant implements ParticipantClient {
 
 export const given: Given = {
   async server(policy = {}): Promise<E2eServer> {
-    const config = loadConfig({ file: { port: 0, policy }, env: {} });
+    const stateDirectory = await mkdtemp(join(tmpdir(), "ttyroom-e2e-"));
+    const config = loadConfig({
+      file: { port: 0, statePath: join(stateDirectory, "state.sqlite"), policy },
+      env: {},
+    });
     const running = await startServer(config);
-    const server = new E2eServer(running);
+    const server = new E2eServer(running, config, stateDirectory);
     serversByBaseUrl.set(running.httpBaseUrl, server);
     return server;
   },

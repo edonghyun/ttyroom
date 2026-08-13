@@ -85,11 +85,8 @@ describe("handleDisconnect — 역할: 단절의 유예 처리와 복원", () =>
       event: { kind: "host-connected", host: { hostId: host.hostId, online: true } },
     });
     ctx.clock.advance(DEFAULT_POLICY.hostGraceMs + 1);
-    expectMessageToMatch(again.conn.messages, "welcome", {
-      snapshot: {
-        hosts: [{ hostId: host.hostId, online: true }],
-        terminals: [{ terminalId, hostId: host.hostId }],
-      },
+    expectMessageToMatch(again.conn.messages, "host-ready", {
+      terminals: [{ terminalId }],
     });
   });
 
@@ -128,8 +125,8 @@ describe("handleDisconnect — 역할: 단절의 유예 처리와 복원", () =>
     ctx.clock.advance(DEFAULT_POLICY.participantGraceMs);
     const restored = ctx.connectHost(room, "h", host.hostId);
 
-    expectMessageToMatch(restored.conn.messages, "welcome", {
-      snapshot: { hosts: [{ hostId: host.hostId, online: true }] },
+    expectMessageToMatch(restored.conn.messages, "host-ready", {
+      terminals: [],
     });
   });
 });

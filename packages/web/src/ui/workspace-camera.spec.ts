@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { fitCamera, panCamera, stepCameraZoom, zoomCameraAt } from "./workspace-camera.js";
+import {
+  fitCamera,
+  panCamera,
+  stepCameraZoom,
+  viewportPointToWorkspace,
+  zoomCameraAt,
+} from "./workspace-camera.js";
 
 describe("workspace camera", () => {
   it("zooms around a screen-space focal point without moving the world point beneath it", () => {
@@ -25,6 +31,16 @@ describe("workspace camera", () => {
       y: -20,
       scale: 0.75,
     });
+  });
+
+  it("converts viewport pointers to shared workspace coordinates after pan and zoom", () => {
+    expect(
+      viewportPointToWorkspace(
+        { x: 450, y: 280 },
+        { left: 50, top: 20 },
+        { x: -100, y: 60, scale: 0.5 },
+      ),
+    ).toEqual({ x: 1_000, y: 400 });
   });
 
   it("fits all terminal bounds into the viewport with breathing room", () => {

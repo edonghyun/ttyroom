@@ -1,3 +1,4 @@
+import { createHash, timingSafeEqual } from "node:crypto";
 import type {
   LeaseView,
   RoomSnapshot,
@@ -17,10 +18,32 @@ export type ReleaseDecision = { kind: "released"; lease: LeaseView } | { kind: "
 
 export const DEFAULT_ROOM_NAME = "Quick Room";
 
+export interface StoredRoomRecord {
+  schemaVersion: 1;
+  roomId: string;
+  tokenHash: string;
+  name: string;
+  nextTerminalId: number;
+  hosts: Array<{ hostId: string; name: string }>;
+  terminals: Array<{ view: TerminalView; runtimeId: string | null }>;
+}
+
+export interface HostTerminalInventoryItem {
+  terminalId: number;
+  runtimeId: string;
+}
+
+export interface HostTerminalReconciliation {
+  activeTerminalIds: number[];
+  closedTerminalIds: number[];
+  agentTerminalIdsToClose: number[];
+  recoveredTerminals: TerminalView[];
+}
+
 export class Room {
   readonly roomId: string;
-  readonly token: string;
   readonly name: string;
+  private readonly tokenHash: string;
   private readonly participants = new Map<
     string,
     { name: string; focusedTerminalId: number | null }
@@ -30,14 +53,61 @@ export class Room {
     { name: string; online: boolean; remoteInputAllowed: boolean }
   >();
   private readonly terminals = new Map<number, TerminalView>();
+  private readonly runtimeIdByTerminal = new Map<number, string>();
   private readonly leases = new Map<number, LeaseView>();
   private nextTerminalId = 1;
   private nextLeaseId = 1;
 
-  constructor(options: { roomId: string; token: string; name?: string }) {
+  constructor(
+    options: { roomId: string; name?: string } & ({ token: string } | { tokenHash: string }),
+  ) {
     this.roomId = options.roomId;
-    this.token = options.token;
+    this.tokenHash = "tokenHash" in options ? options.tokenHash : digestRoomToken(options.token);
     this.name = options.name ?? DEFAULT_ROOM_NAME;
+  }
+
+  static restore(record: StoredRoomRecord): Room {
+    const room = new Room({
+      roomId: record.roomId,
+      tokenHash: record.tokenHash,
+      name: record.name,
+    });
+    room.nextTerminalId = record.nextTerminalId;
+    for (const host of record.hosts) {
+      room.hosts.set(host.hostId, {
+        name: host.name,
+        online: false,
+        remoteInputAllowed: false,
+      });
+    }
+    for (const terminal of record.terminals) {
+      room.terminals.set(terminal.view.terminalId, copyOfTerminal(terminal.view));
+      if (terminal.runtimeId !== null) {
+        room.runtimeIdByTerminal.set(terminal.view.terminalId, terminal.runtimeId);
+      }
+    }
+    return room;
+  }
+
+  record(): StoredRoomRecord {
+    return {
+      schemaVersion: 1,
+      roomId: this.roomId,
+      tokenHash: this.tokenHash,
+      name: this.name,
+      nextTerminalId: this.nextTerminalId,
+      hosts: [...this.hosts].map(([hostId, host]) => ({ hostId, name: host.name })),
+      terminals: [...this.terminals.values()].map((view) => ({
+        view: copyOfTerminal(view),
+        runtimeId: this.runtimeIdByTerminal.get(view.terminalId) ?? null,
+      })),
+    };
+  }
+
+  matchesToken(candidate: string): boolean {
+    const expected = Buffer.from(this.tokenHash, "hex");
+    const actual = Buffer.from(digestRoomToken(candidate), "hex");
+    return expected.byteLength === actual.byteLength && timingSafeEqual(expected, actual);
   }
 
   addParticipant(clientId: string, name: string): void {
@@ -79,6 +149,14 @@ export class Room {
       online: true,
       remoteInputAllowed: existing?.remoteInputAllowed ?? true,
     });
+  }
+
+  beginHostRecovery(hostId: string, name: string): void {
+    this.connectHost(hostId, name);
+    const host = this.hosts.get(hostId);
+    if (!host) throw new Error(`방금 연결한 host가 없다: ${hostId}`);
+    host.online = false;
+    host.remoteInputAllowed = false;
   }
 
   setHostRemoteInputAllowed(hostId: string, remoteInputAllowed: boolean): boolean {
@@ -133,6 +211,7 @@ export class Room {
     for (const [terminalId, terminal] of this.terminals) {
       if (terminal.hostId === hostId) {
         this.terminals.delete(terminalId);
+        this.runtimeIdByTerminal.delete(terminalId);
         // 터미널이 사라지면 그 임대도 무효 — stale lease가 스냅샷에 남지 않게 함께 걷는다
         this.leases.delete(terminalId);
         removed.push(terminalId);
@@ -156,6 +235,79 @@ export class Room {
     const terminal = this.requireTerminal(terminalId);
     terminal.status = "exited";
     terminal.exitCode = exitCode;
+    this.runtimeIdByTerminal.delete(terminalId);
+  }
+
+  confirmTerminalOpened(terminalId: number, runtimeId: string): void {
+    const terminal = this.requireTerminal(terminalId);
+    if (terminal.status !== "open") return;
+    this.runtimeIdByTerminal.set(terminalId, runtimeId);
+  }
+
+  terminalRuntimeId(terminalId: number): string | null {
+    return this.runtimeIdByTerminal.get(terminalId) ?? null;
+  }
+
+  reconcileHostTerminals(
+    hostId: string,
+    inventory: readonly HostTerminalInventoryItem[],
+  ): HostTerminalReconciliation {
+    const host = this.hosts.get(hostId);
+    if (!host) throw new Error(`등록되지 않은 host의 터미널을 조정할 수 없다: ${hostId}`);
+
+    const reported = new Map(inventory.map((item) => [item.terminalId, item]));
+    const activeTerminalIds: number[] = [];
+    const closedTerminalIds: number[] = [];
+    const agentTerminalIdsToClose = new Set<number>();
+    const recoveredTerminals: TerminalView[] = [];
+
+    for (const terminal of this.terminals.values()) {
+      if (terminal.hostId !== hostId || terminal.status !== "open") continue;
+      const item = reported.get(terminal.terminalId);
+      const expectedRuntimeId = this.runtimeIdByTerminal.get(terminal.terminalId);
+      if (item && (!expectedRuntimeId || expectedRuntimeId === item.runtimeId)) {
+        this.runtimeIdByTerminal.set(terminal.terminalId, item.runtimeId);
+        activeTerminalIds.push(terminal.terminalId);
+        reported.delete(terminal.terminalId);
+        continue;
+      }
+
+      this.markTerminalExited(terminal.terminalId, null);
+      closedTerminalIds.push(terminal.terminalId);
+      if (item) agentTerminalIdsToClose.add(terminal.terminalId);
+      reported.delete(terminal.terminalId);
+    }
+
+    for (const item of reported.values()) {
+      if (this.terminals.has(item.terminalId)) {
+        agentTerminalIdsToClose.add(item.terminalId);
+        continue;
+      }
+      const view: TerminalView = {
+        terminalId: item.terminalId,
+        hostId,
+        title: `term-${item.terminalId}`,
+        geometry: initialTerminalGeometry(item.terminalId),
+        mode: "exclusive",
+        status: "open",
+        exitCode: null,
+        meta: { cwd: null, gitBranch: null, fgProcess: null },
+      };
+      this.terminals.set(item.terminalId, view);
+      this.runtimeIdByTerminal.set(item.terminalId, item.runtimeId);
+      this.nextTerminalId = Math.max(this.nextTerminalId, item.terminalId + 1);
+      activeTerminalIds.push(item.terminalId);
+      recoveredTerminals.push(copyOfTerminal(view));
+    }
+
+    host.online = true;
+    host.remoteInputAllowed = false;
+    return {
+      activeTerminalIds,
+      closedTerminalIds,
+      agentTerminalIdsToClose: [...agentTerminalIdsToClose],
+      recoveredTerminals,
+    };
   }
 
   updateTerminalMeta(terminalId: number, meta: TerminalMeta): void {
@@ -285,4 +437,8 @@ function copyOfTerminal(view: TerminalView): TerminalView {
 function initialTerminalGeometry(terminalId: number): TerminalGeometry {
   const offset = (terminalId - 1) * 32;
   return { x: 24 + offset, y: 24 + offset, width: 640, height: 420 };
+}
+
+function digestRoomToken(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
 }

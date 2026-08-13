@@ -41,6 +41,7 @@ export class SetTerminalMode {
       return;
     }
     if (!room.setTerminalMode(terminalId, mode)) return;
+    this.deps.rooms.save(room);
 
     this.deps.connections.broadcast(room.roomId, {
       type: "room-event",

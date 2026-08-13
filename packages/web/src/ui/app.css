@@ -239,6 +239,43 @@
   will-change: transform;
 }
 
+.participant-cursor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 17500;
+  display: flex;
+  align-items: flex-start;
+  gap: 2px;
+  color: var(--participant-cursor-color);
+  pointer-events: none;
+  filter: drop-shadow(0 2px 4px rgb(0 0 0 / 48%));
+  transition: transform 40ms linear;
+  will-change: transform;
+}
+
+.participant-cursor svg {
+  flex: 0 0 auto;
+  fill: var(--participant-cursor-color);
+  stroke: #fff;
+}
+
+.participant-cursor span {
+  max-width: 148px;
+  margin: 13px 0 0 -3px;
+  padding: 3px 7px 4px;
+  overflow: hidden;
+  border-radius: 4px 8px 8px;
+  color: #fff;
+  background: var(--participant-cursor-color);
+  box-shadow: 0 3px 10px rgb(0 0 0 / 30%);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .empty-workspace {
   position: absolute;
   inset: 0;
@@ -854,6 +891,7 @@
 @media (prefers-reduced-motion: reduce) {
   .window-interaction-ghost.snap-preview,
   .terminal-scene.is-overview .terminal-window,
+  .participant-cursor,
   .add-host-drawer,
   .activity-pulse {
     animation: none;

@@ -108,6 +108,8 @@ export class HandleDisconnect {
       }
       if (current.isEmpty() && !this.deps.pending.hasForRoom(current.roomId)) {
         this.deps.rooms.remove(current.roomId);
+      } else {
+        this.deps.rooms.save(current);
       }
     });
   }

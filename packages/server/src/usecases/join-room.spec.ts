@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { PROTOCOL_VERSION } from "@ttyroom/protocol";
 import { RoomTestContext } from "../test/room-test-context.js";
 import { expectMessageToMatch } from "../test/matchers.js";
 
@@ -58,7 +59,7 @@ describe("joinRoom — 역할: hello 검증과 Room 입장", () => {
     expectMessageToMatch(conn.messages, "error", { code: "unsupported-protocol-version" });
   });
 
-  it("구형 v1 hello는 v5 server에서 unsupported로 명확히 거부되고 연결이 닫힌다", () => {
+  it("구형 v1 hello는 현재 server에서 unsupported로 명확히 거부되고 연결이 닫힌다", () => {
     const ctx = new RoomTestContext();
     const room = ctx.createRoom();
     const conn = ctx.rawConnection();
@@ -78,7 +79,7 @@ describe("joinRoom — 역할: hello 검증과 Room 입장", () => {
 
     expectMessageToMatch(conn.messages, "error", {
       code: "unsupported-protocol-version",
-      message: "server=5",
+      message: `server=${PROTOCOL_VERSION}`,
     });
     expect(conn.closed).toBe(true);
   });

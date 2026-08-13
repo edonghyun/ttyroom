@@ -40,7 +40,7 @@ export class TestSystem {
   ) {}
 
   static async start(): Promise<TestSystem> {
-    const config = loadConfig({ file: { port: 0 }, env: {} });
+    const config = loadConfig({ file: { port: 0, statePath: ":memory:" }, env: {} });
     const running = await startServer(config, { webRoot: WEB_BUILD_ROOT });
     try {
       await expect
@@ -81,7 +81,10 @@ export class TestSystem {
   async restartWithoutRooms(): Promise<void> {
     const port = this.running.port;
     await this.running.close();
-    this.config = loadConfig({ file: { port, policy: this.config.policy }, env: {} });
+    this.config = loadConfig({
+      file: { port, statePath: this.config.statePath, policy: this.config.policy },
+      env: {},
+    });
     this.running = await startServer(this.config, { webRoot: WEB_BUILD_ROOT });
     await expect
       .poll(async () => (await fetch(`${this.running.httpBaseUrl}/healthz`)).text())

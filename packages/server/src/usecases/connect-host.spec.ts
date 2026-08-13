@@ -23,9 +23,33 @@ describe("connectHost — 역할: Agent hello 처리와 Host 등록", () => {
 
     const again = ctx.connectHost(room, "동현-Mac", host.hostId);
 
-    expectMessageToMatch(again.conn.messages, "welcome", {
-      snapshot: { hosts: [{ hostId: host.hostId, online: true }] },
+    expectMessageToMatch(again.conn.messages, "host-ready", {
+      terminals: [],
     });
+  });
+
+  it("inventory runtime 충돌은 Agent에 close-terminal을 보내 고아 PTY를 제거한다", () => {
+    const ctx = new RoomTestContext();
+    const room = ctx.createRoom();
+    const host = ctx.connectHost(room, "동현-Mac");
+    const alice = ctx.connectParticipant(room, "alice");
+    alice.send({ type: "open-terminal-request", hostId: host.hostId });
+    host.send({ type: "terminal-opened", terminalId: 1, runtimeId: "runtime-original" });
+    host.conn.messages.length = 0;
+
+    host.send({
+      type: "host-inventory",
+      terminals: [
+        {
+          terminalId: 1,
+          runtimeId: "runtime-conflict",
+          firstRetainedSeq: 0,
+          lastOutputSeq: 0,
+        },
+      ],
+    });
+
+    expectMessageToMatch(host.conn.messages, "close-terminal", { terminalId: 1 });
   });
 
   it("같은 hostId의 새 연결은 이전 세션을 대체해 이후 명령이 새 연결로만 간다", () => {

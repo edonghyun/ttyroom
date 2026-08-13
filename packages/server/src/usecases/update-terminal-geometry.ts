@@ -10,6 +10,7 @@ export class UpdateTerminalGeometry {
     if (!room?.terminal(terminalId)) return;
 
     room.updateTerminalGeometry(terminalId, geometry);
+    this.deps.rooms.save(room);
     this.deps.connections.broadcast(room.roomId, {
       type: "room-event",
       event: { kind: "terminal-geometry-changed", terminalId, geometry },

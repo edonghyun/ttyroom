@@ -27,6 +27,7 @@ const policySchema = z
 export const configSchema = z
   .object({
     port: z.number().int().min(0).max(65535).default(0),
+    statePath: z.string().trim().min(1).default(".ttyroom/ttyroom.sqlite"),
     policy: policySchema,
   })
   .strict();
@@ -53,11 +54,15 @@ export function loadConfig(input: { file?: unknown; env?: NodeJS.ProcessEnv }): 
         outputRateLimitBytesPerSec: envNumber(env.TTYROOM_OUTPUT_RATE_LIMIT_BYTES_PER_SEC),
       }),
     },
-    ...definedValues({ port: envNumber(env.TTYROOM_PORT) }),
+    ...definedValues({
+      port: envNumber(env.TTYROOM_PORT),
+      statePath: env.TTYROOM_STATE_PATH,
+    }),
   };
   const config = configSchema.parse(merged);
   sourcesByConfig.set(config, {
     port: sourceOf(file, "port", env.TTYROOM_PORT),
+    statePath: sourceOf(file, "statePath", env.TTYROOM_STATE_PATH),
     participantGraceMs: sourceOf(
       filePolicy,
       "participantGraceMs",
@@ -86,8 +91,9 @@ export function loadConfig(input: { file?: unknown; env?: NodeJS.ProcessEnv }): 
 export function printConfig(config: ServerConfig): string {
   const sources = sourcesByConfig.get(config);
   if (!sources) throw new Error("loadConfig로 생성하지 않은 설정은 출처를 출력할 수 없다");
-  const rows: Array<[string, number, ConfigSource]> = [
+  const rows: Array<[string, string | number, ConfigSource]> = [
     ["port", config.port, sources.port ?? "default"],
+    ["statePath", config.statePath, sources.statePath ?? "default"],
     [
       "participantGraceMs",
       config.policy.participantGraceMs,

@@ -3,7 +3,13 @@ import { describe, expect, it, vi } from "vitest";
 import { RoomProjection } from "../projection/room-projection.js";
 import { RoomSession } from "./room-session.js";
 
-import type { ClientMessage, HelloMessage, InputFrame, ServerMessage } from "@ttyroom/protocol";
+import {
+  PROTOCOL_VERSION,
+  type ClientMessage,
+  type HelloMessage,
+  type InputFrame,
+  type ServerMessage,
+} from "@ttyroom/protocol";
 import type {
   SessionClock,
   SessionTransport,
@@ -22,7 +28,7 @@ describe("RoomSession — collaborative Room lifecycle", () => {
     expect(transports.hellos).toEqual([
       {
         type: "hello",
-        protocolVersion: 5,
+        protocolVersion: PROTOCOL_VERSION,
         roomId: "room-1",
         token: "secret-token",
         clientId: "alice-id",
@@ -181,6 +187,38 @@ describe("RoomSession — collaborative Room lifecycle", () => {
       },
       { type: "rename-terminal", terminalId: 1, title: "API logs" },
     ]);
+  });
+
+  it("shares ephemeral canvas cursor positions and publishes remote cursor updates", () => {
+    const projection = new RoomProjection();
+    const transports = new FakeSessionTransportFactory();
+    const session = createSession({ projection, transports });
+    const subscriber = vi.fn();
+    session.subscribe(subscriber);
+    session.start();
+
+    session.moveCursor({ x: 120.5, y: -48.25 });
+    session.moveCursor(null);
+
+    expect(transports.latest().controls).toEqual([
+      { type: "move-cursor", position: { x: 120.5, y: -48.25 } },
+      { type: "move-cursor", position: null },
+    ]);
+
+    transports.latest().emit({
+      kind: "server-message",
+      message: {
+        type: "participant-cursor",
+        clientId: "bob-id",
+        position: { x: 32, y: 64 },
+      },
+    });
+
+    expect(subscriber).toHaveBeenCalledWith({
+      kind: "participant-cursor",
+      clientId: "bob-id",
+      position: { x: 32, y: 64 },
+    });
   });
 
   it("reports the desired terminal focus after welcome and restores it after reconnect", () => {

@@ -49,6 +49,18 @@ export interface RoomAppSession {
   renameTerminal(terminalId: number, title: string): void;
   setMode(terminalId: number, mode: "exclusive" | "shared"): void;
   focusTerminal(terminalId: number | null): void;
+  moveCursor(position: CursorPosition | null): void;
+}
+
+interface CursorPosition {
+  readonly x: number;
+  readonly y: number;
+}
+
+export interface ParticipantCursor {
+  readonly clientId: string;
+  readonly name: string;
+  readonly position: CursorPosition;
 }
 
 interface RoomAppIdentity extends Pick<RoomIdentity, "clientId" | "nickname" | "saveNickname"> {}
@@ -90,6 +102,7 @@ export interface RoomAppView {
   readonly activeTerminalId: number | null;
   readonly overview: boolean;
   readonly participants: readonly string[];
+  readonly cursors: readonly ParticipantCursor[];
   readonly hosts: readonly { readonly hostId: string; readonly name: string }[];
   readonly connection: "connected" | "reconnecting" | "restoring";
   readonly toasts: readonly ToastMessage[];
@@ -127,6 +140,8 @@ export class RoomAppRuntime {
   private narrowViewport: boolean;
   private readonly cancelToastTimers = new Set<() => void>();
   private readonly projectedGeometryByTerminal = new Map<number, WindowRect>();
+  private readonly cursorPositions = new Map<string, CursorPosition>();
+  private readonly cancelCursorTimers = new Map<string, () => void>();
   private nextToastId = 0;
 
   constructor(private readonly deps: RoomAppRuntimeDeps) {
@@ -179,6 +194,10 @@ export class RoomAppRuntime {
     this.unsubscribeViewport =
       deps.viewportChanges?.subscribe((viewport) => this.resizeViewport(viewport)) ??
       (() => undefined);
+    if (deps.route.kind === "room") {
+      const savedNickname = deps.identity.nickname(deps.route.roomId);
+      if (savedNickname) this.join(deps.route.roomId, savedNickname);
+    }
   }
 
   subscribe = (subscriber: Subscriber): (() => void) => {
@@ -239,6 +258,15 @@ export class RoomAppRuntime {
           const name = participant.clientId === projection.selfClientId ? "You" : participant.name;
           return terminal ? `${name} → ${terminal.title}` : name;
         }) ?? [],
+      cursors: [...this.cursorPositions.entries()]
+        .filter(([clientId]) => clientId !== projection.selfClientId)
+        .map(([clientId, position]) => ({
+          clientId,
+          name:
+            room?.participants.find((participant) => participant.clientId === clientId)?.name ??
+            clientId,
+          position: { ...position },
+        })),
       hosts:
         room?.hosts
           .filter((host) => host.online)
@@ -275,6 +303,9 @@ export class RoomAppRuntime {
       if (event.kind === "lease-denied") {
         const title = this.deps.projection.terminal(event.terminalId)?.terminal.title ?? "terminal";
         this.showToast("error", `${event.holderName} now controls ${title}`, event.terminalId);
+      }
+      if (event.kind === "participant-cursor") {
+        this.receiveParticipantCursor(event.clientId, event.position);
       }
     });
     this.session.start();
@@ -319,6 +350,10 @@ export class RoomAppRuntime {
 
   releaseControl(terminalId: number): void {
     this.session?.releaseControl(terminalId);
+  }
+
+  moveCursor(position: CursorPosition | null): void {
+    this.session?.moveCursor(position);
   }
 
   move(terminalId: number, position: { x: number; y: number }): void {
@@ -401,6 +436,9 @@ export class RoomAppRuntime {
     this.session?.stop();
     for (const cancel of this.cancelToastTimers) cancel();
     this.cancelToastTimers.clear();
+    for (const cancel of this.cancelCursorTimers.values()) cancel();
+    this.cancelCursorTimers.clear();
+    this.cursorPositions.clear();
     this.subscribers.clear();
   }
 
@@ -422,6 +460,27 @@ export class RoomAppRuntime {
       this.publish();
     });
     this.cancelToastTimers.add(cancel);
+    this.publish();
+  }
+
+  private receiveParticipantCursor(clientId: string, position: CursorPosition | null): void {
+    if (clientId === this.deps.projection.view().selfClientId) return;
+
+    this.cancelCursorTimers.get(clientId)?.();
+    this.cancelCursorTimers.delete(clientId);
+    if (position === null) {
+      this.cursorPositions.delete(clientId);
+      this.publish();
+      return;
+    }
+
+    this.cursorPositions.set(clientId, { ...position });
+    const timer = globalThis.setTimeout(() => {
+      this.cancelCursorTimers.delete(clientId);
+      this.cursorPositions.delete(clientId);
+      this.publish();
+    }, 2_000);
+    this.cancelCursorTimers.set(clientId, () => globalThis.clearTimeout(timer));
     this.publish();
   }
 
@@ -554,6 +613,7 @@ export function RoomApp({ runtime }: { readonly runtime: RoomAppRuntime }) {
         terminals={view.terminals}
         controllers={runtime.controllersForScene()}
         participants={view.participants}
+        cursors={view.cursors}
         hosts={view.hosts}
         activeTerminalId={view.activeTerminalId}
         overview={view.overview}
@@ -573,6 +633,7 @@ export function RoomApp({ runtime }: { readonly runtime: RoomAppRuntime }) {
           addTerminal: (hostId) => runtime.openTerminal(hostId),
           addHost: openAddHost,
           openNew: (host) => runtime.openNew(host),
+          moveCursor: (position) => runtime.moveCursor(position),
         }}
       />
       <AddHostDrawer

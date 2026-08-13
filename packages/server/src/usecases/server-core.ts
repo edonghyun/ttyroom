@@ -3,7 +3,6 @@ import type { RoomRegistry } from "../domain/room-registry.js";
 import type { Clock } from "../ports/clock.js";
 import type { Identity } from "../ports/identity.js";
 import type { Policy } from "../ports/policy.js";
-import type { SnapshotStore } from "../ports/snapshot-store.js";
 import type { Connection } from "../ports/transport.js";
 import type { ConnectionRegistry } from "./connection-registry.js";
 import { AcquireLease } from "./acquire-lease.js";
@@ -14,10 +13,12 @@ import { JoinRoom } from "./join-room.js";
 import { OpenTerminal } from "./open-terminal.js";
 import { ReleaseLease } from "./release-lease.js";
 import { RenameTerminal } from "./rename-terminal.js";
+import { ReconcileHost } from "./reconcile-host.js";
 import { ResyncTerminalOutput } from "./resync-terminal-output.js";
 import { ResizeTerminal } from "./resize-terminal.js";
 import { RouteTerminalInput } from "./route-terminal-input.js";
 import { SetTerminalMode } from "./set-terminal-mode.js";
+import { ShareParticipantCursor } from "./share-participant-cursor.js";
 import { SyncLateJoiner } from "./sync-late-joiner.js";
 import { UpdateHostInputState } from "./update-host-input-state.js";
 import { UpdateTerminalGeometry } from "./update-terminal-geometry.js";
@@ -38,6 +39,8 @@ export class ServerCore {
   private readonly focusParticipant: FocusParticipant;
   private readonly updateTerminalGeometry: UpdateTerminalGeometry;
   private readonly renameTerminal: RenameTerminal;
+  private readonly reconcileHost: ReconcileHost;
+  private readonly shareParticipantCursor: ShareParticipantCursor;
 
   constructor(
     private readonly deps: {
@@ -45,7 +48,6 @@ export class ServerCore {
       connections: ConnectionRegistry;
       identity: Identity;
       clock: Clock;
-      snapshots: SnapshotStore;
     },
     private readonly options: { policy: Policy },
   ) {
@@ -103,6 +105,12 @@ export class ServerCore {
       rooms: deps.rooms,
       connections: deps.connections,
     });
+    this.reconcileHost = new ReconcileHost({
+      rooms: deps.rooms,
+      connections: deps.connections,
+      output: this.broadcastTerminalOutput,
+    });
+    this.shareParticipantCursor = new ShareParticipantCursor(deps.connections);
   }
 
   handleMessage(conn: Connection, raw: string): void {
@@ -154,6 +162,11 @@ export class ServerCore {
       return;
     }
 
+    if (parsed.message.type === "move-cursor" && session.role === "participant") {
+      this.shareParticipantCursor.execute(session, parsed.message.position);
+      return;
+    }
+
     if (parsed.message.type === "update-terminal-geometry" && session.role === "participant") {
       this.updateTerminalGeometry.execute(
         session,
@@ -190,7 +203,27 @@ export class ServerCore {
     }
 
     if (parsed.message.type === "terminal-opened" && session.role === "host") {
-      this.openTerminal.confirmOpened(conn, session, parsed.message.terminalId);
+      this.openTerminal.confirmOpened(
+        conn,
+        session,
+        parsed.message.terminalId,
+        parsed.message.runtimeId,
+      );
+      return;
+    }
+
+    if (parsed.message.type === "host-inventory" && session.role === "host") {
+      this.reconcileHost.inventory(conn, session, parsed.message);
+      return;
+    }
+
+    if (parsed.message.type === "terminal-replay-complete" && session.role === "host") {
+      this.reconcileHost.replayComplete(
+        conn,
+        session,
+        parsed.message.terminalId,
+        parsed.message.lastOutputSeq,
+      );
       return;
     }
 

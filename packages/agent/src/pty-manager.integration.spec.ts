@@ -60,6 +60,17 @@ afterEach(() => {
 });
 
 describe("PtyManager — 역할: 실제 셸의 생성과 입출력", () => {
+  it("open은 PTY 수명 runtimeId를 만들고 inventory에서 같은 ID를 보고한다", () => {
+    const { manager } = makeManager();
+
+    const first = manager.open(1, 80, 24);
+    const duplicate = manager.open(1, 120, 40);
+
+    expect(first).toEqual(expect.any(String));
+    expect(duplicate).toBe(first);
+    expect(manager.inventory()).toEqual([{ terminalId: 1, runtimeId: first }]);
+  });
+
   it("open한 셸에 echo를 쓰면 출력 콜백으로 되돌아온다", async () => {
     const { manager, text } = makeManager();
 

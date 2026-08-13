@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { spawn, type IPty } from "node-pty";
 import type { AgentClock } from "./ports/agent-transport.js";
 import { RateLimiter } from "./rate-limiter.js";
@@ -14,6 +15,7 @@ interface PtyManagerOptions {
 }
 
 interface TrackedTerminal {
+  runtimeId: string;
   pty: IPty;
   limiter: RateLimiter;
 
@@ -45,9 +47,10 @@ export class PtyManager {
     private readonly options: PtyManagerOptions,
   ) {}
 
-  open(terminalId: number, cols: number, rows: number): void {
+  open(terminalId: number, cols: number, rows: number): string {
     // 중복 open은 무시 — 재접속·재전송 경합을 수용하고 기존 셸을 지킨다 (얇은 Agent: 판단은 서버에)
-    if (this.terminals.has(terminalId)) return;
+    const existing = this.terminals.get(terminalId);
+    if (existing) return existing.runtimeId;
 
     const shell = this.options.shell ?? process.env["SHELL"] ?? "/bin/sh";
     const pty = spawn(shell, [], {
@@ -70,6 +73,7 @@ export class PtyManager {
     );
 
     const tracked: TrackedTerminal = {
+      runtimeId: randomUUID(),
       pty,
       limiter,
       closing: false,
@@ -99,6 +103,13 @@ export class PtyManager {
         this.options.onExit(terminalId, signal ? null : exitCode);
       }
     });
+    return tracked.runtimeId;
+  }
+
+  inventory(): Array<{ terminalId: number; runtimeId: string }> {
+    return [...this.terminals]
+      .filter(([, terminal]) => !terminal.closing)
+      .map(([terminalId, terminal]) => ({ terminalId, runtimeId: terminal.runtimeId }));
   }
 
   write(terminalId: number, data: Uint8Array): void {

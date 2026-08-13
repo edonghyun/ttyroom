@@ -6,7 +6,11 @@
 
 ## 버전과 협상
 
-- 현재 버전: `PROTOCOL_VERSION = 5`. 버전은 1 이상의 정수만 유효하다 (0·음수는 hello 파싱 단계에서 거부).
+- 현재 버전: `PROTOCOL_VERSION = 7`. 버전은 1 이상의 정수만 유효하다 (0·음수는 hello 파싱 단계에서 거부).
+- v7은 참가자의 canvas cursor 좌표를 Room 안의 다른 참가자에게만 일시 중계하는
+  `move-cursor` / `participant-cursor` 메시지를 추가한다. cursor는 Room snapshot에 저장하지 않는다.
+- v6는 서버 재시작 뒤 살아 있는 PTY를 복구하는 Host inventory·ready·output replay handshake와
+  PTY 수명 `runtimeId`를 추가했다.
 - v5는 Room이 소유하는 terminal title을 request·event에 추가했다.
   구형 서버가 `rename-terminal`을 `bad-message`로 거부하므로 협상 버전을 올렸다.
 - v4는 Room이 소유하는 terminal geometry를 snapshot·request·event에 추가했다.
@@ -76,6 +80,11 @@
 
 - 재접속은 **새 연결 + 동일 clientId의 hello**다. 전송 계층은 재연결을 숨기지 않는다.
 - 서버는 재접속자에게 현재 Room 스냅샷과 터미널별 스크롤백 replay를 제공한다.
+- Host는 `welcome` 직후 살아 있는 PTY와 로컬 출력 범위를 `host-inventory`로 보고한다.
+  서버는 저장된 `runtimeId`와 일치하는 PTY만 활성화하고 `host-ready.replayAfterSeq`를 응답한다.
+  Agent는 그 이후 출력만 재전송한 뒤 `terminal-replay-complete`를 보낸다. 이 handshake가
+  끝나기 전에는 원격 입력을 받지 않는다. 충돌하거나 이미 종료된 terminalId는 서버가
+  `close-terminal`로 정리해 로컬 고아 PTY를 남기지 않는다.
 
 ## seq · sync 의미론
 
@@ -94,7 +103,7 @@
 
 | type    | 예시                                                                                                                |
 | ------- | ------------------------------------------------------------------------------------------------------------------- |
-| `hello` | `{"type":"hello","protocolVersion":5,"roomId":"r1","token":"t","clientId":"c1","name":"동현","role":"participant"}` |
+| `hello` | `{"type":"hello","protocolVersion":7,"roomId":"r1","token":"t","clientId":"c1","name":"동현","role":"participant"}` |
 
 `role`은 `"participant"` 또는 `"host"`. 호스트의 `clientId`는 `hostId`로도 쓰인다.
 
@@ -107,6 +116,7 @@
 | `set-terminal-mode`        | `{"type":"set-terminal-mode","terminalId":3,"mode":"shared"}`                                             |
 | `resync-output-request`    | `{"type":"resync-output-request","terminalId":3}`                                                         |
 | `focus-terminal`           | `{"type":"focus-terminal","terminalId":3}`                                                                |
+| `move-cursor`              | `{"type":"move-cursor","position":{"x":120.5,"y":80}}`                                                    |
 | `rename-terminal`          | `{"type":"rename-terminal","terminalId":3,"title":"API logs"}`                                            |
 | `acquire-lease`            | `{"type":"acquire-lease","terminalId":3}`                                                                 |
 | `release-lease`            | `{"type":"release-lease","terminalId":3,"leaseId":7}`                                                     |
@@ -115,12 +125,14 @@
 
 ### 호스트 → 서버
 
-| type               | 예시                                                                                                      |
-| ------------------ | --------------------------------------------------------------------------------------------------------- |
-| `terminal-opened`  | `{"type":"terminal-opened","terminalId":3}`                                                               |
-| `terminal-closed`  | `{"type":"terminal-closed","terminalId":3,"exitCode":0}`                                                  |
-| `terminal-meta`    | `{"type":"terminal-meta","terminalId":3,"meta":{"cwd":"/home/kep","gitBranch":"main","fgProcess":"vim"}}` |
-| `host-input-state` | `{"type":"host-input-state","remoteInputAllowed":false}`                                                  |
+| type                       | 예시                                                                                                                      |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `terminal-opened`          | `{"type":"terminal-opened","terminalId":3,"runtimeId":"runtime-3"}`                                                       |
+| `terminal-closed`          | `{"type":"terminal-closed","terminalId":3,"exitCode":0}`                                                                  |
+| `terminal-meta`            | `{"type":"terminal-meta","terminalId":3,"meta":{"cwd":"/home/kep","gitBranch":"main","fgProcess":"vim"}}`                 |
+| `host-input-state`         | `{"type":"host-input-state","remoteInputAllowed":false}`                                                                  |
+| `host-inventory`           | `{"type":"host-inventory","terminals":[{"terminalId":3,"runtimeId":"runtime-3","firstRetainedSeq":4,"lastOutputSeq":9}]}` |
+| `terminal-replay-complete` | `{"type":"terminal-replay-complete","terminalId":3,"lastOutputSeq":9}`                                                    |
 
 ### 서버 → 클라이언트
 
@@ -128,6 +140,7 @@
 | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `welcome`                   | `{"type":"welcome","selfClientId":"c1","snapshot":{"roomId":"r1","name":"Payment Debug","participants":[],"hosts":[],"terminals":[],"leases":[]}}` |
 | `room-event`                | `{"type":"room-event","event":{"kind":"participant-joined","participant":{"clientId":"c2","name":"민수"}}}`                                        |
+| `participant-cursor`        | `{"type":"participant-cursor","clientId":"c2","position":{"x":120.5,"y":80}}`                                                                      |
 | `lease-result`              | `{"type":"lease-result","terminalId":3,"result":{"kind":"granted","leaseId":7}}`                                                                   |
 | `lease-invalid`             | `{"type":"lease-invalid","terminalId":3,"reason":"remote-input-disabled"}`                                                                         |
 | `terminal-request-rejected` | `{"type":"terminal-request-rejected","request":"close","terminalId":3,"reason":"host-offline"}`                                                    |
@@ -144,11 +157,12 @@
 
 ### 서버 → 호스트
 
-| type             | 예시                                                          |
-| ---------------- | ------------------------------------------------------------- |
-| `open-terminal`  | `{"type":"open-terminal","terminalId":3,"cols":80,"rows":24}` |
-| `close-terminal` | `{"type":"close-terminal","terminalId":3}`                    |
-| `resize`         | `{"type":"resize","terminalId":3,"cols":120,"rows":40}`       |
+| type             | 예시                                                                      |
+| ---------------- | ------------------------------------------------------------------------- |
+| `open-terminal`  | `{"type":"open-terminal","terminalId":3,"cols":80,"rows":24}`             |
+| `close-terminal` | `{"type":"close-terminal","terminalId":3}`                                |
+| `resize`         | `{"type":"resize","terminalId":3,"cols":120,"rows":40}`                   |
+| `host-ready`     | `{"type":"host-ready","terminals":[{"terminalId":3,"replayAfterSeq":5}]}` |
 
 ### room-event의 event 종류
 
