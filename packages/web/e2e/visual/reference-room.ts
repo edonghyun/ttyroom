@@ -5,9 +5,9 @@ export const REFERENCE_ROOM: RoomSnapshot = {
   roomId: "visual-room",
   name: "Payment Debug",
   participants: [
-    { clientId: "donghyeon", name: "Donghyeon" },
-    { clientId: "minsu", name: "Minsu" },
-    { clientId: "jihun", name: "Jihun" },
+    { clientId: "donghyeon", name: "Donghyeon", focusedTerminalId: 1 },
+    { clientId: "minsu", name: "Minsu", focusedTerminalId: 2 },
+    { clientId: "jihun", name: "Jihun", focusedTerminalId: 5 },
   ],
   hosts: [
     { hostId: "donghyeon-mac", name: "Donghyeon-Mac", online: true, remoteInputAllowed: true },

@@ -1,4 +1,4 @@
-export const PROTOCOL_VERSION = 2;
+export const PROTOCOL_VERSION = 3;
 export const FRAME_OUTPUT = 0x01;
 export const FRAME_INPUT = 0x02;
 

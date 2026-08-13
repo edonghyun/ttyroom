@@ -8,6 +8,7 @@ import type { Connection } from "../ports/transport.js";
 import type { ConnectionRegistry } from "./connection-registry.js";
 import { AcquireLease } from "./acquire-lease.js";
 import { BroadcastTerminalOutput } from "./broadcast-terminal-output.js";
+import { FocusParticipant } from "./focus-participant.js";
 import { HandleDisconnect, PendingDisconnects } from "./handle-disconnect.js";
 import { JoinRoom } from "./join-room.js";
 import { OpenTerminal } from "./open-terminal.js";
@@ -32,6 +33,7 @@ export class ServerCore {
   private readonly updateHostInputState: UpdateHostInputState;
   private readonly setTerminalMode: SetTerminalMode;
   private readonly resyncTerminalOutput: ResyncTerminalOutput;
+  private readonly focusParticipant: FocusParticipant;
 
   constructor(
     private readonly deps: {
@@ -85,6 +87,10 @@ export class ServerCore {
       rooms: deps.rooms,
       output: this.broadcastTerminalOutput,
     });
+    this.focusParticipant = new FocusParticipant({
+      rooms: deps.rooms,
+      connections: deps.connections,
+    });
   }
 
   handleMessage(conn: Connection, raw: string): void {
@@ -128,6 +134,11 @@ export class ServerCore {
 
     if (parsed.message.type === "resync-output-request" && session.role === "participant") {
       this.resyncTerminalOutput.execute(conn, session, parsed.message.terminalId);
+      return;
+    }
+
+    if (parsed.message.type === "focus-terminal" && session.role === "participant") {
+      this.focusParticipant.execute(conn, session, parsed.message.terminalId);
       return;
     }
 

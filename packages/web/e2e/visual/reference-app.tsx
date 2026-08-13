@@ -60,6 +60,7 @@ class ReferenceRoomSession implements RoomAppSession {
   openTerminal(): void {}
   resize(): void {}
   setMode(): void {}
+  focusTerminal(): void {}
 }
 
 const root = document.querySelector<HTMLElement>("#root");

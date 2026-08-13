@@ -15,7 +15,10 @@ export class Room {
   readonly roomId: string;
   readonly token: string;
   readonly name: string;
-  private readonly participants = new Map<string, { name: string }>();
+  private readonly participants = new Map<
+    string,
+    { name: string; focusedTerminalId: number | null }
+  >();
   private readonly hosts = new Map<
     string,
     { name: string; online: boolean; remoteInputAllowed: boolean }
@@ -32,11 +35,28 @@ export class Room {
   }
 
   addParticipant(clientId: string, name: string): void {
-    this.participants.set(clientId, { name });
+    const current = this.participants.get(clientId);
+    this.participants.set(clientId, {
+      name,
+      focusedTerminalId: current?.focusedTerminalId ?? null,
+    });
   }
 
   hasParticipant(clientId: string): boolean {
     return this.participants.has(clientId);
+  }
+
+  focusParticipant(
+    clientId: string,
+    terminalId: number | null,
+  ): "changed" | "unchanged" | "rejected" {
+    const participant = this.participants.get(clientId);
+    if (!participant) throw new Error(`참여자가 아닌 clientId의 focus 보고: ${clientId}`);
+    if (terminalId !== null && !this.terminals.has(terminalId)) return "rejected";
+    if (participant.focusedTerminalId === terminalId) return "unchanged";
+
+    participant.focusedTerminalId = terminalId;
+    return "changed";
   }
 
   // 떠난 참여자의 임대는 무효 — stale lease가 남지 않게 걷어서 반환한다 (removeHost와 대칭).
@@ -221,7 +241,11 @@ export class Room {
     return {
       roomId: this.roomId,
       name: this.name,
-      participants: [...this.participants].map(([clientId, p]) => ({ clientId, name: p.name })),
+      participants: [...this.participants].map(([clientId, p]) => ({
+        clientId,
+        name: p.name,
+        focusedTerminalId: p.focusedTerminalId,
+      })),
       hosts: [...this.hosts].map(([hostId, h]) => ({
         hostId,
         name: h.name,

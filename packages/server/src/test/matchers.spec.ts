@@ -26,7 +26,7 @@ describe("expectMessageToMatch — 역할: 진단 가능한 메시지 스트림 
         snapshot: {
           roomId: "r1",
           name: "Quick Room",
-          participants: [{ clientId: "alice-id", name: "alice" }],
+          participants: [{ clientId: "alice-id", name: "alice", focusedTerminalId: null }],
           hosts: [],
           terminals: [],
           leases: [],
@@ -51,8 +51,8 @@ describe("expectMessageToMatch — 역할: 진단 가능한 메시지 스트림 
           roomId: "r1",
           name: "Quick Room",
           participants: [
-            { clientId: "a", name: "alice" },
-            { clientId: "b", name: "bob" },
+            { clientId: "a", name: "alice", focusedTerminalId: null },
+            { clientId: "b", name: "bob", focusedTerminalId: null },
           ],
           hosts: [],
           terminals: [],

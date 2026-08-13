@@ -39,6 +39,7 @@ describe("RoomApp production composition", () => {
       openTerminal: vi.fn(),
       resize: vi.fn(),
       setMode: vi.fn(),
+      focusTerminal: vi.fn(),
     };
     const controllers = new Map<
       number,
@@ -129,6 +130,51 @@ describe("RoomApp production composition", () => {
     expect(session.stop).toHaveBeenCalledOnce();
   });
 
+  it("reports activated terminal focus and maps focused participants into each title bar", () => {
+    const projection = new RoomProjection();
+    const focusTerminal = vi.fn();
+    const runtime = new RoomAppRuntime({
+      ...runtimeDeps(projection, new WindowManager({ viewport: { width: 1200, height: 700 } })),
+      createSession: () => ({
+        start: vi.fn(),
+        stop: vi.fn(),
+        subscribe: () => () => undefined,
+        takeControl: vi.fn(),
+        releaseControl: vi.fn(),
+        closeTerminal: vi.fn(),
+        openTerminal: vi.fn(),
+        resize: vi.fn(),
+        setMode: vi.fn(),
+        focusTerminal,
+      }),
+    });
+    runtime.join("room-1", "Donghyeon");
+    projection.applyServerMessage({
+      type: "welcome",
+      selfClientId: "client-1",
+      snapshot: {
+        ...snapshot([1, 2]),
+        participants: [
+          { clientId: "client-1", name: "Donghyeon", focusedTerminalId: 1 },
+          { clientId: "bob", name: "Bob", focusedTerminalId: 2 },
+        ],
+      },
+    });
+
+    expect(runtime.view().terminals.find(({ terminalId }) => terminalId === 1)).toMatchObject({
+      focusedParticipants: [{ clientId: "client-1", name: "You" }],
+    });
+    expect(runtime.view().terminals.find(({ terminalId }) => terminalId === 2)).toMatchObject({
+      focusedParticipants: [{ clientId: "bob", name: "Bob" }],
+    });
+    expect(focusTerminal).toHaveBeenCalledWith(2);
+    focusTerminal.mockClear();
+
+    runtime.activate(1);
+    expect(focusTerminal).toHaveBeenCalledWith(1);
+    runtime.dispose();
+  });
+
   it("clamps local windows and updates the desktop input guard when the viewport changes", () => {
     const projection = new RoomProjection();
     const windowManager = new WindowManager({ viewport: { width: 1200, height: 700 } });
@@ -187,6 +233,7 @@ function runtimeForToast(
       openTerminal: vi.fn(),
       resize: vi.fn(),
       setMode: vi.fn(),
+      focusTerminal: vi.fn(),
     }),
   });
 }
@@ -217,6 +264,7 @@ function runtimeDeps(projection: RoomProjection, windowManager: WindowManager) {
       openTerminal: vi.fn(),
       resize: vi.fn(),
       setMode: vi.fn(),
+      focusTerminal: vi.fn(),
     }),
     createController: () => ({
       mount: vi.fn(),
@@ -236,7 +284,7 @@ function snapshot(terminalIds: readonly number[]): RoomSnapshot {
   return {
     roomId: "room-1",
     name: "Payment Debug",
-    participants: [{ clientId: "client-1", name: "Donghyeon" }],
+    participants: [{ clientId: "client-1", name: "Donghyeon", focusedTerminalId: null }],
     hosts: [{ hostId: "host-1", name: "Donghyeon-Mac", online: true, remoteInputAllowed: true }],
     terminals: terminalIds.map((terminalId) => ({
       terminalId,

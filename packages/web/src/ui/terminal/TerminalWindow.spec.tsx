@@ -57,6 +57,31 @@ describe("TerminalWindow", () => {
     expect(openNew).toHaveBeenCalledWith("Donghyeon-Mac");
   });
 
+  it("shows a compact focus badge and exposes participant names on hover", async () => {
+    const adapters = new FakeTerminalAdapterFactory();
+    const controller = new TerminalController(
+      { adapterFactory: adapters, frameScheduler: { schedule: () => () => undefined } },
+      { terminalId: 11, sendInput: vi.fn(), resize: vi.fn() },
+    );
+    render(
+      <TerminalWindow
+        {...windowProps(controller, vi.fn(), vi.fn())}
+        model={{
+          ...windowProps(controller, vi.fn(), vi.fn()).model,
+          focusedParticipants: [
+            { clientId: "alice", name: "You" },
+            { clientId: "bob", name: "Bob" },
+          ],
+        }}
+      />,
+    );
+
+    const badge = screen.getByLabelText("Focused by You, Bob");
+    expect(badge).toHaveTextContent("2");
+    await userEvent.hover(badge);
+    expect(screen.getByRole("tooltip")).toHaveTextContent("You, Bob");
+  });
+
   it.each([
     ["left", { x: 1, y: 400 }, { x: 0, y: 0, width: 600, height: 800 }],
     ["right", { x: 1199, y: 400 }, { x: 600, y: 0, width: 600, height: 800 }],
@@ -125,6 +150,7 @@ function windowProps(
       branch: "feature/payment",
       status: { kind: "available" } as const,
       mode: "exclusive" as const,
+      focusedParticipants: [],
       rect: { x: 62, y: 62, width: 698, height: 613 },
       z: 1,
       minimized: false,

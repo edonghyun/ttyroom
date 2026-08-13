@@ -43,6 +43,7 @@ export interface RoomAppSession {
   openTerminal(hostId: string): void;
   resize(terminalId: number, cols: number, rows: number): void;
   setMode(terminalId: number, mode: "exclusive" | "shared"): void;
+  focusTerminal(terminalId: number | null): void;
 }
 
 interface RoomAppIdentity extends Pick<RoomIdentity, "clientId" | "nickname" | "saveNickname"> {}
@@ -90,6 +91,19 @@ export interface RoomAppView {
 }
 
 type Subscriber = () => void;
+
+function activeVisibleTerminalId(
+  windows: ReturnType<WindowManager["view"]>["windows"],
+): number | null {
+  return (
+    windows
+      .filter((window) => !window.minimized)
+      .reduce<(typeof windows)[number] | null>(
+        (active, window) => (!active || window.z > active.z ? window : active),
+        null,
+      )?.terminalId ?? null
+  );
+}
 
 export class RoomAppRuntime {
   private readonly controllers = new Map<number, RuntimeTerminalController>();
@@ -152,6 +166,7 @@ export class RoomAppRuntime {
           })),
         );
       }
+      this.session?.focusTerminal(activeVisibleTerminalId(windowView.windows));
       this.publish();
     });
     this.currentView = this.computeView();
@@ -188,6 +203,15 @@ export class RoomAppRuntime {
         branch: projected.terminal.meta.gitBranch ?? undefined,
         status: capability,
         mode: projected.terminal.mode,
+        focusedParticipants:
+          room?.participants
+            .filter(
+              (participant) => participant.focusedTerminalId === projected.terminal.terminalId,
+            )
+            .map((participant) => ({
+              clientId: participant.clientId,
+              name: participant.clientId === projection.selfClientId ? "You" : participant.name,
+            })) ?? [],
         controlAction: capability.kind === "available" ? (ownLease ? "switch" : "take") : undefined,
         rect: managed.rect,
         z: managed.z,
@@ -200,11 +224,7 @@ export class RoomAppRuntime {
       state: this.screenState(),
       roomName: room?.name ?? "Quick Room",
       terminals,
-      activeTerminalId:
-        windowView.windows.reduce<{ terminalId: number; z: number } | null>(
-          (active, window) => (!active || window.z > active.z ? window : active),
-          null,
-        )?.terminalId ?? null,
+      activeTerminalId: activeVisibleTerminalId(windowView.windows),
       overview: windowView.overview,
       participants:
         room?.participants.map((participant) => {

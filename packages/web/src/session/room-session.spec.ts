@@ -22,7 +22,7 @@ describe("RoomSession — collaborative Room lifecycle", () => {
     expect(transports.hellos).toEqual([
       {
         type: "hello",
-        protocolVersion: 2,
+        protocolVersion: 3,
         roomId: "room-1",
         token: "secret-token",
         clientId: "alice-id",
@@ -156,7 +156,7 @@ describe("RoomSession — collaborative Room lifecycle", () => {
     ]);
   });
 
-  it("maps terminal commands to public protocol v2 controls", () => {
+  it("maps terminal commands to public protocol controls", () => {
     const projection = new RoomProjection();
     const transports = new FakeSessionTransportFactory();
     const session = createSession({ projection, transports });
@@ -175,6 +175,38 @@ describe("RoomSession — collaborative Room lifecycle", () => {
     ]);
   });
 
+  it("reports the desired terminal focus after welcome and restores it after reconnect", () => {
+    const projection = new RoomProjection();
+    const transports = new FakeSessionTransportFactory();
+    const clock = new ManualSessionClock();
+    const session = createSession({ projection, transports, clock });
+    session.start();
+
+    session.focusTerminal(2);
+    expect(transports.latest().controls).toEqual([]);
+
+    transports.latest().emit({
+      kind: "server-message",
+      message: { type: "welcome", selfClientId: "alice-id", snapshot: roomSnapshot() },
+    });
+    expect(transports.latest().controls).toEqual([{ type: "focus-terminal", terminalId: 2 }]);
+
+    session.focusTerminal(1);
+    expect(transports.latest().controls.at(-1)).toEqual({
+      type: "focus-terminal",
+      terminalId: 1,
+    });
+
+    transports.latest().emit({ kind: "closed" });
+    clock.fireNext();
+    expect(transports.latest().controls).toEqual([]);
+    transports.latest().emit({
+      kind: "server-message",
+      message: { type: "welcome", selfClientId: "alice-id", snapshot: roomSnapshot() },
+    });
+    expect(transports.latest().controls).toEqual([{ type: "focus-terminal", terminalId: 1 }]);
+  });
+
   it("publishes typed lease denial and invalid feedback with the current holder name", () => {
     const projection = new RoomProjection();
     const transports = new FakeSessionTransportFactory();
@@ -190,8 +222,8 @@ describe("RoomSession — collaborative Room lifecycle", () => {
         snapshot: {
           ...roomSnapshot(),
           participants: [
-            { clientId: "alice-id", name: "Alice" },
-            { clientId: "bob-id", name: "Bob" },
+            { clientId: "alice-id", name: "Alice", focusedTerminalId: null },
+            { clientId: "bob-id", name: "Bob", focusedTerminalId: null },
           ],
         },
       },
@@ -466,7 +498,7 @@ function roomSnapshot(): Extract<ServerMessage, { type: "welcome" }>["snapshot"]
   return {
     roomId: "room-1",
     name: "Payment Debug",
-    participants: [{ clientId: "alice-id", name: "Alice" }],
+    participants: [{ clientId: "alice-id", name: "Alice", focusedTerminalId: null }],
     hosts: [
       {
         hostId: "host-1",

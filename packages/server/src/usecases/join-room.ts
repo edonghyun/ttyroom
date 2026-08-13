@@ -67,7 +67,11 @@ export class JoinRoom {
           type: "room-event",
           event: {
             kind: "participant-joined",
-            participant: { clientId: auth.clientId, name: auth.displayName },
+            participant: {
+              clientId: auth.clientId,
+              name: auth.displayName,
+              focusedTerminalId: null,
+            },
           },
         });
       }

@@ -147,11 +147,11 @@ describe("XtermAdapter", () => {
     expect(factory.terminal.focusCount).toBe(1);
   });
 
-  it("hands Tab to the browser while retaining other terminal keys", () => {
+  it("keeps Tab inside the terminal so shells receive completion input", () => {
     const factory = new FakeXtermFactory();
     new XtermAdapter(factory);
 
-    expect(factory.terminal.keyHandler?.(new KeyboardEvent("keydown", { key: "Tab" }))).toBe(false);
+    expect(factory.terminal.keyHandler?.(new KeyboardEvent("keydown", { key: "Tab" }))).toBe(true);
     expect(factory.terminal.keyHandler?.(new KeyboardEvent("keydown", { key: "a" }))).toBe(true);
   });
 

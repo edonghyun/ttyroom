@@ -14,14 +14,18 @@ describe("Room — 역할: Room 라이브 상태와 불변식의 소유자", () 
   it("참여자를 추가하면 스냅샷에 나타난다", () => {
     const room = makeRoom();
     room.addParticipant("c1", "동현");
-    expect(room.snapshot().participants).toEqual([{ clientId: "c1", name: "동현" }]);
+    expect(room.snapshot().participants).toEqual([
+      { clientId: "c1", name: "동현", focusedTerminalId: null },
+    ]);
   });
 
   it("같은 clientId로 다시 추가하면 중복 없이 이름만 갱신된다 (재접속 멱등)", () => {
     const room = makeRoom();
     room.addParticipant("c1", "동현");
     room.addParticipant("c1", "동현2");
-    expect(room.snapshot().participants).toEqual([{ clientId: "c1", name: "동현2" }]);
+    expect(room.snapshot().participants).toEqual([
+      { clientId: "c1", name: "동현2", focusedTerminalId: null },
+    ]);
   });
 
   it("Host 연결 후 openTerminal은 증가하는 terminalId로 exclusive 터미널을 만든다", () => {
@@ -198,6 +202,50 @@ describe("Room — 역할: Room 라이브 상태와 불변식의 소유자", () 
       status: "open",
       meta: { cwd: null },
     });
+  });
+});
+
+describe("Room participant focus — 역할: 참가자가 보고한 현재 터미널의 단일 진실", () => {
+  const withParticipantAndTerminal = () => {
+    const room = makeRoom();
+    room.addParticipant("c1", "동현");
+    room.connectHost("h1", "Mac");
+    const terminal = room.openTerminal("h1");
+    return { room, terminal };
+  };
+
+  it("존재하는 terminal focus와 blur를 snapshot에 반영한다", () => {
+    const { room, terminal } = withParticipantAndTerminal();
+
+    expect(room.focusParticipant("c1", terminal.terminalId)).toBe("changed");
+    expect(room.snapshot().participants[0]).toMatchObject({
+      focusedTerminalId: terminal.terminalId,
+    });
+
+    expect(room.focusParticipant("c1", null)).toBe("changed");
+    expect(room.snapshot().participants[0]).toMatchObject({ focusedTerminalId: null });
+  });
+
+  it("같은 focus 재보고는 unchanged이고 재접속 이름 갱신 중 focus를 보존한다", () => {
+    const { room, terminal } = withParticipantAndTerminal();
+    room.focusParticipant("c1", terminal.terminalId);
+
+    expect(room.focusParticipant("c1", terminal.terminalId)).toBe("unchanged");
+    room.addParticipant("c1", "동현2");
+
+    expect(room.snapshot().participants[0]).toEqual({
+      clientId: "c1",
+      name: "동현2",
+      focusedTerminalId: terminal.terminalId,
+    });
+  });
+
+  it("미등록 참가자는 throw하고 없는 terminal focus는 rejected한다", () => {
+    const { room } = withParticipantAndTerminal();
+
+    expect(() => room.focusParticipant("stranger", null)).toThrow();
+    expect(room.focusParticipant("c1", 999)).toBe("rejected");
+    expect(room.snapshot().participants[0]).toMatchObject({ focusedTerminalId: null });
   });
 });
 

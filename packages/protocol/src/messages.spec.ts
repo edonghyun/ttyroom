@@ -8,8 +8,8 @@ import {
 } from "./messages.js";
 
 describe("제어 메시지 스키마 — 역할: JSON 제어 프레임의 검증과 유선 형태 고정", () => {
-  it("Web prerequisite message variants는 protocol version 2에서 협상한다", () => {
-    expect(PROTOCOL_VERSION).toBe(2);
+  it("participant focus presence는 protocol version 3에서 협상한다", () => {
+    expect(PROTOCOL_VERSION).toBe(3);
   });
 
   it("정상 hello 메시지를 파싱해 타입을 부여한다", () => {
@@ -208,6 +208,53 @@ describe("제어 메시지 스키마 — 역할: JSON 제어 프레임의 검증
     expect(parseClientMessage(serializeClientMessage(request))).toEqual({
       kind: "ok",
       message: request,
+    });
+  });
+
+  it("participant의 현재 terminal focus를 snapshot·request·event로 표현한다", () => {
+    const welcome = parseServerMessage(
+      JSON.stringify({
+        type: "welcome",
+        selfClientId: "c1",
+        snapshot: {
+          roomId: "r1",
+          participants: [
+            { clientId: "c1", name: "동현", focusedTerminalId: 3 },
+            { clientId: "c2", name: "수진" },
+          ],
+          hosts: [],
+          terminals: [],
+          leases: [],
+        },
+      }),
+    );
+    expect(welcome).toMatchObject({
+      kind: "ok",
+      message: {
+        snapshot: {
+          participants: [
+            { clientId: "c1", focusedTerminalId: 3 },
+            { clientId: "c2", focusedTerminalId: null },
+          ],
+        },
+      },
+    });
+
+    const request = { type: "focus-terminal", terminalId: 3 } as const;
+    const blur = { type: "focus-terminal", terminalId: null } as const;
+    const changed = {
+      type: "room-event",
+      event: { kind: "participant-focus-changed", clientId: "c1", focusedTerminalId: 3 },
+    } as const;
+
+    expect(parseClientMessage(serializeClientMessage(request))).toEqual({
+      kind: "ok",
+      message: request,
+    });
+    expect(parseClientMessage(serializeClientMessage(blur))).toEqual({ kind: "ok", message: blur });
+    expect(parseServerMessage(serializeServerMessage(changed))).toEqual({
+      kind: "ok",
+      message: changed,
     });
   });
 });

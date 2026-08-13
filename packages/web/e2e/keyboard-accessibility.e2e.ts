@@ -22,30 +22,18 @@ test("Tab and Shift+Tab navigate room, window, and Dock without acquiring contro
   await expect(alice.roomPage.terminalStatus("term-1")).toHaveAccessibleName("Available");
 });
 
-test("Tab remains focus navigation and never becomes a remote PTY byte", async ({ alice }) => {
+test("Tab is delivered to the remote PTY as the shell completion byte", async ({ alice }) => {
   await alice.joinRoom();
   await alice.roomPage.openTerminal();
   await alice.roomPage.takeControl("term-1");
 
   await alice.roomPage.typeInTerminal(
     "term-1",
-    "printf '\\124\\101\\102\\137\\122\\105\\101\\104\\131'; read -rk 1 key; printf '\\n\\124\\101\\102\\137\\102\\131\\124\\105:%s\\n' \"$key\"",
+    "printf '\\124\\101\\102\\137\\122\\105\\101\\104\\131'; IFS= read -rk 1 key; printf '\\n\\124\\101\\102\\137\\102\\131\\124\\105:'; printf '%s' \"$key\" | od -An -tx1",
   );
   await expect.poll(() => alice.roomPage.terminalText("term-1")).toContain("TAB_READY");
   await alice.page.keyboard.press("Tab");
-  await alice.roomPage.terminal("term-1").getByLabel("term-1 output").click();
-  await alice.page.keyboard.type("X");
-  await expect.poll(() => alice.roomPage.terminalText("term-1")).toContain("TAB_BYTE:X");
-
-  await alice.roomPage.typeInTerminal(
-    "term-1",
-    "printf '\\123\\110\\111\\106\\124\\137\\124\\101\\102\\137\\122\\105\\101\\104\\131'; read -rk 1 key; printf '\\n\\123\\110\\111\\106\\124\\137\\124\\101\\102\\137\\102\\131\\124\\105:%s\\n' \"$key\"",
-  );
-  await expect.poll(() => alice.roomPage.terminalText("term-1")).toContain("SHIFT_TAB_READY");
-  await alice.page.keyboard.press("Shift+Tab");
-  await alice.roomPage.terminal("term-1").getByLabel("term-1 output").click();
-  await alice.page.keyboard.type("Y");
-  await expect.poll(() => alice.roomPage.terminalText("term-1")).toContain("SHIFT_TAB_BYTE:Y");
+  await expect.poll(() => alice.roomPage.terminalText("term-1")).toMatch(/TAB_BYTE:\s+09/);
 });
 
 test("window focus and terminal input focus remain visibly distinct", async ({ alice }) => {

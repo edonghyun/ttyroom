@@ -54,6 +54,26 @@ test("selecting another participant's terminal neither acquires nor sends input"
   expect(await bob.roomPage.terminalText("term-1")).not.toContain(rejectedMarker);
 });
 
+test("terminal title bars show who currently has each terminal focused", async ({ alice, bob }) => {
+  await alice.joinRoom();
+  await bob.joinRoom();
+  await alice.roomPage.openTerminal("term-1");
+  await alice.roomPage.openTerminal("term-2");
+
+  await expect(alice.roomPage.terminal("term-2").getByLabel("Focused by You, Bob")).toBeVisible();
+
+  await bob.roomPage
+    .terminal("term-1")
+    .locator(".terminal-titlebar")
+    .click({ position: { x: 8, y: 8 } });
+  const bobBadge = alice.roomPage.terminal("term-1").getByLabel("Focused by Bob");
+  await expect(bobBadge).toBeVisible();
+  await expect(alice.roomPage.terminal("term-2").getByLabel("Focused by You")).toBeVisible();
+
+  await bobBadge.hover();
+  await expect(alice.roomPage.terminal("term-1").getByRole("tooltip")).toHaveText("Bob");
+});
+
 test("moving control to an available terminal requires the explicit Switch action", async ({
   alice,
   bob,

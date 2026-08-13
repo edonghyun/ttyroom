@@ -34,6 +34,7 @@ function sceneProps(controller: TerminalController) {
         branch: "feature/payment",
         status: { kind: "mine", leaseId: 1 } as const,
         mode: "exclusive" as const,
+        focusedParticipants: [],
         rect: { x: 62, y: 62, width: 698, height: 613 },
         z: 1,
         minimized: false,

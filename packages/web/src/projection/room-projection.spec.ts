@@ -7,7 +7,7 @@ import type { RoomSnapshot } from "@ttyroom/protocol";
 const snapshot: RoomSnapshot = {
   roomId: "room-1",
   name: "Payment Debug",
-  participants: [{ clientId: "alice-id", name: "Alice" }],
+  participants: [{ clientId: "alice-id", name: "Alice", focusedTerminalId: null }],
   hosts: [
     {
       hostId: "host-1",
@@ -60,7 +60,10 @@ describe("RoomProjection — authoritative Room state", () => {
 
     projection.applyServerMessage({
       type: "room-event",
-      event: { kind: "participant-joined", participant: { clientId: "bob-id", name: "Bob" } },
+      event: {
+        kind: "participant-joined",
+        participant: { clientId: "bob-id", name: "Bob", focusedTerminalId: null },
+      },
     });
     projection.applyServerMessage({
       type: "room-event",
@@ -163,6 +166,33 @@ describe("RoomProjection — authoritative Room state", () => {
     });
   });
 
+  it("applies participant focus changes without conflating them with input leases", () => {
+    const projection = welcomedProjection();
+    projection.applyServerMessage({
+      type: "room-event",
+      event: {
+        kind: "participant-joined",
+        participant: { clientId: "bob-id", name: "Bob", focusedTerminalId: null },
+      },
+    });
+
+    projection.applyServerMessage({
+      type: "room-event",
+      event: {
+        kind: "participant-focus-changed",
+        clientId: "bob-id",
+        focusedTerminalId: 1,
+      },
+    });
+
+    expect(projection.view().room?.participants).toContainEqual({
+      clientId: "bob-id",
+      name: "Bob",
+      focusedTerminalId: 1,
+    });
+    expect(projection.terminal(1)?.lease).toBeNull();
+  });
+
   it("derives input capability from terminal, host, lease, holder, and self state", () => {
     const projection = welcomedProjection();
 
@@ -179,7 +209,10 @@ describe("RoomProjection — authoritative Room state", () => {
 
     projection.applyServerMessage({
       type: "room-event",
-      event: { kind: "participant-joined", participant: { clientId: "bob-id", name: "Bob" } },
+      event: {
+        kind: "participant-joined",
+        participant: { clientId: "bob-id", name: "Bob", focusedTerminalId: null },
+      },
     });
     projection.applyServerMessage({
       type: "room-event",
@@ -244,14 +277,19 @@ describe("RoomProjection — authoritative Room state", () => {
 
     projection.applyServerMessage({
       type: "room-event",
-      event: { kind: "participant-joined", participant: { clientId: "bob-id", name: "Bob" } },
+      event: {
+        kind: "participant-joined",
+        participant: { clientId: "bob-id", name: "Bob", focusedTerminalId: null },
+      },
     });
 
     expect(Object.isFrozen(welcomeView)).toBe(true);
     expect(Object.isFrozen(welcomeView.room)).toBe(true);
     expect(Object.isFrozen(welcomeView.room.participants)).toBe(true);
     expect(Object.isFrozen(welcomeView.room.participants[0])).toBe(true);
-    expect(welcomeView.room.participants).toEqual([{ clientId: "alice-id", name: "Alice" }]);
+    expect(welcomeView.room.participants).toEqual([
+      { clientId: "alice-id", name: "Alice", focusedTerminalId: null },
+    ]);
   });
 
   it("publishes continuous output exactly once", () => {

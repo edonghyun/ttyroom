@@ -11,6 +11,7 @@ import { BrowserParticipantActor } from "./participant-actor.js";
 import { disposeParticipants } from "../../src/test/dispose-participants.js";
 
 const WORKSPACE_ROOT = resolve(import.meta.dirname, "../../../..");
+const WEB_BUILD_ROOT = resolve(WORKSPACE_ROOT, "packages/web/dist");
 const MAX_DIAGNOSTIC_CHARS = 16_384;
 
 export interface TestRoom {
@@ -40,7 +41,7 @@ export class TestSystem {
 
   static async start(): Promise<TestSystem> {
     const config = loadConfig({ file: { port: 0 }, env: {} });
-    const running = await startServer(config);
+    const running = await startServer(config, { webRoot: WEB_BUILD_ROOT });
     try {
       await expect
         .poll(async () => (await fetch(`${running.httpBaseUrl}/healthz`)).text())
@@ -81,7 +82,7 @@ export class TestSystem {
     const port = this.running.port;
     await this.running.close();
     this.config = loadConfig({ file: { port, policy: this.config.policy }, env: {} });
-    this.running = await startServer(this.config);
+    this.running = await startServer(this.config, { webRoot: WEB_BUILD_ROOT });
     await expect
       .poll(async () => (await fetch(`${this.running.httpBaseUrl}/healthz`)).text())
       .toBe("ok");

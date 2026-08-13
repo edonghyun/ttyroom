@@ -11,7 +11,11 @@ export const terminalMetaSchema = z.object({
   gitBranch: z.string().nullable(),
   fgProcess: z.string().nullable(),
 });
-export const participantViewSchema = z.object({ clientId: z.string(), name: z.string() });
+export const participantViewSchema = z.object({
+  clientId: z.string(),
+  name: z.string(),
+  focusedTerminalId: u32.nullable().default(null),
+});
 export const hostViewSchema = z.object({
   hostId: z.string(),
   name: z.string(),
@@ -77,6 +81,10 @@ const resyncOutputRequestSchema = z.object({
   type: z.literal("resync-output-request"),
   terminalId: u32,
 });
+const focusTerminalSchema = z.object({
+  type: z.literal("focus-terminal"),
+  terminalId: u32.nullable(),
+});
 const acquireLeaseSchema = z.object({ type: z.literal("acquire-lease"), terminalId: u32 });
 const releaseLeaseSchema = z.object({
   type: z.literal("release-lease"),
@@ -111,6 +119,7 @@ export const clientMessageSchema = z.discriminatedUnion("type", [
   closeTerminalRequestSchema,
   setTerminalModeSchema,
   resyncOutputRequestSchema,
+  focusTerminalSchema,
   acquireLeaseSchema,
   releaseLeaseSchema,
   resizeRequestSchema,
@@ -127,6 +136,11 @@ export type HelloMessage = z.infer<typeof helloSchema>;
 export const roomEventSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("participant-joined"), participant: participantViewSchema }),
   z.object({ kind: z.literal("participant-left"), clientId: z.string() }),
+  z.object({
+    kind: z.literal("participant-focus-changed"),
+    clientId: z.string(),
+    focusedTerminalId: u32.nullable(),
+  }),
   z.object({ kind: z.literal("host-connected"), host: hostViewSchema }),
   z.object({ kind: z.literal("host-offline"), hostId: z.string() }),
   z.object({ kind: z.literal("host-removed"), hostId: z.string() }),

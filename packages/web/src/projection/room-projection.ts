@@ -212,6 +212,11 @@ export class RoomProjection {
           (participant) => participant.clientId !== event.clientId,
         );
         return true;
+      case "participant-focus-changed":
+        return this.updateParticipant(event.clientId, (participant) => ({
+          ...participant,
+          focusedTerminalId: event.focusedTerminalId,
+        }));
       case "host-connected":
         this.room.hosts = replaceBy(
           this.room.hosts,
@@ -283,6 +288,23 @@ export class RoomProjection {
     if (!host) return false;
 
     this.room.hosts[index] = update(host);
+    return true;
+  }
+
+  private updateParticipant(
+    clientId: string,
+    update: (
+      participant: RoomSnapshot["participants"][number],
+    ) => RoomSnapshot["participants"][number],
+  ): boolean {
+    if (!this.room) return false;
+    const index = this.room.participants.findIndex(
+      (participant) => participant.clientId === clientId,
+    );
+    const participant = this.room.participants[index];
+    if (!participant) return false;
+
+    this.room.participants[index] = update(participant);
     return true;
   }
 

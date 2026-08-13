@@ -67,6 +67,8 @@ export class RoomSession {
   private cancelReconnect: (() => void) | null = null;
   private reconnectAttempt = 0;
   private started = false;
+  private welcomed = false;
+  private desiredFocusedTerminalId: number | null = null;
   private pendingControl: number | null = null;
   private readonly subscribers = new Set<SessionSubscriber>();
   private readonly inputSeqByTerminal = new Map<number, number>();
@@ -100,6 +102,7 @@ export class RoomSession {
     this.unsubscribeTransport = null;
     this.transport?.dispose();
     this.transport = null;
+    this.welcomed = false;
     this.pendingControl = null;
     this.subscribers.clear();
   }
@@ -153,6 +156,14 @@ export class RoomSession {
     this.transport?.sendControl({ type: "set-terminal-mode", terminalId, mode });
   }
 
+  focusTerminal(terminalId: number | null): void {
+    if (this.desiredFocusedTerminalId === terminalId) return;
+    this.desiredFocusedTerminalId = terminalId;
+    if (!this.welcomed) return;
+
+    this.transport?.sendControl({ type: "focus-terminal", terminalId });
+  }
+
   resize(terminalId: number, cols: number, rows: number): void {
     this.transport?.sendControl({ type: "resize-request", terminalId, cols, rows });
   }
@@ -194,6 +205,7 @@ export class RoomSession {
   }
 
   private connect(): void {
+    this.welcomed = false;
     const transport = this.deps.transportFactory.create({
       type: "hello",
       protocolVersion: PROTOCOL_VERSION,
@@ -245,6 +257,15 @@ export class RoomSession {
         this.cancelReconnect = null;
       }
       this.handleProjectionEffects(this.deps.projection.applyServerMessage(message));
+      if (message.type === "welcome") {
+        this.welcomed = true;
+        if (this.desiredFocusedTerminalId !== null) {
+          this.transport?.sendControl({
+            type: "focus-terminal",
+            terminalId: this.desiredFocusedTerminalId,
+          });
+        }
+      }
       return;
     }
 
@@ -293,6 +314,7 @@ export class RoomSession {
     this.unsubscribeTransport = null;
     this.transport?.dispose();
     this.transport = null;
+    this.welcomed = false;
     this.deps.projection.setConnection("reconnecting");
 
     const delay = delays[Math.min(this.reconnectAttempt, delays.length - 1)] ?? lastDelay;
@@ -311,6 +333,7 @@ export class RoomSession {
     this.unsubscribeTransport = null;
     this.transport?.dispose();
     this.transport = null;
+    this.welcomed = false;
     this.pendingControl = null;
     this.deps.projection.setConnection(connection);
   }

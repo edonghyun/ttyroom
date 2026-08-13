@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Maximize2, Minimize2, MoreHorizontal, RotateCcw, X } from "react-feather";
+import { Maximize2, Minimize2, MoreHorizontal, RotateCcw, Users, X } from "react-feather";
 
 import {
   snapRect,
@@ -34,6 +34,7 @@ export interface TerminalWindowModel {
   readonly branch?: string;
   readonly status: TerminalStatusValue;
   readonly mode: "exclusive" | "shared";
+  readonly focusedParticipants: readonly { readonly clientId: string; readonly name: string }[];
   readonly controlAction?: "take" | "switch";
   readonly rect: WindowRect;
   readonly z: number;
@@ -209,6 +210,21 @@ export function TerminalWindow({
             <span>{[model.host, model.cwd, model.branch].filter(Boolean).join(" · ")}</span>
           </div>
           <TerminalStatus status={model.status} />
+          {model.focusedParticipants.length > 0 && (
+            <span
+              className="terminal-focus-presence"
+              role="group"
+              tabIndex={0}
+              aria-label={`Focused by ${model.focusedParticipants.map(({ name }) => name).join(", ")}`}
+              onPointerDown={(event) => event.stopPropagation()}
+            >
+              <Users size={13} strokeWidth={1.7} aria-hidden="true" />
+              <span aria-hidden="true">{model.focusedParticipants.length}</span>
+              <span className="terminal-focus-tooltip" role="tooltip">
+                {model.focusedParticipants.map(({ name }) => name).join(", ")}
+              </span>
+            </span>
+          )}
           {model.status.kind === "available" && (
             <button
               type="button"
