@@ -67,4 +67,26 @@ describe("TopBar", () => {
     await userEvent.click(screen.getByRole("menuitem", { name: "Copy invite link" }));
     expect(invite).toHaveBeenCalledOnce();
   });
+
+  it("closes the room menu when the user clicks outside it", async () => {
+    render(
+      <TopBar
+        roomName="Payment Debug"
+        connection="connected"
+        invite={vi.fn()}
+        arrange={vi.fn()}
+        overview={vi.fn()}
+        openMenu={vi.fn()}
+        addHost={vi.fn()}
+      />,
+    );
+    const toggle = screen.getByRole("button", { name: "Open room menu" });
+
+    await userEvent.click(toggle);
+    expect(screen.getByRole("menu", { name: "Room menu" })).toBeVisible();
+    await userEvent.click(screen.getByRole("button", { name: "Arrange terminals" }));
+
+    expect(screen.queryByRole("menu", { name: "Room menu" })).not.toBeInTheDocument();
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+  });
 });

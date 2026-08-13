@@ -115,6 +115,19 @@ describe("TerminalWindow", () => {
     expect(requestRename).toHaveBeenCalledWith(11);
   });
 
+  it("closes the terminal actions menu when the user clicks outside it", async () => {
+    const props = windowProps(createController(), vi.fn(), vi.fn());
+    render(<TerminalWindow {...props} />);
+    const toggle = screen.getByRole("button", { name: "Open backend menu" });
+
+    await userEvent.click(toggle);
+    expect(screen.getByRole("menu", { name: "backend actions" })).toBeVisible();
+    await userEvent.click(screen.getByRole("button", { name: "Take control of backend" }));
+
+    expect(screen.queryByRole("menu", { name: "backend actions" })).not.toBeInTheDocument();
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+  });
+
   it("shows a translucent window ghost that follows the pointer and commits move on release", () => {
     const adapters = new FakeTerminalAdapterFactory();
     const controller = new TerminalController(

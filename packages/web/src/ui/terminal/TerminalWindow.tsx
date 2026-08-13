@@ -10,6 +10,7 @@ import {
   type WindowRect,
 } from "../../windows/window-geometry.js";
 import { TerminalStatus, type TerminalStatusValue } from "./TerminalStatus.js";
+import { useDismissibleMenu } from "../use-dismissible-menu.js";
 
 const SNAP_EDGE_PX = 32;
 const IDENTITY_VIEW_TRANSFORM: WorkspaceViewTransform = { x: 0, y: 0, scale: 1 };
@@ -96,6 +97,7 @@ export function TerminalWindow({
   const resizeStart = useRef<DragState | null>(null);
   const interactionTarget = useRef<InteractionPreviewState | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const actionsMenu = useDismissibleMenu(menuOpen, () => setMenuOpen(false));
   const [interactionPreview, setInteractionPreview] = useState<InteractionPreviewState | null>(
     null,
   );
@@ -362,6 +364,7 @@ export function TerminalWindow({
           )}
           <div className="window-actions">
             <button
+              ref={actionsMenu.trigger}
               type="button"
               aria-label={`Open ${model.title} menu`}
               aria-expanded={menuOpen}
@@ -400,7 +403,12 @@ export function TerminalWindow({
             </button>
           </div>
           {menuOpen && (
-            <div className="terminal-menu" role="menu" aria-label={`${model.title} actions`}>
+            <div
+              ref={actionsMenu.menu}
+              className="terminal-menu"
+              role="menu"
+              aria-label={`${model.title} actions`}
+            >
               <button
                 type="button"
                 role="menuitem"

@@ -185,6 +185,22 @@ test("terminal names stay synchronized for present and reconnecting participants
   await expect(bob.roomPage.terminal("API logs")).toBeVisible();
 });
 
+test("upper-right menus close when the user clicks elsewhere", async ({ alice }) => {
+  await alice.joinRoom();
+  await alice.roomPage.openTerminal("term-1");
+  const workspace = alice.page.locator(".terminal-scene");
+
+  await alice.page.getByRole("button", { name: "Open room menu" }).click();
+  await expect(alice.page.getByRole("menu", { name: "Room menu" })).toBeVisible();
+  await workspace.click({ position: { x: 900, y: 500 } });
+  await expect(alice.page.getByRole("menu", { name: "Room menu" })).toBeHidden();
+
+  await alice.roomPage.terminal("term-1").getByRole("button", { name: "Open term-1 menu" }).click();
+  await expect(alice.page.getByRole("menu", { name: "term-1 actions" })).toBeVisible();
+  await workspace.click({ position: { x: 900, y: 500 } });
+  await expect(alice.page.getByRole("menu", { name: "term-1 actions" })).toBeHidden();
+});
+
 test("canvas controls zoom, pan, and preserve terminal interaction coordinates", async ({
   alice,
 }) => {

@@ -1,5 +1,6 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { Grid, Link, MoreVertical, Monitor, Terminal } from "react-feather";
+import { useDismissibleMenu } from "../use-dismissible-menu.js";
 
 export type ConnectionLabel = "connected" | "reconnecting" | "restoring";
 
@@ -21,7 +22,7 @@ export function TopBar({
   readonly addHost?: (opener?: HTMLElement) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const menuButton = useRef<HTMLButtonElement>(null);
+  const roomMenu = useDismissibleMenu(menuOpen, () => setMenuOpen(false));
 
   return (
     <header className="top-bar">
@@ -50,7 +51,7 @@ export function TopBar({
           <Monitor size={16} strokeWidth={1.5} aria-hidden="true" /> Overview
         </button>
         <button
-          ref={menuButton}
+          ref={roomMenu.trigger}
           type="button"
           onClick={() => {
             openMenu();
@@ -62,7 +63,7 @@ export function TopBar({
           <MoreVertical size={16} strokeWidth={1.5} aria-hidden="true" /> Room menu
         </button>
         {menuOpen && (
-          <div className="room-menu" role="menu" aria-label="Room menu">
+          <div ref={roomMenu.menu} className="room-menu" role="menu" aria-label="Room menu">
             <button
               type="button"
               role="menuitem"
@@ -78,7 +79,7 @@ export function TopBar({
                 type="button"
                 role="menuitem"
                 onClick={() => {
-                  addHost(menuButton.current ?? undefined);
+                  addHost(roomMenu.trigger.current ?? undefined);
                   setMenuOpen(false);
                 }}
               >
