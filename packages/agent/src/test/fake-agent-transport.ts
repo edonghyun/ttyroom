@@ -66,12 +66,10 @@ export class FakeAgentTransport implements AgentTransport {
     });
   }
 
-  // 다음 settle에서 처리될 connect를 count번 reject시킨다
   failNextConnect(count = 1): void {
     this.failNextCount += count;
   }
 
-  // 대기 중인 connect를 전부 resolve(또는 예약된 실패만큼 reject)하고 마이크로태스크를 비운다
   async settle(): Promise<void> {
     const waiting = this.pending;
     this.pending = [];
@@ -88,7 +86,6 @@ export class FakeAgentTransport implements AgentTransport {
       resolve(conn);
     }
 
-    // resolve 이후 세션의 then 체인이 실행되도록 마이크로태스크 큐를 비운다
     await new Promise<void>((r) => setTimeout(r, 0));
   }
 

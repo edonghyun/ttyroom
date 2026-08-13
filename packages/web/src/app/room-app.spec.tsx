@@ -28,21 +28,7 @@ describe("RoomApp production composition", () => {
         nickname: () => "Donghyeon",
         saveNickname: vi.fn(),
       },
-      createSession: () => ({
-        start,
-        stop: vi.fn(),
-        subscribe: () => () => undefined,
-        takeControl: vi.fn(),
-        releaseControl: vi.fn(),
-        closeTerminal: vi.fn(),
-        openTerminal: vi.fn(),
-        resize: vi.fn(),
-        updateGeometry: vi.fn(),
-        renameTerminal: vi.fn(),
-        setMode: vi.fn(),
-        focusTerminal: vi.fn(),
-        moveCursor: vi.fn(),
-      }),
+      createSession: () => makeSession({ start }),
     });
 
     expect(runtime.view().state).toBe("joining");
@@ -60,24 +46,12 @@ describe("RoomApp production composition", () => {
             : never,
         ) => void)
       | null = null;
-    const session: RoomAppSession = {
-      start: vi.fn(),
-      stop: vi.fn(),
+    const session = makeSession({
       subscribe: (subscriber) => {
         sessionEvent = subscriber;
         return () => undefined;
       },
-      takeControl: vi.fn(),
-      releaseControl: vi.fn(),
-      closeTerminal: vi.fn(),
-      openTerminal: vi.fn(),
-      resize: vi.fn(),
-      updateGeometry: vi.fn(),
-      renameTerminal: vi.fn(),
-      setMode: vi.fn(),
-      focusTerminal: vi.fn(),
-      moveCursor: vi.fn(),
-    };
+    });
     const controllers = new Map<
       number,
       RuntimeTerminalController & { dispose: ReturnType<typeof vi.fn> }
@@ -89,15 +63,7 @@ describe("RoomApp production composition", () => {
       windowManager: new WindowManager({ viewport: { width: 1200, height: 700 } }),
       createSession: () => session,
       createController: (terminalId) => {
-        const controller = {
-          mount: vi.fn(),
-          requestFit: vi.fn(),
-          setInputAllowed: vi.fn(),
-          setVisible: vi.fn(),
-          acceptOutput: vi.fn(),
-          resetOutput: vi.fn(),
-          dispose: vi.fn(),
-        };
+        const controller = makeController();
         controllers.set(terminalId, controller);
         return controller;
       },
@@ -173,21 +139,7 @@ describe("RoomApp production composition", () => {
     const renameTerminal = vi.fn();
     const runtime = new RoomAppRuntime({
       ...runtimeDeps(projection, new WindowManager({ viewport: { width: 1200, height: 700 } })),
-      createSession: () => ({
-        start: vi.fn(),
-        stop: vi.fn(),
-        subscribe: () => () => undefined,
-        takeControl: vi.fn(),
-        releaseControl: vi.fn(),
-        closeTerminal: vi.fn(),
-        openTerminal: vi.fn(),
-        resize: vi.fn(),
-        updateGeometry: vi.fn(),
-        renameTerminal,
-        setMode: vi.fn(),
-        focusTerminal: vi.fn(),
-        moveCursor: vi.fn(),
-      }),
+      createSession: () => makeSession({ renameTerminal }),
     });
     runtime.join("room-1", "Donghyeon");
     projection.applyServerMessage({
@@ -214,21 +166,7 @@ describe("RoomApp production composition", () => {
     const focusTerminal = vi.fn();
     const runtime = new RoomAppRuntime({
       ...runtimeDeps(projection, new WindowManager({ viewport: { width: 1200, height: 700 } })),
-      createSession: () => ({
-        start: vi.fn(),
-        stop: vi.fn(),
-        subscribe: () => () => undefined,
-        takeControl: vi.fn(),
-        releaseControl: vi.fn(),
-        closeTerminal: vi.fn(),
-        openTerminal: vi.fn(),
-        resize: vi.fn(),
-        updateGeometry: vi.fn(),
-        renameTerminal: vi.fn(),
-        setMode: vi.fn(),
-        focusTerminal,
-        moveCursor: vi.fn(),
-      }),
+      createSession: () => makeSession({ focusTerminal }),
     });
     runtime.join("room-1", "Donghyeon");
     projection.applyServerMessage({
@@ -263,24 +201,13 @@ describe("RoomApp production composition", () => {
     let sessionEvent: Parameters<RoomAppSession["subscribe"]>[0] | undefined;
     const runtime = new RoomAppRuntime({
       ...runtimeDeps(projection, new WindowManager({ viewport: { width: 1200, height: 700 } })),
-      createSession: () => ({
-        start: vi.fn(),
-        stop: vi.fn(),
-        subscribe: (subscriber) => {
-          sessionEvent = subscriber;
-          return () => undefined;
-        },
-        takeControl: vi.fn(),
-        releaseControl: vi.fn(),
-        closeTerminal: vi.fn(),
-        openTerminal: vi.fn(),
-        resize: vi.fn(),
-        updateGeometry: vi.fn(),
-        renameTerminal: vi.fn(),
-        setMode: vi.fn(),
-        focusTerminal: vi.fn(),
-        moveCursor: vi.fn(),
-      }),
+      createSession: () =>
+        makeSession({
+          subscribe: (subscriber) => {
+            sessionEvent = subscriber;
+            return () => undefined;
+          },
+        }),
     });
     runtime.join("room-1", "Donghyeon");
     projection.applyServerMessage({
@@ -341,21 +268,7 @@ describe("RoomApp production composition", () => {
     const updateGeometry = vi.fn();
     const runtime = new RoomAppRuntime({
       ...runtimeDeps(projection, new WindowManager({ viewport: { width: 1200, height: 700 } })),
-      createSession: () => ({
-        start: vi.fn(),
-        stop: vi.fn(),
-        subscribe: () => () => undefined,
-        takeControl: vi.fn(),
-        releaseControl: vi.fn(),
-        closeTerminal: vi.fn(),
-        openTerminal: vi.fn(),
-        resize: vi.fn(),
-        updateGeometry,
-        renameTerminal: vi.fn(),
-        setMode: vi.fn(),
-        focusTerminal: vi.fn(),
-        moveCursor: vi.fn(),
-      }),
+      createSession: () => makeSession({ updateGeometry }),
     });
     runtime.join("room-1", "Donghyeon");
     projection.applyServerMessage({
@@ -411,21 +324,7 @@ describe("RoomApp production composition", () => {
     const updateGeometry = vi.fn();
     const runtime = new RoomAppRuntime({
       ...runtimeDeps(projection, new WindowManager({ viewport: { width: 1200, height: 700 } })),
-      createSession: () => ({
-        start: vi.fn(),
-        stop: vi.fn(),
-        subscribe: () => () => undefined,
-        takeControl: vi.fn(),
-        releaseControl: vi.fn(),
-        closeTerminal: vi.fn(),
-        openTerminal: vi.fn(),
-        resize: vi.fn(),
-        updateGeometry,
-        renameTerminal: vi.fn(),
-        setMode: vi.fn(),
-        focusTerminal: vi.fn(),
-        moveCursor: vi.fn(),
-      }),
+      createSession: () => makeSession({ updateGeometry }),
     });
     runtime.join("room-1", "Donghyeon");
     projection.applyServerMessage({
@@ -500,21 +399,7 @@ function runtimeForToast(
 ): RoomAppRuntime {
   return new RoomAppRuntime({
     ...runtimeDeps(projection, new WindowManager({ viewport: { width: 1200, height: 700 } })),
-    createSession: () => ({
-      start: vi.fn(),
-      stop: vi.fn(),
-      subscribe,
-      takeControl: vi.fn(),
-      releaseControl: vi.fn(),
-      closeTerminal: vi.fn(),
-      openTerminal: vi.fn(),
-      resize: vi.fn(),
-      updateGeometry: vi.fn(),
-      renameTerminal: vi.fn(),
-      setMode: vi.fn(),
-      focusTerminal: vi.fn(),
-      moveCursor: vi.fn(),
-    }),
+    createSession: () => makeSession({ subscribe }),
   });
 }
 
@@ -534,34 +419,43 @@ function runtimeDeps(projection: RoomProjection, windowManager: WindowManager) {
     identity: { clientId: () => "client-1", nickname: () => null, saveNickname: vi.fn() },
     projection,
     windowManager,
-    createSession: () => ({
-      start: vi.fn(),
-      stop: vi.fn(),
-      subscribe: () => () => undefined,
-      takeControl: vi.fn(),
-      releaseControl: vi.fn(),
-      closeTerminal: vi.fn(),
-      openTerminal: vi.fn(),
-      resize: vi.fn(),
-      updateGeometry: vi.fn(),
-      renameTerminal: vi.fn(),
-      setMode: vi.fn(),
-      focusTerminal: vi.fn(),
-      moveCursor: vi.fn(),
-    }),
-    createController: () => ({
-      mount: vi.fn(),
-      requestFit: vi.fn(),
-      setInputAllowed: vi.fn(),
-      setVisible: vi.fn(),
-      acceptOutput: vi.fn(),
-      resetOutput: vi.fn(),
-      dispose: vi.fn(),
-    }),
+    createSession: () => makeSession(),
+    createController: () => makeController(),
     createRoom: vi.fn(),
     navigate: vi.fn(),
     copyInvite: vi.fn(),
   } as const;
+}
+
+function makeSession(overrides: Partial<RoomAppSession> = {}): RoomAppSession {
+  return {
+    start: vi.fn(),
+    stop: vi.fn(),
+    subscribe: () => () => undefined,
+    takeControl: vi.fn(),
+    releaseControl: vi.fn(),
+    closeTerminal: vi.fn(),
+    openTerminal: vi.fn(),
+    resize: vi.fn(),
+    updateGeometry: vi.fn(),
+    renameTerminal: vi.fn(),
+    setMode: vi.fn(),
+    focusTerminal: vi.fn(),
+    moveCursor: vi.fn(),
+    ...overrides,
+  };
+}
+
+function makeController(): RuntimeTerminalController & { dispose: ReturnType<typeof vi.fn> } {
+  return {
+    mount: vi.fn(),
+    requestFit: vi.fn(),
+    setInputAllowed: vi.fn(),
+    setVisible: vi.fn(),
+    acceptOutput: vi.fn(),
+    resetOutput: vi.fn(),
+    dispose: vi.fn(),
+  };
 }
 
 function snapshot(terminalIds: readonly number[]): RoomSnapshot {

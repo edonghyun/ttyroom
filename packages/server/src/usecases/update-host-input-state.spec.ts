@@ -3,13 +3,13 @@ import { expectMessageToMatch } from "../test/matchers.js";
 import { RoomTestContext } from "../test/room-test-context.js";
 
 describe("updateHostInputState — 역할: Host Kill Switch 상태의 서버 projection", () => {
-  it("host 보고를 snapshot에 반영하고 Room 전체에 변경 event를 방송한다", () => {
+  it("host 보고를 snapshot에 반영하고 Room 전체에 변경 event를 방송한다", async () => {
     const ctx = new RoomTestContext();
-    const room = ctx.createRoom();
-    const host = ctx.connectHost(room, "host");
-    const alice = ctx.connectParticipant(room, "alice");
+    const room = await ctx.createRoom();
+    const host = await ctx.connectHost(room, "host");
+    const alice = await ctx.connectParticipant(room, "alice");
 
-    host.send({ type: "host-input-state", remoteInputAllowed: false });
+    await host.send({ type: "host-input-state", remoteInputAllowed: false });
 
     expectMessageToMatch(alice.conn.messages, "room-event", {
       event: {
@@ -18,7 +18,8 @@ describe("updateHostInputState — 역할: Host Kill Switch 상태의 서버 pro
         remoteInputAllowed: false,
       },
     });
-    expect(ctx.connectParticipant(room, "observer").conn.messages).toContainEqual(
+    const observer = await ctx.connectParticipant(room, "observer");
+    expect(observer.conn.messages).toContainEqual(
       expect.objectContaining({
         type: "welcome",
         snapshot: expect.objectContaining({
@@ -28,20 +29,15 @@ describe("updateHostInputState — 역할: Host Kill Switch 상태의 서버 pro
     );
   });
 
-  it("동일 상태 재보고는 event를 중복 방송하지 않는다", () => {
+  it("동일 상태 재보고는 event를 중복 방송하지 않는다", async () => {
     const ctx = new RoomTestContext();
-    const room = ctx.createRoom();
-    const host = ctx.connectHost(room, "host");
-    const alice = ctx.connectParticipant(room, "alice");
+    const room = await ctx.createRoom();
+    const host = await ctx.connectHost(room, "host");
+    const alice = await ctx.connectParticipant(room, "alice");
 
-    host.send({ type: "host-input-state", remoteInputAllowed: false });
-    host.send({ type: "host-input-state", remoteInputAllowed: false });
+    await host.send({ type: "host-input-state", remoteInputAllowed: false });
+    await host.send({ type: "host-input-state", remoteInputAllowed: false });
 
-    expect(
-      alice.conn.messages.filter(
-        (message) =>
-          message.type === "room-event" && message.event.kind === "host-input-state-changed",
-      ),
-    ).toHaveLength(1);
+    expect(alice.conn.roomEventsOfKind("host-input-state-changed")).toHaveLength(1);
   });
 });

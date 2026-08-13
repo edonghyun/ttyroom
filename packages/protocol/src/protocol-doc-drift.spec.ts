@@ -10,7 +10,6 @@ import {
   serverMessageSchema,
 } from "./messages.js";
 
-// 예시 최소 개수(클라 8 + 서버 10 + event 10) — 예시 추가는 허용, 추출 로직 회귀(0건 매치)는 차단
 const MIN_DOCUMENTED_EXAMPLES = 28;
 
 interface DocumentedExample {
@@ -23,24 +22,22 @@ function extractControlMessageExamples(markdown: string): DocumentedExample[] {
   let direction: DocumentedExample["direction"] | null = null;
   for (const line of markdown.split("\n")) {
     if (line.startsWith("#")) {
-      // "### 서버 → …"는 서버 발신, "### … → 서버"는 클라이언트 발신,
-      // "### room-event의 event 종류"는 event 페이로드, 그 외 섹션은 예시 없음
-      direction = line.includes("서버 →")
-        ? "server"
-        : line.includes("→ 서버")
-          ? "client"
-          : line.includes("event 종류")
-            ? "event"
-            : null;
+      direction = directionOf(line);
       continue;
     }
     if (direction === null) continue;
-    // 정식 예시는 표 행에만 있다 — 본문의 형태 설명(placeholder 포함)은 제외
     if (!line.startsWith("|")) continue;
     const match = line.match(/`(\{.*\})`/);
     if (match?.[1] !== undefined) examples.push({ json: match[1], direction });
   }
   return examples;
+}
+
+function directionOf(heading: string): DocumentedExample["direction"] | null {
+  if (heading.includes("서버 →")) return "server";
+  if (heading.includes("→ 서버")) return "client";
+  if (heading.includes("event 종류")) return "event";
+  return null;
 }
 
 function parseEventExample(json: string): { kind: "ok" } | { kind: "bad-message"; reason: string } {

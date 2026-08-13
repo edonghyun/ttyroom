@@ -23,7 +23,7 @@ export async function startServer(
 ): Promise<RunningServer> {
   // 저장소 migration·검증·복원을 listen보다 먼저 끝낸다. 실패한 서버가 잠깐이라도
   // room-not-found를 응답하면 살아 있는 Agent가 영구 거절 상태로 들어갈 수 있다.
-  const rooms = RoomRegistry.restore(new SqliteRoomRepository(config.statePath));
+  const rooms = await RoomRegistry.restore(new SqliteRoomRepository(config.statePath));
   const connections = new ConnectionRegistry();
   const api = new HttpApi(rooms);
   const web = new StaticWebApp({
@@ -49,24 +49,38 @@ export async function startServer(
       rooms,
       connections,
       identity: new LinkAuth(),
-      clock: new SystemClock(),
+      clock: new SystemClock((error) => console.error("timer callback failed", error)),
     },
-    { policy: config.policy },
+    {
+      policy: config.policy,
+      onBackgroundError: (error, task) => {
+        console.error("disconnect grace task failed", task, error);
+      },
+    },
   );
-  const transport = new WsTransport({ core }, { server: httpServer });
+  const transport = new WsTransport(
+    { core },
+    {
+      server: httpServer,
+      maxQueuedDataBytes: config.policy.maxQueuedDataBytesPerConnection,
+      onError: (error, context) => {
+        console.error("websocket processing failed", context, error);
+      },
+    },
+  );
   try {
     await new Promise<void>((resolve, reject) => {
       httpServer.once("error", reject);
       httpServer.listen(config.port, "127.0.0.1", resolve);
     });
   } catch (error) {
-    rooms.close();
+    await rooms.close();
     throw error;
   }
   const address = httpServer.address();
   if (!address || typeof address === "string") {
     await closeHttpServer();
-    rooms.close();
+    await rooms.close();
     throw new Error("서버 포트를 확인할 수 없다");
   }
 
@@ -88,8 +102,9 @@ export async function startServer(
       try {
         await transport.close();
         await closeHttpServer();
+        await core.close();
       } finally {
-        rooms.close();
+        await rooms.close();
       }
     },
   };

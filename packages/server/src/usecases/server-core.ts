@@ -8,7 +8,7 @@ import type { ConnectionRegistry } from "./connection-registry.js";
 import { AcquireLease } from "./acquire-lease.js";
 import { BroadcastTerminalOutput } from "./broadcast-terminal-output.js";
 import { FocusParticipant } from "./focus-participant.js";
-import { HandleDisconnect, PendingDisconnects } from "./handle-disconnect.js";
+import { HandleDisconnect, PendingDisconnects, type DisconnectTask } from "./handle-disconnect.js";
 import { JoinRoom } from "./join-room.js";
 import { OpenTerminal } from "./open-terminal.js";
 import { ReleaseLease } from "./release-lease.js";
@@ -25,6 +25,7 @@ import { UpdateTerminalGeometry } from "./update-terminal-geometry.js";
 
 // 어댑터가 아는 유일한 진입점 — 프레임을 유즈케이스로 라우팅한다
 export class ServerCore {
+  private readonly pendingDisconnects: PendingDisconnects;
   private readonly joinRoom: JoinRoom;
   private readonly openTerminal: OpenTerminal;
   private readonly acquireLease: AcquireLease;
@@ -49,9 +50,13 @@ export class ServerCore {
       identity: Identity;
       clock: Clock;
     },
-    private readonly options: { policy: Policy },
+    private readonly options: {
+      policy: Policy;
+      onBackgroundError?: (error: unknown, task: DisconnectTask) => void;
+    },
   ) {
-    const pending = new PendingDisconnects(deps.clock);
+    const pending = new PendingDisconnects(deps.clock, options.onBackgroundError);
+    this.pendingDisconnects = pending;
     this.broadcastTerminalOutput = new BroadcastTerminalOutput(
       { rooms: deps.rooms, connections: deps.connections },
       { policy: options.policy },
@@ -113,7 +118,7 @@ export class ServerCore {
     this.shareParticipantCursor = new ShareParticipantCursor(deps.connections);
   }
 
-  handleMessage(conn: Connection, raw: string): void {
+  async handleMessage(conn: Connection, raw: string): Promise<void> {
     const parsed = parseClientMessage(raw);
     if (parsed.kind === "bad-message") {
       conn.send({ type: "error", code: "bad-message", message: parsed.reason });
@@ -127,7 +132,7 @@ export class ServerCore {
         conn.send({ type: "error", code: "bad-message", message: "이미 입장한 연결의 hello" });
         return;
       }
-      this.joinRoom.execute(conn, parsed.message);
+      await this.joinRoom.execute(conn, parsed.message);
       return;
     }
 
@@ -138,7 +143,7 @@ export class ServerCore {
     }
 
     if (parsed.message.type === "open-terminal-request" && session.role === "participant") {
-      this.openTerminal.request(conn, session, parsed.message.hostId);
+      await this.openTerminal.request(conn, session, parsed.message.hostId);
       return;
     }
 
@@ -148,7 +153,12 @@ export class ServerCore {
     }
 
     if (parsed.message.type === "set-terminal-mode" && session.role === "participant") {
-      this.setTerminalMode.execute(conn, session, parsed.message.terminalId, parsed.message.mode);
+      await this.setTerminalMode.execute(
+        conn,
+        session,
+        parsed.message.terminalId,
+        parsed.message.mode,
+      );
       return;
     }
 
@@ -168,7 +178,7 @@ export class ServerCore {
     }
 
     if (parsed.message.type === "update-terminal-geometry" && session.role === "participant") {
-      this.updateTerminalGeometry.execute(
+      await this.updateTerminalGeometry.execute(
         session,
         parsed.message.terminalId,
         parsed.message.geometry,
@@ -177,7 +187,7 @@ export class ServerCore {
     }
 
     if (parsed.message.type === "rename-terminal" && session.role === "participant") {
-      this.renameTerminal.execute(session, parsed.message.terminalId, parsed.message.title);
+      await this.renameTerminal.execute(session, parsed.message.terminalId, parsed.message.title);
       return;
     }
 
@@ -203,7 +213,7 @@ export class ServerCore {
     }
 
     if (parsed.message.type === "terminal-opened" && session.role === "host") {
-      this.openTerminal.confirmOpened(
+      await this.openTerminal.confirmOpened(
         conn,
         session,
         parsed.message.terminalId,
@@ -213,7 +223,7 @@ export class ServerCore {
     }
 
     if (parsed.message.type === "host-inventory" && session.role === "host") {
-      this.reconcileHost.inventory(conn, session, parsed.message);
+      await this.reconcileHost.inventory(conn, session, parsed.message);
       return;
     }
 
@@ -228,12 +238,22 @@ export class ServerCore {
     }
 
     if (parsed.message.type === "terminal-closed" && session.role === "host") {
-      this.openTerminal.close(conn, session, parsed.message.terminalId, parsed.message.exitCode);
+      await this.openTerminal.close(
+        conn,
+        session,
+        parsed.message.terminalId,
+        parsed.message.exitCode,
+      );
       return;
     }
 
     if (parsed.message.type === "terminal-meta" && session.role === "host") {
-      this.openTerminal.updateMeta(conn, session, parsed.message.terminalId, parsed.message.meta);
+      await this.openTerminal.updateMeta(
+        conn,
+        session,
+        parsed.message.terminalId,
+        parsed.message.meta,
+      );
       return;
     }
 
@@ -271,7 +291,15 @@ export class ServerCore {
     this.routeTerminalInput.execute(conn, session, decoded.frame);
   }
 
-  handleClose(conn: Connection): void {
-    this.handleDisconnect.execute(conn);
+  async handleClose(conn: Connection): Promise<void> {
+    await this.handleDisconnect.execute(conn);
+  }
+
+  async close(): Promise<void> {
+    await this.pendingDisconnects.close();
+  }
+
+  backgroundTaskCount(): number {
+    return this.pendingDisconnects.activeCount();
   }
 }

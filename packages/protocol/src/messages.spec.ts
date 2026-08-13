@@ -34,22 +34,10 @@ describe("제어 메시지 스키마 — 역할: JSON 제어 프레임의 검증
       lastOutputSeq: 9,
     };
 
-    expect(parseClientMessage(serializeClientMessage(inventory))).toEqual({
-      kind: "ok",
-      message: inventory,
-    });
-    expect(parseClientMessage(serializeClientMessage(opened))).toEqual({
-      kind: "ok",
-      message: opened,
-    });
-    expect(parseServerMessage(serializeServerMessage(ready))).toEqual({
-      kind: "ok",
-      message: ready,
-    });
-    expect(parseClientMessage(serializeClientMessage(replayed))).toEqual({
-      kind: "ok",
-      message: replayed,
-    });
+    expectClientRoundTrip(inventory);
+    expectClientRoundTrip(opened);
+    expectServerRoundTrip(ready);
+    expectClientRoundTrip(replayed);
   });
 
   it("정상 hello 메시지를 파싱해 타입을 부여한다", () => {
@@ -113,7 +101,6 @@ describe("제어 메시지 스키마 — 역할: JSON 제어 프레임의 검증
   });
 
   it("parseServerMessage는 JSON이 아니거나 스키마 불일치인 입력에 bad-message를 돌려준다 (throw하지 않는다)", () => {
-    // 특성화 테스트 — agent(Rust/Go 재작성 포함)가 의존할 오류 경로 계약을 고정
     expect(parseServerMessage("not-json")).toMatchObject({ kind: "bad-message" });
     expect(parseServerMessage(JSON.stringify({ type: "nope" }))).toMatchObject({
       kind: "bad-message",
@@ -122,7 +109,7 @@ describe("제어 메시지 스키마 — 역할: JSON 제어 프레임의 검증
 
   it("클라이언트 메시지를 직렬화해 서버 측에서 파싱할 수 있다 (라운드트립)", () => {
     const msg = { type: "acquire-lease", terminalId: 3 } as const;
-    expect(parseClientMessage(serializeClientMessage(msg))).toEqual({ kind: "ok", message: msg });
+    expectClientRoundTrip(msg);
   });
 
   it("서버 메시지를 클라이언트 측에서 파싱할 수 있다 (라운드트립)", () => {
@@ -131,7 +118,7 @@ describe("제어 메시지 스키마 — 역할: JSON 제어 프레임의 검증
       terminalId: 1,
       result: { kind: "granted", leaseId: 5 },
     } as const;
-    expect(parseServerMessage(serializeServerMessage(msg))).toEqual({ kind: "ok", message: msg });
+    expectServerRoundTrip(msg);
   });
 
   it("welcome snapshot은 Room 표시 이름을 전달하고 구형 v1 payload에는 안전한 기본값을 채운다", () => {
@@ -170,14 +157,8 @@ describe("제어 메시지 스키마 — 역할: JSON 제어 프레임의 검증
       reason: "host-offline",
     } as const;
 
-    expect(parseClientMessage(serializeClientMessage(request))).toEqual({
-      kind: "ok",
-      message: request,
-    });
-    expect(parseServerMessage(serializeServerMessage(rejection))).toEqual({
-      kind: "ok",
-      message: rejection,
-    });
+    expectClientRoundTrip(request);
+    expectServerRoundTrip(rejection);
   });
 
   it("Host 원격 입력 허용 상태를 구형 snapshot 기본값·보고·event·typed 차단 사유로 표현한다", () => {
@@ -200,29 +181,20 @@ describe("제어 메시지 스키마 — 역할: JSON 제어 프레임의 검증
     });
 
     const report = { type: "host-input-state", remoteInputAllowed: false } as const;
-    expect(parseClientMessage(serializeClientMessage(report))).toEqual({
-      kind: "ok",
-      message: report,
-    });
+    expectClientRoundTrip(report);
 
     const event = {
       type: "room-event",
       event: { kind: "host-input-state-changed", hostId: "h1", remoteInputAllowed: false },
     } as const;
-    expect(parseServerMessage(serializeServerMessage(event))).toEqual({
-      kind: "ok",
-      message: event,
-    });
+    expectServerRoundTrip(event);
 
     const denied = {
       type: "lease-invalid",
       terminalId: 3,
       reason: "remote-input-disabled",
     } as const;
-    expect(parseServerMessage(serializeServerMessage(denied))).toEqual({
-      kind: "ok",
-      message: denied,
-    });
+    expectServerRoundTrip(denied);
   });
 
   it("participant의 explicit terminal mode 변경과 broadcast event를 라운드트립한다", () => {
@@ -232,23 +204,14 @@ describe("제어 메시지 스키마 — 역할: JSON 제어 프레임의 검증
       event: { kind: "terminal-mode-changed", terminalId: 3, mode: "shared" },
     } as const;
 
-    expect(parseClientMessage(serializeClientMessage(request))).toEqual({
-      kind: "ok",
-      message: request,
-    });
-    expect(parseServerMessage(serializeServerMessage(changed))).toEqual({
-      kind: "ok",
-      message: changed,
-    });
+    expectClientRoundTrip(request);
+    expectServerRoundTrip(changed);
   });
 
   it("output-gap 복구를 위한 terminal 단위 resync-output-request를 라운드트립한다", () => {
     const request = { type: "resync-output-request", terminalId: 3 } as const;
 
-    expect(parseClientMessage(serializeClientMessage(request))).toEqual({
-      kind: "ok",
-      message: request,
-    });
+    expectClientRoundTrip(request);
   });
 
   it("participant의 현재 terminal focus를 snapshot·request·event로 표현한다", () => {
@@ -287,15 +250,9 @@ describe("제어 메시지 스키마 — 역할: JSON 제어 프레임의 검증
       event: { kind: "participant-focus-changed", clientId: "c1", focusedTerminalId: 3 },
     } as const;
 
-    expect(parseClientMessage(serializeClientMessage(request))).toEqual({
-      kind: "ok",
-      message: request,
-    });
-    expect(parseClientMessage(serializeClientMessage(blur))).toEqual({ kind: "ok", message: blur });
-    expect(parseServerMessage(serializeServerMessage(changed))).toEqual({
-      kind: "ok",
-      message: changed,
-    });
+    expectClientRoundTrip(request);
+    expectClientRoundTrip(blur);
+    expectServerRoundTrip(changed);
   });
 
   it("participant cursor를 일시 좌표 또는 canvas 이탈로 라운드트립한다", () => {
@@ -307,15 +264,9 @@ describe("제어 메시지 스키마 — 역할: JSON 제어 프레임의 검증
       position: { x: -120.5, y: 48.25 },
     } as const;
 
-    expect(parseClientMessage(serializeClientMessage(move))).toEqual({ kind: "ok", message: move });
-    expect(parseClientMessage(serializeClientMessage(leave))).toEqual({
-      kind: "ok",
-      message: leave,
-    });
-    expect(parseServerMessage(serializeServerMessage(shared))).toEqual({
-      kind: "ok",
-      message: shared,
-    });
+    expectClientRoundTrip(move);
+    expectClientRoundTrip(leave);
+    expectServerRoundTrip(shared);
   });
 
   it("participant의 terminal geometry 갱신과 Room broadcast event를 검증해 라운드트립한다", () => {
@@ -401,3 +352,11 @@ describe("제어 메시지 스키마 — 역할: JSON 제어 프레임의 검증
     });
   });
 });
+
+function expectClientRoundTrip(message: ClientMessage): void {
+  expect(parseClientMessage(serializeClientMessage(message))).toEqual({ kind: "ok", message });
+}
+
+function expectServerRoundTrip(message: ServerMessage): void {
+  expect(parseServerMessage(serializeServerMessage(message))).toEqual({ kind: "ok", message });
+}

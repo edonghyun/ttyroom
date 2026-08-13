@@ -1,4 +1,3 @@
-// 실제 인프라(PTY·프로세스) 테스트용 조건 폴링 — sleep 금지 규칙의 대안. e2e에서도 재사용한다.
 export async function waitUntil(
   condition: () => boolean,
   options: { timeoutMs?: number; intervalMs?: number } = {},

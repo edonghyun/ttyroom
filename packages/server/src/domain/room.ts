@@ -1,4 +1,5 @@
 import { createHash, timingSafeEqual } from "node:crypto";
+import { isDeepStrictEqual } from "node:util";
 import type {
   LeaseView,
   RoomSnapshot,
@@ -38,6 +39,22 @@ export interface HostTerminalReconciliation {
   closedTerminalIds: number[];
   agentTerminalIdsToClose: number[];
   recoveredTerminals: TerminalView[];
+}
+
+export interface StagedRoomChange<T> {
+  readonly result: T;
+  readonly record: StoredRoomRecord;
+  commit(): void;
+}
+
+interface RoomState {
+  participants: Map<string, { name: string; focusedTerminalId: number | null }>;
+  hosts: Map<string, { name: string; online: boolean; remoteInputAllowed: boolean }>;
+  terminals: Map<number, TerminalView>;
+  runtimeIdByTerminal: Map<number, string>;
+  leases: Map<number, LeaseView>;
+  nextTerminalId: number;
+  nextLeaseId: number;
 }
 
 export class Room {
@@ -101,6 +118,19 @@ export class Room {
         view: copyOfTerminal(view),
         runtimeId: this.runtimeIdByTerminal.get(view.terminalId) ?? null,
       })),
+    };
+  }
+
+  stageDurableChange<T>(change: (draft: Room) => T): StagedRoomChange<T> {
+    const before = this.captureState();
+    const draft = new Room({ roomId: this.roomId, tokenHash: this.tokenHash, name: this.name });
+    draft.restoreState(this.captureState());
+    const result = change(draft);
+    const after = draft.captureState();
+    return {
+      result,
+      record: draft.record(),
+      commit: () => this.applyChanges(before, after),
     };
   }
 
@@ -427,6 +457,51 @@ export class Room {
       leases: [...this.leases.values()].map((l) => ({ ...l })),
     };
   }
+
+  private captureState(): RoomState {
+    return {
+      participants: new Map(
+        [...this.participants].map(([clientId, participant]) => [clientId, { ...participant }]),
+      ),
+      hosts: new Map([...this.hosts].map(([hostId, host]) => [hostId, { ...host }])),
+      terminals: new Map(
+        [...this.terminals].map(([terminalId, terminal]) => [terminalId, copyOfTerminal(terminal)]),
+      ),
+      runtimeIdByTerminal: new Map(this.runtimeIdByTerminal),
+      leases: new Map([...this.leases].map(([terminalId, lease]) => [terminalId, { ...lease }])),
+      nextTerminalId: this.nextTerminalId,
+      nextLeaseId: this.nextLeaseId,
+    };
+  }
+
+  private restoreState(state: RoomState): void {
+    replaceMap(this.participants, state.participants);
+    replaceMap(this.hosts, state.hosts);
+    replaceMap(this.terminals, state.terminals);
+    replaceMap(this.runtimeIdByTerminal, state.runtimeIdByTerminal);
+    replaceMap(this.leases, state.leases);
+    this.nextTerminalId = state.nextTerminalId;
+    this.nextLeaseId = state.nextLeaseId;
+  }
+
+  private applyChanges(before: RoomState, after: RoomState): void {
+    applyMapChanges(this.participants, before.participants, after.participants, (value) => ({
+      ...value,
+    }));
+    applyMapChanges(this.hosts, before.hosts, after.hosts, (value) => ({ ...value }));
+    applyMapChanges(this.terminals, before.terminals, after.terminals, copyOfTerminal);
+    applyMapChanges(
+      this.runtimeIdByTerminal,
+      before.runtimeIdByTerminal,
+      after.runtimeIdByTerminal,
+      (value) => value,
+    );
+    applyMapChanges(this.leases, before.leases, after.leases, (value) => ({ ...value }));
+    if (before.nextTerminalId !== after.nextTerminalId) {
+      this.nextTerminalId = after.nextTerminalId;
+    }
+    if (before.nextLeaseId !== after.nextLeaseId) this.nextLeaseId = after.nextLeaseId;
+  }
 }
 
 // 구조 복사 — Room 밖으로 나가는 터미널 뷰가 내부 상태로의 역참조를 갖지 않게 차단
@@ -441,4 +516,25 @@ function initialTerminalGeometry(terminalId: number): TerminalGeometry {
 
 function digestRoomToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
+}
+
+function replaceMap<K, V>(target: Map<K, V>, source: Map<K, V>): void {
+  target.clear();
+  for (const [key, value] of source) target.set(key, value);
+}
+
+function applyMapChanges<K, V>(
+  target: Map<K, V>,
+  before: Map<K, V>,
+  after: Map<K, V>,
+  copy: (value: V) => V,
+): void {
+  for (const key of before.keys()) {
+    if (!after.has(key)) target.delete(key);
+  }
+  for (const [key, value] of after) {
+    if (!before.has(key) || !isDeepStrictEqual(before.get(key), value)) {
+      target.set(key, copy(value));
+    }
+  }
 }

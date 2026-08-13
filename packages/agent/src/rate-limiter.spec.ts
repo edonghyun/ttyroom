@@ -34,7 +34,6 @@ describe("RateLimiter — 역할: 터미널별 출력 속도 상한", () => {
     limiter.submit(fifteen, deliver);
     expect(concat(delivered)).toEqual([...fifteen.subarray(0, 10)]);
 
-    // 10B/s에서 5바이트가 쌓이는 데 500ms
     clock.advance(500);
     expect(concat(delivered)).toEqual([...fifteen]);
   });
@@ -63,7 +62,6 @@ describe("RateLimiter — 역할: 터미널별 출력 속도 상한", () => {
     clock.advance(500);
     expect(concat(delivered)).toEqual([...Array.from({ length: 15 }, () => 1)]);
 
-    // 3바이트 축적에 300ms
     clock.advance(300);
     expect(concat(delivered)).toEqual([...Array.from({ length: 15 }, () => 1), 9, 9, 9]);
   });
@@ -78,7 +76,6 @@ describe("RateLimiter — 역할: 터미널별 출력 속도 상한", () => {
     limiter.flush();
     expect(concat(delivered)).toEqual([...fifteen]);
 
-    // 타이머가 남아 있지 않고, 시간이 더 가도 중복 전달이 없다
     expect(clock.pendingTimerCount()).toBe(0);
     clock.advance(10_000);
     expect(concat(delivered)).toEqual([...fifteen]);
@@ -90,7 +87,6 @@ describe("RateLimiter — 역할: 터미널별 출력 속도 상한", () => {
     limiter.submit(bytes(...Array.from({ length: 10 }, () => 7)), deliver);
     expect(concat(delivered)).toHaveLength(10);
 
-    // 10B/s에서 버킷(10B)이 다시 차는 데 1초
     clock.advance(1000);
     limiter.submit(bytes(...Array.from({ length: 10 }, () => 8)), deliver);
 

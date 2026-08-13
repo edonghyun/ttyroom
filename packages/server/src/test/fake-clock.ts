@@ -1,4 +1,4 @@
-import type { CancelTimer, Clock } from "../ports/clock.js";
+import type { CancelTimer, Clock, TimerTask } from "../ports/clock.js";
 
 // 유예 체인(단절→유예→해제 등)은 깊이가 한 자릿수다 — 10_000이면 정상 시나리오와
 // 자기 재등록 폭주를 확실히 가른다. 초과는 테스트 대상 코드의 버그로 보고 진단 throw.
@@ -6,7 +6,7 @@ const MAX_FIRED_PER_ADVANCE = 10_000;
 
 interface PendingTimer {
   at: number;
-  fn: () => void;
+  task: TimerTask;
   cancelled: boolean;
   fired: boolean;
 }
@@ -15,15 +15,15 @@ export class FakeClock implements Clock {
   private readonly timers: PendingTimer[] = [];
   private now = 0;
 
-  schedule(delayMs: number, fn: () => void): CancelTimer {
-    const timer: PendingTimer = { at: this.now + delayMs, fn, cancelled: false, fired: false };
+  schedule(delayMs: number, task: TimerTask): CancelTimer {
+    const timer: PendingTimer = { at: this.now + delayMs, task, cancelled: false, fired: false };
     this.timers.push(timer);
     return () => {
       timer.cancelled = true;
     };
   }
 
-  advance(ms: number): void {
+  async advance(ms: number): Promise<void> {
     const target = this.now + ms;
 
     // 실시간 의미론: due 시각 오름차순으로 발화하고, 콜백 실행 시점의 now는 그 타이머의
@@ -42,7 +42,7 @@ export class FakeClock implements Clock {
 
       this.now = next.at;
       next.fired = true;
-      next.fn();
+      await next.task();
       next = this.nextDueTimer(target);
     }
 

@@ -21,7 +21,6 @@ export class FakeClock implements AgentClock {
   advance(ms: number): void {
     const target = this.now + ms;
 
-    // 발화가 새 타이머를 예약할 수 있으므로 매번 만기 타이머를 다시 찾는다
     for (;;) {
       const due = this.timers
         .filter((t) => !t.cancelled && t.at <= target)

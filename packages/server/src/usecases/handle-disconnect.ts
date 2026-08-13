@@ -6,23 +6,36 @@ import type { ConnectionRegistry } from "./connection-registry.js";
 
 type SessionRole = "participant" | "host";
 
+export interface DisconnectTask {
+  roomId: string;
+  role: SessionRole;
+  clientId: string;
+}
+
 export class PendingDisconnects {
   private readonly timers = new Map<string, { cancel: CancelTimer; roomId: string }>();
+  private readonly active = new Set<Promise<void>>();
+  private closed = false;
 
-  constructor(private readonly clock: Clock) {}
+  constructor(
+    private readonly clock: Clock,
+    private readonly onError: (error: unknown, task: DisconnectTask) => void = () => undefined,
+  ) {}
 
   schedule(
     roomId: string,
     role: SessionRole,
     clientId: string,
     delayMs: number,
-    onExpire: () => void,
+    onExpire: () => void | Promise<void>,
   ): void {
+    if (this.closed) return;
     const key = this.key(roomId, role, clientId);
     this.cancel(roomId, role, clientId);
+    const task = { roomId, role, clientId };
     const cancel = this.clock.schedule(delayMs, () => {
       this.timers.delete(key);
-      onExpire();
+      return this.run(task, onExpire);
     });
     this.timers.set(key, { cancel, roomId });
   }
@@ -35,6 +48,33 @@ export class PendingDisconnects {
 
   hasForRoom(roomId: string): boolean {
     return [...this.timers.values()].some((timer) => timer.roomId === roomId);
+  }
+
+  async close(): Promise<void> {
+    this.closed = true;
+    for (const timer of this.timers.values()) timer.cancel();
+    this.timers.clear();
+    await Promise.all(this.active);
+  }
+
+  activeCount(): number {
+    return this.active.size;
+  }
+
+  private run(task: DisconnectTask, onExpire: () => void | Promise<void>): Promise<void> {
+    const active = Promise.resolve()
+      .then(onExpire)
+      .catch((error: unknown) => {
+        try {
+          this.onError(error, task);
+        } catch {}
+      });
+    this.active.add(active);
+    void active.then(
+      () => this.active.delete(active),
+      () => this.active.delete(active),
+    );
+    return active;
   }
 
   private key(roomId: string, role: SessionRole, clientId: string): string {
@@ -52,7 +92,7 @@ export class HandleDisconnect {
     private readonly options: { policy: Policy },
   ) {}
 
-  execute(connection: Connection): void {
+  async execute(connection: Connection): Promise<void> {
     const session = this.deps.connections.unregister(connection.connectionId);
     if (!session) return;
 
@@ -62,7 +102,7 @@ export class HandleDisconnect {
         "participant",
         session.clientId,
         this.options.policy.participantGraceMs,
-        () => {
+        async () => {
           const room = this.deps.rooms.get(session.roomId);
           if (!room) return;
           for (const lease of room.removeParticipant(session.clientId)) {
@@ -76,7 +116,7 @@ export class HandleDisconnect {
             event: { kind: "participant-left", clientId: session.clientId },
           });
           if (room.isEmpty() && !this.deps.pending.hasForRoom(room.roomId)) {
-            this.deps.rooms.remove(room.roomId);
+            await this.deps.rooms.remove(room.roomId);
           }
         },
       );
@@ -92,25 +132,31 @@ export class HandleDisconnect {
       type: "room-event",
       event: { kind: "host-offline", hostId },
     });
-    this.deps.pending.schedule(room.roomId, "host", hostId, this.options.policy.hostGraceMs, () => {
-      const current = this.deps.rooms.get(session.roomId);
-      if (!current) return;
-      const terminalIds = current.removeHost(hostId);
-      this.deps.connections.broadcast(current.roomId, {
-        type: "room-event",
-        event: { kind: "host-removed", hostId },
-      });
-      for (const terminalId of terminalIds) {
+    this.deps.pending.schedule(
+      room.roomId,
+      "host",
+      hostId,
+      this.options.policy.hostGraceMs,
+      async () => {
+        const current = this.deps.rooms.get(session.roomId);
+        if (!current) return;
+        const terminalIds = await this.deps.rooms.change(current, (draft) =>
+          draft.removeHost(hostId),
+        );
         this.deps.connections.broadcast(current.roomId, {
           type: "room-event",
-          event: { kind: "terminal-closed", terminalId, exitCode: null },
+          event: { kind: "host-removed", hostId },
         });
-      }
-      if (current.isEmpty() && !this.deps.pending.hasForRoom(current.roomId)) {
-        this.deps.rooms.remove(current.roomId);
-      } else {
-        this.deps.rooms.save(current);
-      }
-    });
+        for (const terminalId of terminalIds) {
+          this.deps.connections.broadcast(current.roomId, {
+            type: "room-event",
+            event: { kind: "terminal-closed", terminalId, exitCode: null },
+          });
+        }
+        if (current.isEmpty() && !this.deps.pending.hasForRoom(current.roomId)) {
+          await this.deps.rooms.remove(current.roomId);
+        }
+      },
+    );
   }
 }

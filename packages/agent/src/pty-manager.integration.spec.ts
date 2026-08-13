@@ -115,7 +115,6 @@ describe("PtyManager — 역할: 실제 셸의 생성과 입출력", () => {
 
     manager.close(1);
 
-    // closing 동안 외부 관점은 이미 닫힘 — 조작은 무시되고 조회는 null
     expect(manager.pid(1)).toBeNull();
     expect(manager.fgProcess(1)).toBeNull();
     expect(() => {
@@ -126,7 +125,6 @@ describe("PtyManager — 역할: 실제 셸의 생성과 입출력", () => {
     await waitUntil(() => !isProcessAlive(pid));
     await waitUntil(() => exits.length > 0);
 
-    // 시그널 종료는 exitCode null — protocol의 int|null에서 null은 "정상 종료 코드 없음"
     expect(exits).toEqual([{ terminalId: 1, exitCode: null }]);
   });
 
@@ -146,7 +144,6 @@ describe("PtyManager — 역할: 실제 셸의 생성과 입출력", () => {
   });
 
   it("낮은 rate limit에서 종료 직전 출력이 onExit 보고 시점에 이미 모두 도착해 있다", async () => {
-    // 잔여가 onExit 뒤에 배달되면 소비자(onExit→terminal-closed 배선)가 꼬리 출력을 버리게 된다
     const chunks: Uint8Array[] = [];
     const decoder = new TextDecoder();
     const textAtExit: string[] = [];
@@ -201,9 +198,9 @@ describe("PtyManager — 역할: 실제 셸의 생성과 입출력", () => {
 
     manager.open(1, 80, 24);
     const command = encode("echo 안녕-마커\n");
-    // "echo " 5바이트 + '안' 3바이트 중 2바이트에서 절단 — 멀티바이트 문자가 두 프레임에 걸친다
-    manager.write(1, command.subarray(0, 7));
-    manager.write(1, command.subarray(7));
+    const splitInsideFirstKoreanCharacter = 7;
+    manager.write(1, command.subarray(0, splitInsideFirstKoreanCharacter));
+    manager.write(1, command.subarray(splitInsideFirstKoreanCharacter));
 
     await waitUntil(() => text().includes("안녕-마커"));
   });
@@ -224,11 +221,9 @@ describe("PtyManager — 역할: 실제 셸의 생성과 입출력", () => {
   });
 
   it("낮은 rate limit에서도 대량 출력이 드롭 없이 전부 도착한다", async () => {
-    // 2KiB/s로 조여도 3KB 출력이 결국 모두 도착 — 리미터가 경로에 있고 드롭이 없음을 함께 핀
     const { manager, text } = makeManager({ rateLimitBytesPerSec: 2048 });
 
     manager.open(1, 80, 24);
-    // 마커를 따옴표로 쪼개 명령줄 에코가 조기 매치되지 않게 한다 — 출력에만 END-MARK가 온전히 나타난다
     manager.write(1, encode("head -c 3000 /dev/zero | tr '\\0' a; echo END-\"MARK\"\n"));
 
     await waitUntil(() => text().includes("END-MARK"));

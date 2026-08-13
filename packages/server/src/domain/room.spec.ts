@@ -1,7 +1,23 @@
 import { describe, expect, it } from "vitest";
-import { Room } from "./room.js";
+import { Room, type AcquireDecision } from "./room.js";
 
 const makeRoom = () => new Room({ roomId: "r1", token: "tok" });
+
+function givenConnectedHost(hostId = "h1", name = "동현-Mac"): Room {
+  const room = makeRoom();
+  room.connectHost(hostId, name);
+  return room;
+}
+
+function givenOpenTerminal(): { room: Room; terminalId: number } {
+  const room = givenConnectedHost("h1", "h");
+  return { room, terminalId: room.openTerminal("h1").terminalId };
+}
+
+function grantedLeaseId(decision: AcquireDecision): number {
+  if (decision.kind !== "granted") throw new Error("임대가 granted되지 않았다");
+  return decision.lease.leaseId;
+}
 
 describe("Room — 역할: Room 라이브 상태와 불변식의 소유자", () => {
   it("내구 레코드로 복원하면 Room·터미널은 유지하고 presence·lease는 초기화한다", () => {
@@ -138,8 +154,7 @@ describe("Room — 역할: Room 라이브 상태와 불변식의 소유자", () 
   });
 
   it("Host 연결 후 openTerminal은 증가하는 terminalId로 exclusive 터미널을 만든다", () => {
-    const room = makeRoom();
-    room.connectHost("h1", "동현-Mac");
+    const room = givenConnectedHost();
     const t1 = room.openTerminal("h1");
     const t2 = room.openTerminal("h1");
     expect([t1.terminalId, t2.terminalId]).toEqual([1, 2]);
@@ -147,8 +162,7 @@ describe("Room — 역할: Room 라이브 상태와 불변식의 소유자", () 
   });
 
   it("새 터미널은 Room이 결정한 겹치지 않는 공유 geometry로 열린다", () => {
-    const room = makeRoom();
-    room.connectHost("h1", "동현-Mac");
+    const room = givenConnectedHost();
 
     const first = room.openTerminal("h1");
     const second = room.openTerminal("h1");
@@ -162,8 +176,7 @@ describe("Room — 역할: Room 라이브 상태와 불변식의 소유자", () 
   });
 
   it("Host를 offline으로 표시해도 터미널은 스냅샷에 남는다", () => {
-    const room = makeRoom();
-    room.connectHost("h1", "동현-Mac");
+    const room = givenConnectedHost();
     room.openTerminal("h1");
     room.markHostOffline("h1");
     expect(room.snapshot().hosts).toEqual([
@@ -173,8 +186,7 @@ describe("Room — 역할: Room 라이브 상태와 불변식의 소유자", () 
   });
 
   it("Host 원격 입력은 처음 허용되고 kill switch 보고로 snapshot 상태가 바뀐다", () => {
-    const room = makeRoom();
-    room.connectHost("h1", "동현-Mac");
+    const room = givenConnectedHost();
     expect(room.snapshot().hosts).toMatchObject([{ hostId: "h1", remoteInputAllowed: true }]);
 
     room.setHostRemoteInputAllowed("h1", false);
@@ -183,8 +195,7 @@ describe("Room — 역할: Room 라이브 상태와 불변식의 소유자", () 
   });
 
   it("removeHost는 host와 그 터미널을 제거하고 terminalId 목록을 돌려준다", () => {
-    const room = makeRoom();
-    room.connectHost("h1", "동현-Mac");
+    const room = givenConnectedHost();
     const t = room.openTerminal("h1");
     expect(room.removeHost("h1")).toEqual([t.terminalId]);
     expect(room.snapshot().hosts).toEqual([]);
@@ -202,11 +213,11 @@ describe("Room — 역할: Room 라이브 상태와 불변식의 소유자", () 
   });
 
   it("markTerminalExited는 상태만 바꾸고 터미널을 제거하지 않는다", () => {
-    const room = makeRoom();
-    room.connectHost("h1", "h");
-    const t = room.openTerminal("h1");
-    room.markTerminalExited(t.terminalId, 0);
-    expect(room.terminal(t.terminalId)).toMatchObject({ status: "exited", exitCode: 0 });
+    const { room, terminalId } = givenOpenTerminal();
+
+    room.markTerminalExited(terminalId, 0);
+
+    expect(room.terminal(terminalId)).toMatchObject({ status: "exited", exitCode: 0 });
   });
 
   it("참여자와 온라인 host가 모두 없으면 isEmpty가 참이다 (Quick Room 소멸 조건)", () => {
@@ -255,11 +266,11 @@ describe("Room — 역할: Room 라이브 상태와 불변식의 소유자", () 
   });
 
   it("setTerminalMode는 터미널 모드를 shared로 전환한다", () => {
-    const room = makeRoom();
-    room.connectHost("h1", "h");
-    const t = room.openTerminal("h1");
-    room.setTerminalMode(t.terminalId, "shared");
-    expect(room.terminal(t.terminalId)).toMatchObject({ mode: "shared" });
+    const { room, terminalId } = givenOpenTerminal();
+
+    room.setTerminalMode(terminalId, "shared");
+
+    expect(room.terminal(terminalId)).toMatchObject({ mode: "shared" });
   });
 
   it("없는 터미널에 setTerminalMode하면 throw한다 (프로그래머 오류)", () => {
@@ -267,11 +278,15 @@ describe("Room — 역할: Room 라이브 상태와 불변식의 소유자", () 
   });
 
   it("updateTerminalMeta는 터미널의 meta를 갱신해 스냅샷에 반영한다", () => {
-    const room = makeRoom();
-    room.connectHost("h1", "h");
-    const t = room.openTerminal("h1");
-    room.updateTerminalMeta(t.terminalId, { cwd: "/repo", gitBranch: "main", fgProcess: "vim" });
-    expect(room.terminal(t.terminalId)?.meta).toEqual({
+    const { room, terminalId } = givenOpenTerminal();
+
+    room.updateTerminalMeta(terminalId, {
+      cwd: "/repo",
+      gitBranch: "main",
+      fgProcess: "vim",
+    });
+
+    expect(room.terminal(terminalId)?.meta).toEqual({
       cwd: "/repo",
       gitBranch: "main",
       fgProcess: "vim",
@@ -279,32 +294,27 @@ describe("Room — 역할: Room 라이브 상태와 불변식의 소유자", () 
   });
 
   it("updateTerminalGeometry는 마지막 갱신을 snapshot의 공유 배치로 보존한다", () => {
-    const room = makeRoom();
-    room.connectHost("h1", "h");
-    const terminal = room.openTerminal("h1");
+    const { room, terminalId } = givenOpenTerminal();
     const aliceGeometry = { x: 140, y: 90, width: 700, height: 460 };
     const bobGeometry = { x: 260, y: 120, width: 760, height: 520 };
 
-    room.updateTerminalGeometry(terminal.terminalId, aliceGeometry);
-    room.updateTerminalGeometry(terminal.terminalId, bobGeometry);
+    room.updateTerminalGeometry(terminalId, aliceGeometry);
+    room.updateTerminalGeometry(terminalId, bobGeometry);
 
     expect(room.snapshot().terminals[0]?.geometry).toEqual(bobGeometry);
   });
 
   it("renameTerminal은 마지막 이름을 snapshot에 보존하고 같은 이름은 unchanged로 판정한다", () => {
-    const room = makeRoom();
-    room.connectHost("h1", "h");
-    const terminal = room.openTerminal("h1");
+    const { room, terminalId } = givenOpenTerminal();
 
-    expect(room.renameTerminal(terminal.terminalId, "API logs")).toBe(true);
-    expect(room.renameTerminal(terminal.terminalId, "API logs")).toBe(false);
+    expect(room.renameTerminal(terminalId, "API logs")).toBe(true);
+    expect(room.renameTerminal(terminalId, "API logs")).toBe(false);
 
     expect(room.snapshot().terminals[0]?.title).toBe("API logs");
   });
 
   it("openTerminal이 돌려준 뷰를 변경해도 Room 내부 상태는 오염되지 않는다 (구조 복사 불변식)", () => {
-    const room = makeRoom();
-    room.connectHost("h1", "h");
+    const room = givenConnectedHost("h1", "h");
 
     const created = room.openTerminal("h1");
     created.status = "exited";
@@ -317,32 +327,27 @@ describe("Room — 역할: Room 라이브 상태와 불변식의 소유자", () 
   });
 
   it("terminal()이 돌려준 뷰를 변경해도 Room 내부 상태는 오염되지 않는다 (구조 복사 불변식)", () => {
-    const room = makeRoom();
-    room.connectHost("h1", "h");
-    const t = room.openTerminal("h1");
-
-    // 직전 openTerminal이 만든 id — 존재가 보장된다
-    const view = room.terminal(t.terminalId)!;
+    const { room, terminalId } = givenOpenTerminal();
+    const view = room.terminal(terminalId);
+    if (!view) throw new Error("열린 터미널을 조회할 수 없다");
     view.mode = "shared";
     view.meta.cwd = "/oops";
 
-    expect(room.terminal(t.terminalId)).toMatchObject({
+    expect(room.terminal(terminalId)).toMatchObject({
       mode: "exclusive",
       meta: { cwd: null },
     });
   });
 
   it("스냅샷을 변경해도 Room 내부 상태는 오염되지 않는다 (구조 복사 불변식)", () => {
-    const room = makeRoom();
-    room.connectHost("h1", "h");
-    const t = room.openTerminal("h1");
-
-    // 직전 openTerminal로 터미널 1개가 보장된다 — [0]은 항상 존재
+    const { room, terminalId } = givenOpenTerminal();
     const snap = room.snapshot();
-    snap.terminals[0]!.status = "exited";
-    snap.terminals[0]!.meta.cwd = "/oops";
+    const terminal = snap.terminals[0];
+    if (!terminal) throw new Error("스냅샷에 열린 터미널이 없다");
+    terminal.status = "exited";
+    terminal.meta.cwd = "/oops";
 
-    expect(room.terminal(t.terminalId)).toMatchObject({
+    expect(room.terminal(terminalId)).toMatchObject({
       status: "open",
       meta: { cwd: null },
     });
@@ -442,7 +447,6 @@ describe("Room 입력권 임대 — 역할: 터미널 입력 권한의 단일 �
     const { room, t } = withTerminal();
     room.acquireLease("alice", t.terminalId);
 
-    // 직전 acquireLease가 granted한 터미널 — 임대 존재가 보장된다
     room.leaseOf(t.terminalId)!.holderClientId = "mallory";
 
     expect(room.leaseOf(t.terminalId)).toMatchObject({ holderClientId: "alice" });
@@ -481,7 +485,6 @@ describe("Room 입력권 임대 — 역할: 터미널 입력 권한의 단일 �
 
   it("참여자가 아닌 clientId의 임대 요청은 throw한다 (프로그래머 오류 — hello/등록은 유즈케이스가 보장)", () => {
     const { room, t } = withTerminal();
-    // 유예 중 단절 참여자는 removeParticipant 전이라 여전히 참여자다 — 유예 복원(T2.9)과 충돌하지 않는다
     expect(() => room.acquireLease("stranger", t.terminalId)).toThrow();
   });
 
@@ -534,10 +537,9 @@ describe("Room 입력권 임대 — 역할: 터미널 입력 권한의 단일 �
 
   it("isInputAllowed: exclusive는 유효 leaseId 일치일 때만 참이다", () => {
     const { room, t } = withTerminal();
-    const d = room.acquireLease("alice", t.terminalId);
-    const leaseId = d.kind === "granted" ? d.lease.leaseId : -1;
+    const leaseId = grantedLeaseId(room.acquireLease("alice", t.terminalId));
     expect(room.isInputAllowed("alice", t.terminalId, leaseId)).toBe(true);
-    expect(room.isInputAllowed("alice", t.terminalId, leaseId + 99)).toBe(false); // 오래된 leaseId 우회 차단
+    expect(room.isInputAllowed("alice", t.terminalId, leaseId + 99)).toBe(false);
     expect(room.isInputAllowed("bob", t.terminalId, leaseId)).toBe(false);
   });
 
@@ -550,22 +552,18 @@ describe("Room 입력권 임대 — 역할: 터미널 입력 권한의 단일 �
 
   it("isInputAllowed: exited 터미널은 유효 임대 소유자라도 거짓이다", () => {
     const { room, t } = withTerminal();
-    const d = room.acquireLease("alice", t.terminalId);
-    const leaseId = d.kind === "granted" ? d.lease.leaseId : -1;
+    const leaseId = grantedLeaseId(room.acquireLease("alice", t.terminalId));
     room.markTerminalExited(t.terminalId, 0);
     expect(room.isInputAllowed("alice", t.terminalId, leaseId)).toBe(false);
   });
 
   it("release 후 재획득은 새 leaseId를 발급하고 이전 leaseId는 무효다 (leaseId 비재사용)", () => {
     const { room, t } = withTerminal();
-    const first = room.acquireLease("alice", t.terminalId);
-    const firstId = first.kind === "granted" ? first.lease.leaseId : -1;
+    const firstId = grantedLeaseId(room.acquireLease("alice", t.terminalId));
 
     room.releaseLease("alice", t.terminalId);
-    const second = room.acquireLease("alice", t.terminalId);
-    const secondId = second.kind === "granted" ? second.lease.leaseId : -1;
+    const secondId = grantedLeaseId(room.acquireLease("alice", t.terminalId));
 
-    // 오래된 leaseId 우회 차단의 전제 — leaseId가 재사용되면 lease-invalid 검증이 뚫린다
     expect(secondId).toBeGreaterThan(firstId);
     expect(room.isInputAllowed("alice", t.terminalId, firstId)).toBe(false);
     expect(room.isInputAllowed("alice", t.terminalId, secondId)).toBe(true);
@@ -582,20 +580,17 @@ describe("Room 입력권 임대 — 역할: 터미널 입력 권한의 단일 �
 
     room.setTerminalMode(t.terminalId, "shared");
 
-    // shared 동안 임대는 잠들 뿐 죽지 않는다 — 입력권은 isInputAllowed의 shared 분기가 결정
     expect(room.leaseOf(t.terminalId)).toMatchObject({ holderClientId: "alice" });
     expect(room.snapshot().leases).toHaveLength(1);
   });
 
   it("shared에서 exclusive로 복귀하면 보존된 임대가 그대로 유효하다 (계약 핀)", () => {
     const { room, t } = withTerminal();
-    const d = room.acquireLease("alice", t.terminalId);
-    const leaseId = d.kind === "granted" ? d.lease.leaseId : -1;
+    const leaseId = grantedLeaseId(room.acquireLease("alice", t.terminalId));
 
     room.setTerminalMode(t.terminalId, "shared");
     room.setTerminalMode(t.terminalId, "exclusive");
 
-    // 해제된 적 없는 임대는 여전히 "현재" 임대다 — 우회가 아니라 연속
     expect(room.isInputAllowed("alice", t.terminalId, leaseId)).toBe(true);
     expect(room.acquireLease("bob", t.terminalId)).toEqual({
       kind: "denied",
@@ -609,7 +604,6 @@ describe("Room 입력권 임대 — 역할: 터미널 입력 권한의 단일 �
 
     room.markTerminalExited(t.terminalId, 0);
 
-    // 임대 수명은 소유자 이탈·터미널 제거 경로가 관리 — 상태 변경은 관여하지 않는다
     expect(room.leaseOf(t.terminalId)).toMatchObject({ holderClientId: "alice" });
     expect(room.releaseLease("alice", t.terminalId)).toMatchObject({ kind: "released" });
     expect(room.snapshot().leases).toEqual([]);

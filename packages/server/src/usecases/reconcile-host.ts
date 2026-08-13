@@ -15,7 +15,11 @@ export class ReconcileHost {
     },
   ) {}
 
-  inventory(connection: Connection, session: Session, inventory: HostInventory): void {
+  async inventory(
+    connection: Connection,
+    session: Session,
+    inventory: HostInventory,
+  ): Promise<void> {
     const room = this.deps.rooms.get(session.roomId);
     const hostId = session.hostId;
     if (!room || !hostId) {
@@ -23,8 +27,9 @@ export class ReconcileHost {
       return;
     }
 
-    const result = room.reconcileHostTerminals(hostId, inventory.terminals);
-    this.deps.rooms.save(room);
+    const result = await this.deps.rooms.change(room, (draft) =>
+      draft.reconcileHostTerminals(hostId, inventory.terminals),
+    );
     const host = room.snapshot().hosts.find((candidate) => candidate.hostId === hostId);
     if (!host) throw new Error(`reconciliation을 마친 host가 없다: ${hostId}`);
 

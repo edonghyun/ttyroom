@@ -3,6 +3,7 @@ export interface Policy {
   hostGraceMs: number;
   scrollbackBytesPerTerminal: number;
   sendBufferDropThresholdBytes: number;
+  maxQueuedDataBytesPerConnection: number;
   outputRateLimitBytesPerSec: number;
 }
 
@@ -13,5 +14,6 @@ export const DEFAULT_POLICY: Policy = {
   hostGraceMs: 30000,
   scrollbackBytesPerTerminal: 1048576,
   sendBufferDropThresholdBytes: 1048576,
+  maxQueuedDataBytesPerConnection: 1048576,
   outputRateLimitBytesPerSec: 4194304,
 };

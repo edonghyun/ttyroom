@@ -1,32 +1,49 @@
-import type { ServerMessage } from "@ttyroom/protocol";
 import { describe, expect, it } from "vitest";
 import { expectMessageToMatch } from "../test/matchers.js";
+import { RecordingRoomRepository } from "../test/recording-room-repository.js";
 import { RoomTestContext } from "../test/room-test-context.js";
 
 describe("openTerminal — 역할: 터미널 생성 요청의 중개", () => {
-  it("open-terminal-request는 host에게 open-terminal 명령을 전달한다", () => {
+  it("open-terminal-request는 host에게 open-terminal 명령을 전달한다", async () => {
     const ctx = new RoomTestContext();
-    const room = ctx.createRoom();
-    const host = ctx.connectHost(room, "h");
-    const alice = ctx.connectParticipant(room, "alice");
+    const room = await ctx.createRoom();
+    const host = await ctx.connectHost(room, "h");
+    const alice = await ctx.connectParticipant(room, "alice");
 
-    alice.send({ type: "open-terminal-request", hostId: host.hostId });
+    await alice.send({ type: "open-terminal-request", hostId: host.hostId });
 
-    expect(lastMessageOfType(host.conn.messages, "open-terminal")).toMatchObject({
+    expect(host.conn.lastMessageOfType("open-terminal")).toMatchObject({
       cols: 80,
       rows: 24,
     });
   });
 
-  it("host가 terminal-opened를 확인하면 참여자 전원에게 terminal-opened 이벤트가 브로드캐스트된다", () => {
-    const ctx = new RoomTestContext();
-    const room = ctx.createRoom();
-    const host = ctx.connectHost(room, "h");
-    const alice = ctx.connectParticipant(room, "alice");
-    alice.send({ type: "open-terminal-request", hostId: host.hostId });
-    const terminalId = lastMessageOfType(host.conn.messages, "open-terminal").terminalId;
+  it("저장 실패 시 terminal 생성을 되돌리고 host에게 명령하지 않는다", async () => {
+    const repository = new RecordingRoomRepository();
+    const ctx = new RoomTestContext({ repository });
+    const room = await ctx.createRoom();
+    const host = await ctx.connectHost(room, "h");
+    const alice = await ctx.connectParticipant(room, "alice");
+    host.conn.clear();
+    repository.failSavesWith(new Error("save failed"));
 
-    host.send({ type: "terminal-opened", terminalId });
+    await expect(
+      alice.send({ type: "open-terminal-request", hostId: host.hostId }),
+    ).rejects.toThrow("save failed");
+
+    expect(host.conn.messagesOfType("open-terminal")).toEqual([]);
+    expect(ctx.snapshot(room)?.terminals).toEqual([]);
+  });
+
+  it("host가 terminal-opened를 확인하면 참여자 전원에게 terminal-opened 이벤트가 브로드캐스트된다", async () => {
+    const ctx = new RoomTestContext();
+    const room = await ctx.createRoom();
+    const host = await ctx.connectHost(room, "h");
+    const alice = await ctx.connectParticipant(room, "alice");
+    await alice.send({ type: "open-terminal-request", hostId: host.hostId });
+    const terminalId = host.conn.lastMessageOfType("open-terminal").terminalId;
+
+    await host.send({ type: "terminal-opened", terminalId });
 
     expectMessageToMatch(alice.conn.messages, "room-event", {
       event: {
@@ -36,113 +53,104 @@ describe("openTerminal — 역할: 터미널 생성 요청의 중개", () => {
     });
   });
 
-  it("같은 terminal-opened 확인이 재도착해도 열린 이벤트를 중복 브로드캐스트하지 않는다", () => {
+  it("같은 terminal-opened 확인이 재도착해도 열린 이벤트를 중복 브로드캐스트하지 않는다", async () => {
     const ctx = new RoomTestContext();
-    const room = ctx.createRoom();
-    const host = ctx.connectHost(room, "h");
-    const alice = ctx.connectParticipant(room, "alice");
-    alice.send({ type: "open-terminal-request", hostId: host.hostId });
-    const terminalId = lastMessageOfType(host.conn.messages, "open-terminal").terminalId;
+    const room = await ctx.createRoom();
+    const host = await ctx.connectHost(room, "h");
+    const alice = await ctx.connectParticipant(room, "alice");
+    await alice.send({ type: "open-terminal-request", hostId: host.hostId });
+    const terminalId = host.conn.lastMessageOfType("open-terminal").terminalId;
 
-    host.send({ type: "terminal-opened", terminalId });
-    host.send({ type: "terminal-opened", terminalId });
+    await host.send({ type: "terminal-opened", terminalId });
+    await host.send({ type: "terminal-opened", terminalId });
 
-    const openedEvents = alice.conn.messages.filter(
-      (message) => message.type === "room-event" && message.event.kind === "terminal-opened",
-    );
-    expect(openedEvents).toHaveLength(1);
+    expect(alice.conn.roomEventsOfKind("terminal-opened")).toHaveLength(1);
   });
 
-  it("오프라인 host에 대한 요청은 요청자에게만 error(bad-message)를 보낸다", () => {
+  it("오프라인 host에 대한 요청은 요청자에게만 error(bad-message)를 보낸다", async () => {
     const ctx = new RoomTestContext();
-    const room = ctx.createRoom();
-    const host = ctx.connectHost(room, "h");
-    const alice = ctx.connectParticipant(room, "alice");
-    const bob = ctx.connectParticipant(room, "bob");
-    host.disconnect();
+    const room = await ctx.createRoom();
+    const host = await ctx.connectHost(room, "h");
+    const alice = await ctx.connectParticipant(room, "alice");
+    const bob = await ctx.connectParticipant(room, "bob");
+    await host.disconnect();
 
-    alice.send({ type: "open-terminal-request", hostId: host.hostId });
+    await alice.send({ type: "open-terminal-request", hostId: host.hostId });
 
     expectMessageToMatch(alice.conn.messages, "error", { code: "bad-message" });
-    expect(bob.conn.messages.some((message) => message.type === "error")).toBe(false);
+    expect(bob.conn.messagesOfType("error")).toEqual([]);
   });
 
-  it("host의 terminal-closed는 종료 상태를 반영하고 참여자에게 브로드캐스트한다", () => {
+  it("host의 terminal-closed는 종료 상태를 반영하고 참여자에게 브로드캐스트한다", async () => {
     const ctx = new RoomTestContext();
-    const room = ctx.createRoom();
-    const host = ctx.connectHost(room, "h");
-    const alice = ctx.connectParticipant(room, "alice");
-    alice.send({ type: "open-terminal-request", hostId: host.hostId });
-    const terminalId = lastMessageOfType(host.conn.messages, "open-terminal").terminalId;
+    const room = await ctx.createRoom();
+    const host = await ctx.connectHost(room, "h");
+    const alice = await ctx.connectParticipant(room, "alice");
+    await alice.send({ type: "open-terminal-request", hostId: host.hostId });
+    const terminalId = host.conn.lastMessageOfType("open-terminal").terminalId;
 
-    host.send({ type: "terminal-closed", terminalId, exitCode: 7 });
+    await host.send({ type: "terminal-closed", terminalId, exitCode: 7 });
 
     expectMessageToMatch(alice.conn.messages, "room-event", {
       event: { kind: "terminal-closed", terminalId, exitCode: 7 },
     });
-    const observer = ctx.connectParticipant(room, "observer");
+    const observer = await ctx.connectParticipant(room, "observer");
     expectMessageToMatch(observer.conn.messages, "welcome", {
       snapshot: { terminals: [{ terminalId, status: "exited", exitCode: 7 }] },
     });
   });
 
-  it("participant close 요청은 owning host로 전달되고 종료 이벤트는 host 확인 뒤에만 발생한다", () => {
+  it("participant close 요청은 owning host로 전달되고 종료 이벤트는 host 확인 뒤에만 발생한다", async () => {
     const ctx = new RoomTestContext();
-    const room = ctx.createRoom();
-    const host = ctx.connectHost(room, "h");
-    const alice = ctx.connectParticipant(room, "alice");
-    alice.send({ type: "open-terminal-request", hostId: host.hostId });
-    const terminalId = lastMessageOfType(host.conn.messages, "open-terminal").terminalId;
-    host.send({ type: "terminal-opened", terminalId });
-    const eventsBeforeClose = alice.conn.messages.length;
+    const room = await ctx.createRoom();
+    const host = await ctx.connectHost(room, "h");
+    const alice = await ctx.connectParticipant(room, "alice");
+    await alice.send({ type: "open-terminal-request", hostId: host.hostId });
+    const terminalId = host.conn.lastMessageOfType("open-terminal").terminalId;
+    await host.send({ type: "terminal-opened", terminalId });
+    alice.conn.clear();
 
-    alice.send({ type: "close-terminal-request", terminalId });
+    await alice.send({ type: "close-terminal-request", terminalId });
 
-    expect(lastMessageOfType(host.conn.messages, "close-terminal")).toEqual({
+    expect(host.conn.lastMessageOfType("close-terminal")).toEqual({
       type: "close-terminal",
       terminalId,
     });
-    expect(
-      alice.conn.messages
-        .slice(eventsBeforeClose)
-        .some(
-          (message) => message.type === "room-event" && message.event.kind === "terminal-closed",
-        ),
-    ).toBe(false);
+    expect(alice.conn.roomEventsOfKind("terminal-closed")).toEqual([]);
 
-    host.send({ type: "terminal-closed", terminalId, exitCode: 0 });
-    expectMessageToMatch(alice.conn.messages.slice(eventsBeforeClose), "room-event", {
+    await host.send({ type: "terminal-closed", terminalId, exitCode: 0 });
+    expectMessageToMatch(alice.conn.messages, "room-event", {
       event: { kind: "terminal-closed", terminalId, exitCode: 0 },
     });
   });
 
-  it("participant close 요청은 terminal 상태와 owning host 연결을 typed 사유로 검증한다", () => {
+  it("participant close 요청은 terminal 상태와 owning host 연결을 typed 사유로 검증한다", async () => {
     const ctx = new RoomTestContext();
-    const room = ctx.createRoom();
-    const host = ctx.connectHost(room, "h");
-    const alice = ctx.connectParticipant(room, "alice");
+    const room = await ctx.createRoom();
+    const host = await ctx.connectHost(room, "h");
+    const alice = await ctx.connectParticipant(room, "alice");
 
-    alice.send({ type: "close-terminal-request", terminalId: 999 });
+    await alice.send({ type: "close-terminal-request", terminalId: 999 });
     expectMessageToMatch(alice.conn.messages, "terminal-request-rejected", {
       request: "close",
       terminalId: 999,
       reason: "terminal-not-found",
     });
 
-    alice.send({ type: "open-terminal-request", hostId: host.hostId });
-    const terminalId = lastMessageOfType(host.conn.messages, "open-terminal").terminalId;
-    host.send({ type: "terminal-closed", terminalId, exitCode: 0 });
-    alice.send({ type: "close-terminal-request", terminalId });
+    await alice.send({ type: "open-terminal-request", hostId: host.hostId });
+    const terminalId = host.conn.lastMessageOfType("open-terminal").terminalId;
+    await host.send({ type: "terminal-closed", terminalId, exitCode: 0 });
+    await alice.send({ type: "close-terminal-request", terminalId });
     expectMessageToMatch(alice.conn.messages, "terminal-request-rejected", {
       request: "close",
       terminalId,
       reason: "terminal-not-open",
     });
 
-    alice.send({ type: "open-terminal-request", hostId: host.hostId });
-    const offlineTerminal = lastMessageOfType(host.conn.messages, "open-terminal").terminalId;
-    host.disconnect();
-    alice.send({ type: "close-terminal-request", terminalId: offlineTerminal });
+    await alice.send({ type: "open-terminal-request", hostId: host.hostId });
+    const offlineTerminal = host.conn.lastMessageOfType("open-terminal").terminalId;
+    await host.disconnect();
+    await alice.send({ type: "close-terminal-request", terminalId: offlineTerminal });
     expectMessageToMatch(alice.conn.messages, "terminal-request-rejected", {
       request: "close",
       terminalId: offlineTerminal,
@@ -150,118 +158,97 @@ describe("openTerminal — 역할: 터미널 생성 요청의 중개", () => {
     });
   });
 
-  it("같은 terminal-closed가 재도착해도 종료 이벤트를 중복 브로드캐스트하지 않는다", () => {
+  it("같은 terminal-closed가 재도착해도 종료 이벤트를 중복 브로드캐스트하지 않는다", async () => {
     const ctx = new RoomTestContext();
-    const room = ctx.createRoom();
-    const host = ctx.connectHost(room, "h");
-    const alice = ctx.connectParticipant(room, "alice");
-    alice.send({ type: "open-terminal-request", hostId: host.hostId });
-    const terminalId = lastMessageOfType(host.conn.messages, "open-terminal").terminalId;
+    const room = await ctx.createRoom();
+    const host = await ctx.connectHost(room, "h");
+    const alice = await ctx.connectParticipant(room, "alice");
+    await alice.send({ type: "open-terminal-request", hostId: host.hostId });
+    const terminalId = host.conn.lastMessageOfType("open-terminal").terminalId;
 
-    host.send({ type: "terminal-closed", terminalId, exitCode: 0 });
-    host.send({ type: "terminal-closed", terminalId, exitCode: 0 });
+    await host.send({ type: "terminal-closed", terminalId, exitCode: 0 });
+    await host.send({ type: "terminal-closed", terminalId, exitCode: 0 });
 
-    const closedEvents = alice.conn.messages.filter(
-      (message) => message.type === "room-event" && message.event.kind === "terminal-closed",
-    );
-    expect(closedEvents).toHaveLength(1);
+    expect(alice.conn.roomEventsOfKind("terminal-closed")).toHaveLength(1);
   });
 
-  it("이미 종료된 터미널의 늦은 terminal-opened는 열린 이벤트를 만들지 않는다", () => {
+  it("이미 종료된 터미널의 늦은 terminal-opened는 열린 이벤트를 만들지 않는다", async () => {
     const ctx = new RoomTestContext();
-    const room = ctx.createRoom();
-    const host = ctx.connectHost(room, "h");
-    const alice = ctx.connectParticipant(room, "alice");
-    alice.send({ type: "open-terminal-request", hostId: host.hostId });
-    const terminalId = lastMessageOfType(host.conn.messages, "open-terminal").terminalId;
+    const room = await ctx.createRoom();
+    const host = await ctx.connectHost(room, "h");
+    const alice = await ctx.connectParticipant(room, "alice");
+    await alice.send({ type: "open-terminal-request", hostId: host.hostId });
+    const terminalId = host.conn.lastMessageOfType("open-terminal").terminalId;
 
-    host.send({ type: "terminal-closed", terminalId, exitCode: 1 });
-    host.send({ type: "terminal-opened", terminalId });
+    await host.send({ type: "terminal-closed", terminalId, exitCode: 1 });
+    await host.send({ type: "terminal-opened", terminalId });
 
-    expect(
-      alice.conn.messages.some(
-        (message) => message.type === "room-event" && message.event.kind === "terminal-opened",
-      ),
-    ).toBe(false);
+    expect(alice.conn.roomEventsOfKind("terminal-opened")).toEqual([]);
   });
 
-  it("host의 terminal-meta는 메타데이터를 반영하고 참여자에게 브로드캐스트한다", () => {
+  it("host의 terminal-meta는 메타데이터를 반영하고 참여자에게 브로드캐스트한다", async () => {
     const ctx = new RoomTestContext();
-    const room = ctx.createRoom();
-    const host = ctx.connectHost(room, "h");
-    const alice = ctx.connectParticipant(room, "alice");
-    alice.send({ type: "open-terminal-request", hostId: host.hostId });
-    const terminalId = lastMessageOfType(host.conn.messages, "open-terminal").terminalId;
+    const room = await ctx.createRoom();
+    const host = await ctx.connectHost(room, "h");
+    const alice = await ctx.connectParticipant(room, "alice");
+    await alice.send({ type: "open-terminal-request", hostId: host.hostId });
+    const terminalId = host.conn.lastMessageOfType("open-terminal").terminalId;
     const meta = { cwd: "/tmp", gitBranch: "main", fgProcess: "zsh" };
 
-    host.send({ type: "terminal-meta", terminalId, meta });
+    await host.send({ type: "terminal-meta", terminalId, meta });
 
     expectMessageToMatch(alice.conn.messages, "room-event", {
       event: { kind: "terminal-meta", terminalId, meta },
     });
-    const observer = ctx.connectParticipant(room, "observer");
+    const observer = await ctx.connectParticipant(room, "observer");
     expectMessageToMatch(observer.conn.messages, "welcome", {
       snapshot: { terminals: [{ terminalId, meta }] },
     });
   });
 
-  it("동일한 terminal-meta 재전송은 이벤트를 중복 브로드캐스트하지 않는다", () => {
+  it("동일한 terminal-meta 재전송은 이벤트를 중복 브로드캐스트하지 않는다", async () => {
     const ctx = new RoomTestContext();
-    const room = ctx.createRoom();
-    const host = ctx.connectHost(room, "h");
-    const alice = ctx.connectParticipant(room, "alice");
-    alice.send({ type: "open-terminal-request", hostId: host.hostId });
-    const terminalId = lastMessageOfType(host.conn.messages, "open-terminal").terminalId;
+    const room = await ctx.createRoom();
+    const host = await ctx.connectHost(room, "h");
+    const alice = await ctx.connectParticipant(room, "alice");
+    await alice.send({ type: "open-terminal-request", hostId: host.hostId });
+    const terminalId = host.conn.lastMessageOfType("open-terminal").terminalId;
     const meta = { cwd: "/tmp", gitBranch: "main", fgProcess: "zsh" };
 
-    host.send({ type: "terminal-meta", terminalId, meta });
-    host.send({ type: "terminal-meta", terminalId, meta });
+    await host.send({ type: "terminal-meta", terminalId, meta });
+    await host.send({ type: "terminal-meta", terminalId, meta });
 
-    const metaEvents = alice.conn.messages.filter(
-      (message) => message.type === "room-event" && message.event.kind === "terminal-meta",
-    );
-    expect(metaEvents).toHaveLength(1);
+    expect(alice.conn.roomEventsOfKind("terminal-meta")).toHaveLength(1);
   });
 
-  it("participant의 resize-request는 터미널 host에게 resize 명령으로 전달된다", () => {
+  it("participant의 resize-request는 터미널 host에게 resize 명령으로 전달된다", async () => {
     const ctx = new RoomTestContext();
-    const room = ctx.createRoom();
-    const host = ctx.connectHost(room, "h");
-    const alice = ctx.connectParticipant(room, "alice");
-    alice.send({ type: "open-terminal-request", hostId: host.hostId });
-    const terminalId = lastMessageOfType(host.conn.messages, "open-terminal").terminalId;
+    const room = await ctx.createRoom();
+    const host = await ctx.connectHost(room, "h");
+    const alice = await ctx.connectParticipant(room, "alice");
+    await alice.send({ type: "open-terminal-request", hostId: host.hostId });
+    const terminalId = host.conn.lastMessageOfType("open-terminal").terminalId;
 
-    alice.send({ type: "resize-request", terminalId, cols: 132, rows: 43 });
+    await alice.send({ type: "resize-request", terminalId, cols: 132, rows: 43 });
 
-    expect(lastMessageOfType(host.conn.messages, "resize")).toMatchObject({
+    expect(host.conn.lastMessageOfType("resize")).toMatchObject({
       terminalId,
       cols: 132,
       rows: 43,
     });
   });
 
-  it("존재하지 않는 터미널 resize는 host에 전달하지 않고 요청자에게만 error를 보낸다", () => {
+  it("존재하지 않는 터미널 resize는 host에 전달하지 않고 요청자에게만 error를 보낸다", async () => {
     const ctx = new RoomTestContext();
-    const room = ctx.createRoom();
-    const host = ctx.connectHost(room, "h");
-    const alice = ctx.connectParticipant(room, "alice");
-    const bob = ctx.connectParticipant(room, "bob");
+    const room = await ctx.createRoom();
+    const host = await ctx.connectHost(room, "h");
+    const alice = await ctx.connectParticipant(room, "alice");
+    const bob = await ctx.connectParticipant(room, "bob");
 
-    alice.send({ type: "resize-request", terminalId: 999, cols: 80, rows: 24 });
+    await alice.send({ type: "resize-request", terminalId: 999, cols: 80, rows: 24 });
 
     expectMessageToMatch(alice.conn.messages, "error", { code: "bad-message" });
-    expect(host.conn.messages.some((message) => message.type === "resize")).toBe(false);
-    expect(bob.conn.messages.some((message) => message.type === "error")).toBe(false);
+    expect(host.conn.messagesOfType("resize")).toEqual([]);
+    expect(bob.conn.messagesOfType("error")).toEqual([]);
   });
 });
-
-function lastMessageOfType<T extends ServerMessage["type"]>(
-  messages: ServerMessage[],
-  type: T,
-): Extract<ServerMessage, { type: T }> {
-  const message = [...messages]
-    .reverse()
-    .find((candidate): candidate is Extract<ServerMessage, { type: T }> => candidate.type === type);
-  if (!message) throw new Error(`${type} 메시지가 없다`);
-  return message;
-}

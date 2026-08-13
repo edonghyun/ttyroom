@@ -9,9 +9,14 @@ import WebSocket, { WebSocketServer, type RawData } from "ws";
 import type { Connection } from "../../ports/transport.js";
 
 interface ServerCoreBoundary {
-  handleMessage(connection: Connection, raw: string): void;
-  handleData(connection: Connection, bytes: Uint8Array): void;
-  handleClose(connection: Connection): void;
+  handleMessage(connection: Connection, raw: string): void | Promise<void>;
+  handleData(connection: Connection, bytes: Uint8Array): void | Promise<void>;
+  handleClose(connection: Connection): void | Promise<void>;
+}
+
+export interface WsTransportErrorContext {
+  connectionId: string;
+  phase: "message" | "close" | "queue";
 }
 
 export class WsTransport {
@@ -21,10 +26,15 @@ export class WsTransport {
   private nextConnectionNumber = 1;
   private shuttingDown = false;
   private closing: Promise<void> | undefined;
+  private readonly processing = new Set<Promise<void>>();
 
   constructor(
     private readonly deps: { core: ServerCoreBoundary },
-    options: { server: HttpServer },
+    private readonly options: {
+      server: HttpServer;
+      maxQueuedDataBytes?: number;
+      onError?: (error: unknown, context: WsTransportErrorContext) => void;
+    },
   ) {
     this.httpServer = options.server;
     this.upgradeHandler = (request, socket, head) => {
@@ -51,18 +61,71 @@ export class WsTransport {
 
   private attach(websocket: WebSocket): void {
     const connection = new WsConnection(`ws-${this.nextConnectionNumber}`, websocket);
+    let processing = Promise.resolve();
+    let queuedDataBytes = 0;
+    let acceptingMessages = true;
     this.nextConnectionNumber += 1;
 
     websocket.on("message", (raw, isBinary) => {
-      if (isBinary) {
-        this.deps.core.handleData(connection, bytesOf(raw));
+      if (!acceptingMessages) return;
+      const dataBytes = isBinary ? byteLengthOf(raw) : 0;
+      if (queuedDataBytes + dataBytes > (this.options.maxQueuedDataBytes ?? 1048576)) {
+        acceptingMessages = false;
+        this.report(
+          new Error("연결의 대기 중인 binary 데이터가 허용량을 초과했다"),
+          connection,
+          "queue",
+        );
+        connection.close();
         return;
       }
-      this.deps.core.handleMessage(connection, raw.toString());
+      queuedDataBytes += dataBytes;
+      processing = processing
+        .then(() =>
+          isBinary
+            ? this.deps.core.handleData(connection, bytesOf(raw))
+            : this.deps.core.handleMessage(connection, raw.toString()),
+        )
+        .finally(() => {
+          queuedDataBytes -= dataBytes;
+        })
+        .catch((error: unknown) => {
+          acceptingMessages = false;
+          this.report(error, connection, "message");
+          connection.close();
+        });
+      this.track(processing);
     });
     websocket.once("close", () => {
-      if (!this.shuttingDown) this.deps.core.handleClose(connection);
+      if (!this.shuttingDown) {
+        processing = processing
+          .then(() => this.deps.core.handleClose(connection))
+          .catch((error: unknown) => this.report(error, connection, "close"));
+        this.track(processing);
+      }
     });
+  }
+
+  private track(task: Promise<void>): void {
+    this.processing.add(task);
+    void task.then(
+      () => this.processing.delete(task),
+      () => this.processing.delete(task),
+    );
+  }
+
+  processingCount(): number {
+    return this.processing.size;
+  }
+
+  private report(
+    error: unknown,
+    connection: Connection,
+    phase: WsTransportErrorContext["phase"],
+  ): void {
+    try {
+      this.options.onError?.(error, { connectionId: connection.connectionId, phase });
+    } catch {}
   }
 
   private async closeOnce(): Promise<void> {
@@ -86,6 +149,8 @@ export class WsTransport {
       this.websocketServer.close((error) => (error ? reject(error) : resolve()));
     });
     await Promise.all([clientsClosed, serverClosed]);
+    await Promise.all(this.processing);
+    this.processing.clear();
   }
 }
 
@@ -127,4 +192,9 @@ function bytesOf(raw: RawData): Uint8Array {
   }
   if (raw instanceof ArrayBuffer) return new Uint8Array(raw);
   return new Uint8Array(raw.buffer, raw.byteOffset, raw.byteLength);
+}
+
+function byteLengthOf(raw: RawData): number {
+  if (Array.isArray(raw)) return raw.reduce((total, part) => total + part.byteLength, 0);
+  return raw.byteLength;
 }

@@ -1,80 +1,105 @@
 import { describe, expect, it } from "vitest";
-import { Room, type StoredRoomRecord } from "./room.js";
-import type { RoomRepository } from "../ports/room-repository.js";
+import { RecordingRoomRepository } from "../test/recording-room-repository.js";
+import { Room } from "./room.js";
 import { RoomRegistry } from "./room-registry.js";
 
 describe("RoomRegistry — 역할: 라이브 Room 인스턴스의 보관소", () => {
-  it("repository 레코드를 부팅 시 복원하고 durable 변경을 명시적으로 저장한다", () => {
-    const repository = new FakeRoomRepository([
+  it("repository 레코드를 부팅 시 복원하고 durable 변경을 명시적으로 저장한다", async () => {
+    const repository = new RecordingRoomRepository([
       new Room({ roomId: "restored", token: "tok", name: "Restored Room" }).record(),
     ]);
-    const registry = RoomRegistry.restore(repository);
+    const registry = await RoomRegistry.restore(repository);
     const restored = registry.get("restored");
     if (!restored) throw new Error("Room이 복원되지 않았다");
-    restored.connectHost("host-1", "Mac");
+    await registry.change(restored, (draft) => draft.connectHost("host-1", "Mac"));
 
-    registry.save(restored);
-
-    expect(repository.saved.at(-1)).toMatchObject({
+    expect(repository.savedRecords.at(-1)).toMatchObject({
       roomId: "restored",
       hosts: [{ hostId: "host-1" }],
     });
   });
 
-  it("repository를 가진 registry는 create와 remove를 즉시 내구화한다", () => {
-    const repository = new FakeRoomRepository();
-    const registry = RoomRegistry.restore(repository);
+  it("repository를 가진 registry는 create와 remove를 즉시 내구화한다", async () => {
+    const repository = new RecordingRoomRepository();
+    const registry = await RoomRegistry.restore(repository);
 
-    registry.create({ roomId: "r1", token: "tok" });
-    registry.remove("r1");
+    await registry.create({ roomId: "r1", token: "tok" });
+    await registry.remove("r1");
 
-    expect(repository.saved).toMatchObject([{ roomId: "r1" }]);
-    expect(repository.deleted).toEqual(["r1"]);
+    expect(repository.savedRecords).toMatchObject([{ roomId: "r1" }]);
+    expect(repository.deletedRoomIds).toEqual(["r1"]);
   });
 
-  it("create한 Room을 get으로 돌려준다", () => {
+  it("create한 Room을 get으로 돌려준다", async () => {
     const registry = new RoomRegistry();
-    const room = registry.create({ roomId: "r1", token: "tok" });
+    const room = await registry.create({ roomId: "r1", token: "tok" });
     expect(registry.get("r1")).toBe(room);
     expect(room.roomId).toBe("r1");
   });
 
-  it("중복 roomId create는 throw한다 (프로그래머 오류)", () => {
+  it("중복 roomId create는 throw한다 (프로그래머 오류)", async () => {
     const registry = new RoomRegistry();
-    registry.create({ roomId: "r1", token: "tok" });
-    expect(() => registry.create({ roomId: "r1", token: "tok2" })).toThrow();
+    await registry.create({ roomId: "r1", token: "tok" });
+    await expect(registry.create({ roomId: "r1", token: "tok2" })).rejects.toThrow();
   });
 
-  it("remove 후 get은 undefined다", () => {
+  it("remove 후 get은 undefined다", async () => {
     const registry = new RoomRegistry();
-    registry.create({ roomId: "r1", token: "tok" });
-    registry.remove("r1");
+    await registry.create({ roomId: "r1", token: "tok" });
+    await registry.remove("r1");
     expect(registry.get("r1")).toBeUndefined();
   });
 
-  it("없는 roomId의 remove는 조용한 no-op이다 (소멸 경로 중복 도착 안전)", () => {
+  it("없는 roomId의 remove는 조용한 no-op이다 (소멸 경로 중복 도착 안전)", async () => {
     const registry = new RoomRegistry();
-    expect(() => registry.remove("nope")).not.toThrow();
+    await expect(registry.remove("nope")).resolves.toBeUndefined();
+  });
+
+  it("save 실패 시 변경 전 Room 전체 상태로 되돌린다", async () => {
+    const repository = new RecordingRoomRepository();
+    const registry = await RoomRegistry.restore(repository);
+    const room = await registry.create({ roomId: "r1", token: "tok" });
+    room.addParticipant("p1", "Kim");
+    const before = room.snapshot();
+    repository.failSavesWith(new Error("save failed"));
+
+    await expect(
+      registry.change(room, (draft) => {
+        draft.connectHost("h1", "Mac");
+        draft.openTerminal("h1");
+        draft.acquireLease("p1", 1);
+      }),
+    ).rejects.toThrow("save failed");
+
+    expect(room.snapshot()).toEqual(before);
+    expect(room.record().nextTerminalId).toBe(1);
+  });
+
+  it("save 대기 중 변경을 노출하지 않고 실패해도 그 사이의 live 상태를 보존한다", async () => {
+    const repository = new RecordingRoomRepository();
+    const registry = await RoomRegistry.restore(repository);
+    const room = await registry.create({ roomId: "r1", token: "tok" });
+    const save = repository.deferNextSave();
+    repository.failSavesWith(new Error("save failed"));
+
+    const changing = registry.change(room, (draft) => draft.connectHost("h1", "Mac"));
+    await save.started;
+    room.addParticipant("p1", "Kim");
+    expect(room.snapshot()).toMatchObject({ hosts: [], participants: [{ clientId: "p1" }] });
+
+    save.release();
+    await expect(changing).rejects.toThrow("save failed");
+    expect(room.snapshot()).toMatchObject({ hosts: [], participants: [{ clientId: "p1" }] });
+  });
+
+  it("delete 실패 시 Room을 registry에서 제거하지 않는다", async () => {
+    const repository = new RecordingRoomRepository();
+    const registry = await RoomRegistry.restore(repository);
+    const room = await registry.create({ roomId: "r1", token: "tok" });
+    repository.failDeletesWith(new Error("delete failed"));
+
+    await expect(registry.remove("r1")).rejects.toThrow("delete failed");
+
+    expect(registry.get("r1")).toBe(room);
   });
 });
-
-class FakeRoomRepository implements RoomRepository {
-  readonly saved: StoredRoomRecord[] = [];
-  readonly deleted: string[] = [];
-
-  constructor(private readonly records: StoredRoomRecord[] = []) {}
-
-  loadAll(): StoredRoomRecord[] {
-    return structuredClone(this.records);
-  }
-
-  save(record: StoredRoomRecord): void {
-    this.saved.push(structuredClone(record));
-  }
-
-  delete(roomId: string): void {
-    this.deleted.push(roomId);
-  }
-
-  close(): void {}
-}

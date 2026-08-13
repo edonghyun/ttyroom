@@ -46,4 +46,43 @@ describe("RecordingConnection — 역할: 유즈케이스가 보낸 프레임의
     conn.close();
     expect(conn.closed).toBe(true);
   });
+
+  it("메시지를 type으로 조회하고 기록 전체를 비운다", () => {
+    const conn = new RecordingConnection({ connectionId: "c1" });
+    conn.send(syncMessage);
+    conn.send({ type: "sync", terminalId: 2, seq: 9 });
+    conn.sendData(outputFrame);
+
+    expect(conn.messagesOfType("sync")).toHaveLength(2);
+    expect(conn.lastMessageOfType("sync")).toMatchObject({ terminalId: 2, seq: 9 });
+
+    conn.clear();
+
+    expect(conn.messages).toEqual([]);
+    expect(conn.dataFrames).toEqual([]);
+    expect(conn.arrivalOrder).toEqual([]);
+  });
+
+  it("room-event를 kind로 조회한다", () => {
+    const conn = new RecordingConnection({ connectionId: "c1" });
+    conn.send({
+      type: "room-event",
+      event: { kind: "participant-left", clientId: "alice" },
+    });
+    conn.send({
+      type: "room-event",
+      event: { kind: "host-offline", hostId: "host-1" },
+    });
+
+    expect(conn.roomEventsOfKind("participant-left")).toEqual([
+      { kind: "participant-left", clientId: "alice" },
+    ]);
+  });
+
+  it("없는 type 조회는 수신한 type을 포함한 진단 오류를 낸다", () => {
+    const conn = new RecordingConnection({ connectionId: "c1" });
+    conn.send(syncMessage);
+
+    expect(() => conn.lastMessageOfType("welcome")).toThrow(/received types: sync/);
+  });
 });

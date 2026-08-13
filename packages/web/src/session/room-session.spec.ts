@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { RoomProjection } from "../projection/room-projection.js";
-import { RoomSession } from "./room-session.js";
+import { RoomSession, type RoomSessionEvent } from "./room-session.js";
 
 import {
   PROTOCOL_VERSION,
@@ -19,11 +19,7 @@ import type {
 
 describe("RoomSession — collaborative Room lifecycle", () => {
   it("starts one participant transport with stable hello identity and applies welcome", () => {
-    const projection = new RoomProjection();
-    const transports = new FakeSessionTransportFactory();
-    const session = createSession({ projection, transports });
-
-    session.start();
+    const { projection, transports } = startRoomSession();
 
     expect(transports.hellos).toEqual([
       {
@@ -38,10 +34,7 @@ describe("RoomSession — collaborative Room lifecycle", () => {
     ]);
     expect(transports.latest().startCount).toBe(1);
 
-    transports.latest().emit({
-      kind: "server-message",
-      message: { type: "welcome", selfClientId: "alice-id", snapshot: roomSnapshot() },
-    });
+    welcome(transports);
 
     expect(projection.view()).toMatchObject({
       connection: "live",
@@ -51,21 +44,17 @@ describe("RoomSession — collaborative Room lifecycle", () => {
   });
 
   it("reconnects with the same client identity using bounded injected delays", () => {
-    const projection = new RoomProjection();
-    const transports = new FakeSessionTransportFactory();
-    const clock = new ManualSessionClock();
-    const session = createSession({ projection, transports, clock });
-    session.start();
+    const { clock, projection, transports } = startRoomSession();
 
-    transports.latest().emit({ kind: "closed" });
+    disconnect(transports);
 
     expect(projection.view().connection).toBe("reconnecting");
     expect(clock.delays).toEqual([100]);
 
     clock.fireNext();
-    transports.latest().emit({ kind: "closed" });
+    disconnect(transports);
     clock.fireNext();
-    transports.latest().emit({ kind: "closed" });
+    disconnect(transports);
 
     expect(clock.delays).toEqual([100, 200, 200]);
     expect(transports.hellos.map((hello) => hello.clientId)).toEqual([
@@ -76,17 +65,14 @@ describe("RoomSession — collaborative Room lifecycle", () => {
   });
 
   it("ends reconnect when the server reports that the Room is gone", () => {
-    const projection = new RoomProjection();
-    const transports = new FakeSessionTransportFactory();
-    const clock = new ManualSessionClock();
-    const session = createSession({ projection, transports, clock });
-    session.start();
+    const { clock, projection, transports } = startRoomSession();
 
-    transports.latest().emit({
-      kind: "server-message",
-      message: { type: "error", code: "room-not-found", message: "room-not-found" },
+    receiveServerMessage(transports, {
+      type: "error",
+      code: "room-not-found",
+      message: "room-not-found",
     });
-    transports.latest().emit({ kind: "closed" });
+    disconnect(transports);
 
     expect(projection.view().connection).toBe("gone");
     expect(clock.delays).toEqual([]);
@@ -94,14 +80,8 @@ describe("RoomSession — collaborative Room lifecycle", () => {
   });
 
   it("sends acquire only for explicit Take control and keeps ownership authoritative", () => {
-    const projection = new RoomProjection();
-    const transports = new FakeSessionTransportFactory();
-    const session = createSession({ projection, transports });
-    session.start();
-    transports.latest().emit({
-      kind: "server-message",
-      message: { type: "welcome", selfClientId: "alice-id", snapshot: roomSnapshot() },
-    });
+    const { projection, session, transports } = startRoomSession();
+    welcome(transports);
 
     expect(transports.latest().controls).toEqual([]);
 
@@ -113,20 +93,10 @@ describe("RoomSession — collaborative Room lifecycle", () => {
   });
 
   it("switches control by releasing the current lease before acquiring the target", () => {
-    const projection = new RoomProjection();
-    const transports = new FakeSessionTransportFactory();
-    const session = createSession({ projection, transports });
-    session.start();
-    transports.latest().emit({
-      kind: "server-message",
-      message: {
-        type: "welcome",
-        selfClientId: "alice-id",
-        snapshot: {
-          ...roomSnapshot(),
-          leases: [{ terminalId: 1, leaseId: 7, holderClientId: "alice-id" }],
-        },
-      },
+    const { session, transports } = startRoomSession();
+    welcome(transports, {
+      ...roomSnapshot(),
+      leases: [{ terminalId: 1, leaseId: 7, holderClientId: "alice-id" }],
     });
 
     session.takeControl(2);
@@ -138,20 +108,10 @@ describe("RoomSession — collaborative Room lifecycle", () => {
   });
 
   it("releases only the current user's lease for an explicit Esc release", () => {
-    const projection = new RoomProjection();
-    const transports = new FakeSessionTransportFactory();
-    const session = createSession({ projection, transports });
-    session.start();
-    transports.latest().emit({
-      kind: "server-message",
-      message: {
-        type: "welcome",
-        selfClientId: "alice-id",
-        snapshot: {
-          ...roomSnapshot(),
-          leases: [{ terminalId: 1, leaseId: 7, holderClientId: "alice-id" }],
-        },
-      },
+    const { session, transports } = startRoomSession();
+    welcome(transports, {
+      ...roomSnapshot(),
+      leases: [{ terminalId: 1, leaseId: 7, holderClientId: "alice-id" }],
     });
 
     session.releaseControl(1);
@@ -163,10 +123,7 @@ describe("RoomSession — collaborative Room lifecycle", () => {
   });
 
   it("maps terminal commands to public protocol controls", () => {
-    const projection = new RoomProjection();
-    const transports = new FakeSessionTransportFactory();
-    const session = createSession({ projection, transports });
-    session.start();
+    const { session, transports } = startRoomSession();
 
     session.openTerminal("host-1");
     session.closeTerminal(1);
@@ -190,12 +147,8 @@ describe("RoomSession — collaborative Room lifecycle", () => {
   });
 
   it("shares ephemeral canvas cursor positions and publishes remote cursor updates", () => {
-    const projection = new RoomProjection();
-    const transports = new FakeSessionTransportFactory();
-    const session = createSession({ projection, transports });
     const subscriber = vi.fn();
-    session.subscribe(subscriber);
-    session.start();
+    const { session, transports } = startRoomSession(subscriber);
 
     session.moveCursor({ x: 120.5, y: -48.25 });
     session.moveCursor(null);
@@ -205,13 +158,10 @@ describe("RoomSession — collaborative Room lifecycle", () => {
       { type: "move-cursor", position: null },
     ]);
 
-    transports.latest().emit({
-      kind: "server-message",
-      message: {
-        type: "participant-cursor",
-        clientId: "bob-id",
-        position: { x: 32, y: 64 },
-      },
+    receiveServerMessage(transports, {
+      type: "participant-cursor",
+      clientId: "bob-id",
+      position: { x: 32, y: 64 },
     });
 
     expect(subscriber).toHaveBeenCalledWith({
@@ -222,19 +172,12 @@ describe("RoomSession — collaborative Room lifecycle", () => {
   });
 
   it("reports the desired terminal focus after welcome and restores it after reconnect", () => {
-    const projection = new RoomProjection();
-    const transports = new FakeSessionTransportFactory();
-    const clock = new ManualSessionClock();
-    const session = createSession({ projection, transports, clock });
-    session.start();
+    const { clock, session, transports } = startRoomSession();
 
     session.focusTerminal(2);
     expect(transports.latest().controls).toEqual([]);
 
-    transports.latest().emit({
-      kind: "server-message",
-      message: { type: "welcome", selfClientId: "alice-id", snapshot: roomSnapshot() },
-    });
+    welcome(transports);
     expect(transports.latest().controls).toEqual([{ type: "focus-terminal", terminalId: 2 }]);
 
     session.focusTerminal(1);
@@ -243,49 +186,33 @@ describe("RoomSession — collaborative Room lifecycle", () => {
       terminalId: 1,
     });
 
-    transports.latest().emit({ kind: "closed" });
+    disconnect(transports);
     clock.fireNext();
     expect(transports.latest().controls).toEqual([]);
-    transports.latest().emit({
-      kind: "server-message",
-      message: { type: "welcome", selfClientId: "alice-id", snapshot: roomSnapshot() },
-    });
+    welcome(transports);
     expect(transports.latest().controls).toEqual([{ type: "focus-terminal", terminalId: 1 }]);
   });
 
   it("publishes typed lease denial and invalid feedback with the current holder name", () => {
-    const projection = new RoomProjection();
-    const transports = new FakeSessionTransportFactory();
-    const session = createSession({ projection, transports });
     const subscriber = vi.fn();
-    session.subscribe(subscriber);
-    session.start();
-    transports.latest().emit({
-      kind: "server-message",
-      message: {
-        type: "welcome",
-        selfClientId: "alice-id",
-        snapshot: {
-          ...roomSnapshot(),
-          participants: [
-            { clientId: "alice-id", name: "Alice", focusedTerminalId: null },
-            { clientId: "bob-id", name: "Bob", focusedTerminalId: null },
-          ],
-        },
-      },
+    const { transports } = startRoomSession(subscriber);
+    welcome(transports, {
+      ...roomSnapshot(),
+      participants: [
+        { clientId: "alice-id", name: "Alice", focusedTerminalId: null },
+        { clientId: "bob-id", name: "Bob", focusedTerminalId: null },
+      ],
     });
 
-    transports.latest().emit({
-      kind: "server-message",
-      message: {
-        type: "lease-result",
-        terminalId: 1,
-        result: { kind: "denied", holderClientId: "bob-id" },
-      },
+    receiveServerMessage(transports, {
+      type: "lease-result",
+      terminalId: 1,
+      result: { kind: "denied", holderClientId: "bob-id" },
     });
-    transports.latest().emit({
-      kind: "server-message",
-      message: { type: "lease-invalid", terminalId: 1, reason: "remote-input-disabled" },
+    receiveServerMessage(transports, {
+      type: "lease-invalid",
+      terminalId: 1,
+      reason: "remote-input-disabled",
     });
 
     expect(subscriber.mock.calls.map((call) => call[0])).toEqual([
@@ -295,63 +222,33 @@ describe("RoomSession — collaborative Room lifecycle", () => {
   });
 
   it("publishes successful explicit control acquisition for user feedback", () => {
-    const projection = new RoomProjection();
-    const transports = new FakeSessionTransportFactory();
-    const session = createSession({ projection, transports });
     const subscriber = vi.fn();
-    session.subscribe(subscriber);
-    session.start();
+    const { transports } = startRoomSession(subscriber);
 
-    transports.latest().emit({
-      kind: "server-message",
-      message: { type: "welcome", selfClientId: "alice-id", snapshot: roomSnapshot() },
-    });
-    transports.latest().emit({
-      kind: "server-message",
-      message: { type: "lease-result", terminalId: 1, result: { kind: "granted", leaseId: 9 } },
+    welcome(transports);
+    receiveServerMessage(transports, {
+      type: "lease-result",
+      terminalId: 1,
+      result: { kind: "granted", leaseId: 9 },
     });
 
     expect(subscriber).toHaveBeenCalledWith({ kind: "lease-acquired", terminalId: 1 });
   });
 
   it("requests replay on output gap and replaces the terminal buffer with retained output", () => {
-    const projection = new RoomProjection();
-    const transports = new FakeSessionTransportFactory();
-    const session = createSession({ projection, transports });
     const subscriber = vi.fn();
-    session.subscribe(subscriber);
-    session.start();
-    transports.latest().emit({
-      kind: "server-message",
-      message: { type: "welcome", selfClientId: "alice-id", snapshot: roomSnapshot() },
-    });
-    transports.latest().emit({
-      kind: "server-message",
-      message: { type: "sync", terminalId: 1, seq: 0 },
-    });
-    transports.latest().emit({
-      kind: "output",
-      frame: {
-        kind: "output",
-        terminalId: 1,
-        seq: 1,
-        payload: new Uint8Array([65]),
-      },
-    });
+    const { transports } = startRoomSession(subscriber);
+    welcome(transports);
+    receiveServerMessage(transports, { type: "sync", terminalId: 1, seq: 0 });
+    receiveOutput(transports, 1, 1, [65]);
 
-    transports.latest().emit({
-      kind: "server-message",
-      message: { type: "output-gap", terminalId: 1, fromSeq: 2, toSeq: 3 },
+    receiveServerMessage(transports, {
+      type: "output-gap",
+      terminalId: 1,
+      fromSeq: 2,
+      toSeq: 3,
     });
-    transports.latest().emit({
-      kind: "output",
-      frame: {
-        kind: "output",
-        terminalId: 1,
-        seq: 1,
-        payload: new Uint8Array([65]),
-      },
-    });
+    receiveOutput(transports, 1, 1, [65]);
 
     expect(transports.latest().controls).toEqual([
       { type: "resync-output-request", terminalId: 1 },
@@ -376,32 +273,16 @@ describe("RoomSession — collaborative Room lifecycle", () => {
   });
 
   it("sends sequenced input only for mine or shared capability", () => {
-    const projection = new RoomProjection();
-    const transports = new FakeSessionTransportFactory();
-    const session = createSession({ projection, transports });
-    session.start();
-    transports.latest().emit({
-      kind: "server-message",
-      message: {
-        type: "welcome",
-        selfClientId: "alice-id",
-        snapshot: {
-          ...roomSnapshot(),
-          terminals: roomSnapshot().terminals.map((terminal) =>
-            terminal.terminalId === 2 ? { ...terminal, mode: "shared" } : terminal,
-          ),
-          leases: [{ terminalId: 1, leaseId: 7, holderClientId: "alice-id" }],
-        },
-      },
+    const { session, transports } = startRoomSession();
+    welcome(transports, {
+      ...roomSnapshot(),
+      terminals: roomSnapshot().terminals.map((terminal) =>
+        terminal.terminalId === 2 ? { ...terminal, mode: "shared" } : terminal,
+      ),
+      leases: [{ terminalId: 1, leaseId: 7, holderClientId: "alice-id" }],
     });
-    transports.latest().emit({
-      kind: "server-message",
-      message: { type: "sync", terminalId: 1, seq: 0 },
-    });
-    transports.latest().emit({
-      kind: "server-message",
-      message: { type: "sync", terminalId: 2, seq: 0 },
-    });
+    receiveServerMessage(transports, { type: "sync", terminalId: 1, seq: 0 });
+    receiveServerMessage(transports, { type: "sync", terminalId: 2, seq: 0 });
 
     expect(session.sendInput(1, new Uint8Array([65]))).toEqual({ kind: "sent", seq: 1 });
     expect(session.sendInput(2, new Uint8Array([66]))).toEqual({ kind: "sent", seq: 1 });
@@ -416,12 +297,8 @@ describe("RoomSession — collaborative Room lifecycle", () => {
   });
 
   it("stops idempotently by cancelling reconnect and disposing the active transport", () => {
-    const projection = new RoomProjection();
-    const transports = new FakeSessionTransportFactory();
-    const clock = new ManualSessionClock();
-    const reconnecting = createSession({ projection, transports, clock });
-    reconnecting.start();
-    transports.latest().emit({ kind: "closed" });
+    const { clock, session: reconnecting, transports } = startRoomSession();
+    disconnect(transports);
 
     reconnecting.stop();
     reconnecting.stop();
@@ -431,12 +308,7 @@ describe("RoomSession — collaborative Room lifecycle", () => {
     expect(transports.transports).toHaveLength(1);
     expect(transports.transports[0]?.disposeCount).toBe(1);
 
-    const activeTransports = new FakeSessionTransportFactory();
-    const active = createSession({
-      projection: new RoomProjection(),
-      transports: activeTransports,
-    });
-    active.start();
+    const { session: active, transports: activeTransports } = startRoomSession();
     active.stop();
     active.stop();
 
@@ -517,6 +389,21 @@ class ManualSessionClock implements SessionClock {
   }
 }
 
+function startRoomSession(subscriber?: (event: RoomSessionEvent) => void): {
+  projection: RoomProjection;
+  transports: FakeSessionTransportFactory;
+  clock: ManualSessionClock;
+  session: RoomSession;
+} {
+  const projection = new RoomProjection();
+  const transports = new FakeSessionTransportFactory();
+  const clock = new ManualSessionClock();
+  const session = createSession({ projection, transports, clock });
+  if (subscriber) session.subscribe(subscriber);
+  session.start();
+  return { projection, transports, clock, session };
+}
+
 function createSession(options: {
   projection: RoomProjection;
   transports: FakeSessionTransportFactory;
@@ -538,6 +425,37 @@ function createSession(options: {
       reconnectDelaysMs: [100, 200],
     },
   );
+}
+
+function welcome(transports: FakeSessionTransportFactory, snapshot = roomSnapshot()): void {
+  receiveServerMessage(transports, {
+    type: "welcome",
+    selfClientId: "alice-id",
+    snapshot,
+  });
+}
+
+function receiveServerMessage(
+  transports: FakeSessionTransportFactory,
+  message: ServerMessage,
+): void {
+  transports.latest().emit({ kind: "server-message", message });
+}
+
+function receiveOutput(
+  transports: FakeSessionTransportFactory,
+  terminalId: number,
+  seq: number,
+  bytes: number[],
+): void {
+  transports.latest().emit({
+    kind: "output",
+    frame: { kind: "output", terminalId, seq, payload: new Uint8Array(bytes) },
+  });
+}
+
+function disconnect(transports: FakeSessionTransportFactory): void {
+  transports.latest().emit({ kind: "closed" });
 }
 
 function roomSnapshot(): Extract<ServerMessage, { type: "welcome" }>["snapshot"] {

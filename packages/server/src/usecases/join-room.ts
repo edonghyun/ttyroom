@@ -26,7 +26,7 @@ export class JoinRoom {
     });
   }
 
-  execute(conn: Connection, hello: HelloMessage): void {
+  async execute(conn: Connection, hello: HelloMessage): Promise<void> {
     if (hello.protocolVersion !== PROTOCOL_VERSION) {
       conn.send({
         type: "error",
@@ -87,7 +87,7 @@ export class JoinRoom {
       return;
     }
 
-    this.connectHost.execute({
+    await this.connectHost.execute({
       connection: conn,
       room: room!,
       hostId: auth.clientId,

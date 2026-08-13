@@ -21,9 +21,51 @@ describe("WsTransport 고유 동작", () => {
     expect(link.connection.bufferedBytes()).toBeGreaterThanOrEqual(0);
     await link.onServerClose;
   });
+
+  it("완료된 message와 close 작업을 processing 집합에서 제거한다", async () => {
+    for (let attempt = 0; attempt < 25; attempt += 1) {
+      const link = await makeWsLink();
+      link.remote.sendText(`message-${attempt}`);
+      await link.flush();
+      link.remote.close();
+      await link.onServerClose;
+      expect(link.transport.processingCount()).toBe(0);
+    }
+  });
+
+  it("느린 제어 메시지 뒤 binary 대기량이 상한을 넘으면 연결을 닫고 오류를 보고한다", async () => {
+    let releaseMessage: (() => void) | undefined;
+    const blocked = new Promise<void>((resolve) => {
+      releaseMessage = resolve;
+    });
+    const errors: Array<{ error: unknown; phase: string }> = [];
+    const link = await makeWsLink({
+      maxQueuedDataBytes: 12,
+      beforeMessage: (raw) => (raw === "block" ? blocked : undefined),
+      onError: (error, context) => errors.push({ error, phase: context.phase }),
+    });
+
+    link.remote.sendText("block");
+    link.remote.sendBinary(new Uint8Array(8));
+    link.remote.sendBinary(new Uint8Array(8));
+    await waitUntil(() => errors.length === 1);
+    releaseMessage?.();
+    await link.onServerClose;
+
+    expect(errors[0]?.phase).toBe("queue");
+    expect(errors[0]?.error).toBeInstanceOf(Error);
+    expect(link.received.binaries).toHaveLength(1);
+    expect(link.transport.processingCount()).toBe(0);
+  });
 });
 
-async function makeWsLink(): Promise<TransportLink> {
+async function makeWsLink(
+  options: {
+    maxQueuedDataBytes?: number;
+    beforeMessage?: (raw: string) => void | Promise<void>;
+    onError?: ConstructorParameters<typeof WsTransport>[1]["onError"];
+  } = {},
+): Promise<TransportLink & { transport: WsTransport }> {
   const received = { texts: [] as string[], binaries: [] as Uint8Array[] };
   let serverConnection: Connection | undefined;
   let closeCount = 0;
@@ -32,8 +74,9 @@ async function makeWsLink(): Promise<TransportLink> {
     resolveClose = resolve;
   });
   const core = {
-    handleMessage(connection: Connection, raw: string): void {
+    async handleMessage(connection: Connection, raw: string): Promise<void> {
       serverConnection = connection;
+      await options.beforeMessage?.(raw);
       received.texts.push(raw);
     },
     handleData(connection: Connection, bytes: Uint8Array): void {
@@ -46,7 +89,14 @@ async function makeWsLink(): Promise<TransportLink> {
     },
   };
   const server = createServer();
-  new WsTransport({ core }, { server });
+  const transport = new WsTransport(
+    { core },
+    {
+      server,
+      maxQueuedDataBytes: options.maxQueuedDataBytes,
+      onError: options.onError,
+    },
+  );
   await listen(server);
   const address = server.address();
   if (!address || typeof address === "string") throw new Error("HTTP 포트를 얻지 못했다");
@@ -79,6 +129,7 @@ async function makeWsLink(): Promise<TransportLink> {
     await closeHttpServer(server);
   });
   return {
+    transport,
     connection,
     remote: {
       messages,

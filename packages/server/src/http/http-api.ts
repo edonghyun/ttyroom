@@ -34,7 +34,7 @@ export class HttpApi {
 
       const roomId = randomUUID();
       const token = randomBytes(24).toString("base64url");
-      const room = this.rooms.create({ roomId, token, name: body.name });
+      const room = await this.rooms.create({ roomId, token, name: body.name });
       this.sendJson(response, 201, {
         roomId,
         name: room.name,

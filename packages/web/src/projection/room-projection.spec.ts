@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { RoomProjection } from "./room-projection.js";
 
-import type { RoomSnapshot } from "@ttyroom/protocol";
+import type { RoomSnapshot, ServerMessage } from "@ttyroom/protocol";
 
 const snapshot: RoomSnapshot = {
   roomId: "room-1",
@@ -59,16 +59,12 @@ describe("RoomProjection — authoritative Room state", () => {
   it("applies each Room event only to its authoritative entity", () => {
     const projection = welcomedProjection();
 
-    projection.applyServerMessage({
-      type: "room-event",
-      event: {
+    applyRoomEvents(projection, [
+      {
         kind: "participant-joined",
         participant: { clientId: "bob-id", name: "Bob", focusedTerminalId: null },
       },
-    });
-    projection.applyServerMessage({
-      type: "room-event",
-      event: {
+      {
         kind: "host-connected",
         host: {
           hostId: "host-2",
@@ -77,10 +73,7 @@ describe("RoomProjection — authoritative Room state", () => {
           remoteInputAllowed: true,
         },
       },
-    });
-    projection.applyServerMessage({
-      type: "room-event",
-      event: {
+      {
         kind: "terminal-opened",
         terminal: {
           terminalId: 2,
@@ -93,54 +86,27 @@ describe("RoomProjection — authoritative Room state", () => {
           meta: { cwd: null, gitBranch: null, fgProcess: null },
         },
       },
-    });
-    projection.applyServerMessage({
-      type: "room-event",
-      event: {
+      {
         kind: "lease-granted",
         lease: { terminalId: 2, leaseId: 7, holderClientId: "bob-id" },
       },
-    });
-    projection.applyServerMessage({
-      type: "room-event",
-      event: {
+      {
         kind: "terminal-meta",
         terminalId: 1,
         meta: { cwd: "/next", gitBranch: "feature", fgProcess: "vitest" },
       },
-    });
-    projection.applyServerMessage({
-      type: "room-event",
-      event: { kind: "terminal-mode-changed", terminalId: 1, mode: "shared" },
-    });
-    projection.applyServerMessage({
-      type: "room-event",
-      event: {
+      { kind: "terminal-mode-changed", terminalId: 1, mode: "shared" },
+      {
         kind: "host-input-state-changed",
         hostId: "host-1",
         remoteInputAllowed: false,
       },
-    });
-    projection.applyServerMessage({
-      type: "room-event",
-      event: { kind: "host-offline", hostId: "host-1" },
-    });
-    projection.applyServerMessage({
-      type: "room-event",
-      event: { kind: "terminal-closed", terminalId: 1, exitCode: 12 },
-    });
-    projection.applyServerMessage({
-      type: "room-event",
-      event: { kind: "lease-released", terminalId: 2 },
-    });
-    projection.applyServerMessage({
-      type: "room-event",
-      event: { kind: "participant-left", clientId: "bob-id" },
-    });
-    projection.applyServerMessage({
-      type: "room-event",
-      event: { kind: "host-removed", hostId: "host-2" },
-    });
+      { kind: "host-offline", hostId: "host-1" },
+      { kind: "terminal-closed", terminalId: 1, exitCode: 12 },
+      { kind: "lease-released", terminalId: 2 },
+      { kind: "participant-left", clientId: "bob-id" },
+      { kind: "host-removed", hostId: "host-2" },
+    ]);
 
     expect(projection.view().room).toEqual({
       ...snapshot,
@@ -171,21 +137,15 @@ describe("RoomProjection — authoritative Room state", () => {
 
   it("applies participant focus changes without conflating them with input leases", () => {
     const projection = welcomedProjection();
-    projection.applyServerMessage({
-      type: "room-event",
-      event: {
-        kind: "participant-joined",
-        participant: { clientId: "bob-id", name: "Bob", focusedTerminalId: null },
-      },
+    applyRoomEvent(projection, {
+      kind: "participant-joined",
+      participant: { clientId: "bob-id", name: "Bob", focusedTerminalId: null },
     });
 
-    projection.applyServerMessage({
-      type: "room-event",
-      event: {
-        kind: "participant-focus-changed",
-        clientId: "bob-id",
-        focusedTerminalId: 1,
-      },
+    applyRoomEvent(projection, {
+      kind: "participant-focus-changed",
+      clientId: "bob-id",
+      focusedTerminalId: 1,
     });
 
     expect(projection.view().room?.participants).toContainEqual({
@@ -200,10 +160,7 @@ describe("RoomProjection — authoritative Room state", () => {
     const projection = welcomedProjection();
     const geometry = { x: 168, y: 112, width: 740, height: 490 };
 
-    projection.applyServerMessage({
-      type: "room-event",
-      event: { kind: "terminal-geometry-changed", terminalId: 1, geometry },
-    });
+    applyRoomEvent(projection, { kind: "terminal-geometry-changed", terminalId: 1, geometry });
 
     expect(projection.terminal(1)?.terminal.geometry).toEqual(geometry);
   });
@@ -211,10 +168,7 @@ describe("RoomProjection — authoritative Room state", () => {
   it("applies terminal rename events to the authoritative terminal view", () => {
     const projection = welcomedProjection();
 
-    projection.applyServerMessage({
-      type: "room-event",
-      event: { kind: "terminal-renamed", terminalId: 1, title: "API logs" },
-    });
+    applyRoomEvent(projection, { kind: "terminal-renamed", terminalId: 1, title: "API logs" });
 
     expect(projection.terminal(1)?.terminal.title).toBe("API logs");
   });
@@ -224,47 +178,38 @@ describe("RoomProjection — authoritative Room state", () => {
 
     expect(projection.terminal(1)?.inputCapability).toEqual({ kind: "available" });
 
-    projection.applyServerMessage({
-      type: "room-event",
-      event: {
-        kind: "lease-granted",
-        lease: { terminalId: 1, leaseId: 4, holderClientId: "alice-id" },
-      },
+    applyRoomEvent(projection, {
+      kind: "lease-granted",
+      lease: { terminalId: 1, leaseId: 4, holderClientId: "alice-id" },
     });
     expect(projection.terminal(1)?.inputCapability).toEqual({ kind: "mine", leaseId: 4 });
 
-    projection.applyServerMessage({
-      type: "room-event",
-      event: {
+    applyRoomEvents(projection, [
+      {
         kind: "participant-joined",
         participant: { clientId: "bob-id", name: "Bob", focusedTerminalId: null },
       },
-    });
-    projection.applyServerMessage({
-      type: "room-event",
-      event: {
+      {
         kind: "lease-granted",
         lease: { terminalId: 1, leaseId: 5, holderClientId: "bob-id" },
       },
-    });
+    ]);
     expect(projection.terminal(1)).toMatchObject({
       holder: { clientId: "bob-id", name: "Bob" },
       inputCapability: { kind: "held-by-other", holderName: "Bob" },
     });
 
-    projection.applyServerMessage({
-      type: "room-event",
-      event: { kind: "terminal-mode-changed", terminalId: 1, mode: "shared" },
+    applyRoomEvent(projection, {
+      kind: "terminal-mode-changed",
+      terminalId: 1,
+      mode: "shared",
     });
     expect(projection.terminal(1)?.inputCapability).toEqual({ kind: "shared" });
 
-    projection.applyServerMessage({
-      type: "room-event",
-      event: {
-        kind: "host-input-state-changed",
-        hostId: "host-1",
-        remoteInputAllowed: false,
-      },
+    applyRoomEvent(projection, {
+      kind: "host-input-state-changed",
+      hostId: "host-1",
+      remoteInputAllowed: false,
     });
     expect(projection.terminal(1)?.inputCapability).toEqual({
       kind: "read-only",
@@ -278,9 +223,10 @@ describe("RoomProjection — authoritative Room state", () => {
     const subscriber = vi.fn();
     projection.subscribe(subscriber);
 
-    const effects = projection.applyServerMessage({
-      type: "room-event",
-      event: { kind: "terminal-mode-changed", terminalId: 999, mode: "shared" },
+    const effects = applyRoomEvent(projection, {
+      kind: "terminal-mode-changed",
+      terminalId: 999,
+      mode: "shared",
     });
 
     expect(effects).toEqual([{ kind: "diagnostic", code: "unknown-terminal", terminalId: 999 }]);
@@ -301,12 +247,9 @@ describe("RoomProjection — authoritative Room state", () => {
     const welcomeView = observed[0];
     if (!welcomeView?.room) throw new Error("Expected welcome Room view");
 
-    projection.applyServerMessage({
-      type: "room-event",
-      event: {
-        kind: "participant-joined",
-        participant: { clientId: "bob-id", name: "Bob", focusedTerminalId: null },
-      },
+    applyRoomEvent(projection, {
+      kind: "participant-joined",
+      participant: { clientId: "bob-id", name: "Bob", focusedTerminalId: null },
     });
 
     expect(Object.isFrozen(welcomeView)).toBe(true);
@@ -348,15 +291,12 @@ describe("RoomProjection — authoritative Room state", () => {
     const firstTerminal = snapshot.terminals[0];
     if (!firstTerminal) throw new Error("Expected terminal fixture");
     projection.applyServerMessage({ type: "sync", terminalId: 1, seq: 0 });
-    projection.applyServerMessage({
-      type: "room-event",
-      event: {
-        kind: "terminal-opened",
-        terminal: {
-          ...firstTerminal,
-          terminalId: 2,
-          title: "frontend",
-        },
+    applyRoomEvent(projection, {
+      kind: "terminal-opened",
+      terminal: {
+        ...firstTerminal,
+        terminalId: 2,
+        title: "frontend",
       },
     });
 
@@ -475,4 +415,14 @@ function welcomedProjection(): RoomProjection {
     snapshot,
   });
   return projection;
+}
+
+type RoomEvent = Extract<ServerMessage, { type: "room-event" }>["event"];
+
+function applyRoomEvents(projection: RoomProjection, events: readonly RoomEvent[]): void {
+  for (const event of events) applyRoomEvent(projection, event);
+}
+
+function applyRoomEvent(projection: RoomProjection, event: RoomEvent) {
+  return projection.applyServerMessage({ type: "room-event", event });
 }

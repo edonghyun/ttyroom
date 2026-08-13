@@ -1,8 +1,14 @@
-import type { CancelTimer, Clock } from "../../ports/clock.js";
+import type { CancelTimer, Clock, TimerTask } from "../../ports/clock.js";
 
 export class SystemClock implements Clock {
-  schedule(delayMs: number, fn: () => void): CancelTimer {
-    const handle = setTimeout(fn, delayMs);
+  constructor(private readonly onError: (error: unknown) => void = () => undefined) {}
+
+  schedule(delayMs: number, task: TimerTask): CancelTimer {
+    const handle = setTimeout(() => {
+      void Promise.resolve()
+        .then(task)
+        .catch((error: unknown) => this.onError(error));
+    }, delayMs);
     return () => clearTimeout(handle);
   }
 }

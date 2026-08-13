@@ -15,6 +15,11 @@ const policySchema = z
       .int()
       .nonnegative()
       .default(DEFAULT_POLICY.sendBufferDropThresholdBytes),
+    maxQueuedDataBytesPerConnection: z
+      .number()
+      .int()
+      .positive()
+      .default(DEFAULT_POLICY.maxQueuedDataBytesPerConnection),
     outputRateLimitBytesPerSec: z
       .number()
       .int()
@@ -51,6 +56,9 @@ export function loadConfig(input: { file?: unknown; env?: NodeJS.ProcessEnv }): 
         hostGraceMs: envNumber(env.TTYROOM_HOST_GRACE_MS),
         scrollbackBytesPerTerminal: envNumber(env.TTYROOM_SCROLLBACK_BYTES_PER_TERMINAL),
         sendBufferDropThresholdBytes: envNumber(env.TTYROOM_SEND_BUFFER_DROP_THRESHOLD_BYTES),
+        maxQueuedDataBytesPerConnection: envNumber(
+          env.TTYROOM_MAX_QUEUED_DATA_BYTES_PER_CONNECTION,
+        ),
         outputRateLimitBytesPerSec: envNumber(env.TTYROOM_OUTPUT_RATE_LIMIT_BYTES_PER_SEC),
       }),
     },
@@ -78,6 +86,11 @@ export function loadConfig(input: { file?: unknown; env?: NodeJS.ProcessEnv }): 
       filePolicy,
       "sendBufferDropThresholdBytes",
       env.TTYROOM_SEND_BUFFER_DROP_THRESHOLD_BYTES,
+    ),
+    maxQueuedDataBytesPerConnection: sourceOf(
+      filePolicy,
+      "maxQueuedDataBytesPerConnection",
+      env.TTYROOM_MAX_QUEUED_DATA_BYTES_PER_CONNECTION,
     ),
     outputRateLimitBytesPerSec: sourceOf(
       filePolicy,
@@ -109,6 +122,11 @@ export function printConfig(config: ServerConfig): string {
       "sendBufferDropThresholdBytes",
       config.policy.sendBufferDropThresholdBytes,
       sources.sendBufferDropThresholdBytes ?? "default",
+    ],
+    [
+      "maxQueuedDataBytesPerConnection",
+      config.policy.maxQueuedDataBytesPerConnection,
+      sources.maxQueuedDataBytesPerConnection ?? "default",
     ],
     [
       "outputRateLimitBytesPerSec",

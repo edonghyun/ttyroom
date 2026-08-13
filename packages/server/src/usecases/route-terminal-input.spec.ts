@@ -1,11 +1,15 @@
-import type { ServerMessage } from "@ttyroom/protocol";
 import { describe, expect, it } from "vitest";
 import { expectMessageToMatch } from "../test/matchers.js";
-import { RoomTestContext } from "../test/room-test-context.js";
+import {
+  RoomTestContext,
+  type HostHandle,
+  type ParticipantHandle,
+  type TestRoom,
+} from "../test/room-test-context.js";
 
 describe("routeTerminalInput — 역할: 입력권 검증의 단일 지점", () => {
-  it("유효한 임대의 입력 프레임은 해당 host로 그대로 전달된다", () => {
-    const { alice, host, terminalId, leaseId } = setupWithLease();
+  it("유효한 임대의 입력 프레임은 해당 host로 그대로 전달된다", async () => {
+    const { alice, host, terminalId, leaseId } = await setupWithLease();
     host.allowAgentData();
 
     alice.sendInput(terminalId, leaseId, "ls\n", 17);
@@ -21,8 +25,8 @@ describe("routeTerminalInput — 역할: 입력권 검증의 단일 지점", () 
     ]);
   });
 
-  it("오래된 leaseId의 입력은 폐기되고 보낸 사람만 lease-invalid를 받는다", () => {
-    const { alice, bob, host, terminalId, leaseId } = setupWithLease();
+  it("오래된 leaseId의 입력은 폐기되고 보낸 사람만 lease-invalid를 받는다", async () => {
+    const { alice, bob, host, terminalId, leaseId } = await setupWithLease();
 
     alice.sendInput(terminalId, leaseId + 99, "danger\n");
 
@@ -31,12 +35,12 @@ describe("routeTerminalInput — 역할: 입력권 검증의 단일 지점", () 
       terminalId,
       reason: "not-holder",
     });
-    expect(bob.conn.messages.some((message) => message.type === "lease-invalid")).toBe(false);
+    expect(bob.conn.messagesOfType("lease-invalid")).toEqual([]);
   });
 
-  it("host가 오프라인이면 입력을 폐기하고 lease-invalid(terminal-closed)를 보낸다", () => {
-    const { alice, host, terminalId, leaseId } = setupWithLease();
-    host.disconnect();
+  it("host가 오프라인이면 입력을 폐기하고 lease-invalid(terminal-closed)를 보낸다", async () => {
+    const { alice, host, terminalId, leaseId } = await setupWithLease();
+    await host.disconnect();
 
     alice.sendInput(terminalId, leaseId, "ls\n");
 
@@ -47,11 +51,11 @@ describe("routeTerminalInput — 역할: 입력권 검증의 단일 지점", () 
     });
   });
 
-  it("host가 원격 입력을 차단하면 유효 lease 입력도 typed 사유로 폐기한다", () => {
-    const { alice, host, terminalId, leaseId } = setupWithLease();
+  it("host가 원격 입력을 차단하면 유효 lease 입력도 typed 사유로 폐기한다", async () => {
+    const { alice, host, terminalId, leaseId } = await setupWithLease();
     host.allowAgentData();
 
-    host.send({ type: "host-input-state", remoteInputAllowed: false });
+    await host.send({ type: "host-input-state", remoteInputAllowed: false });
     alice.sendInput(terminalId, leaseId, "blocked\n");
 
     expect(host.conn.dataFrames).toEqual([]);
@@ -61,9 +65,9 @@ describe("routeTerminalInput — 역할: 입력권 검증의 단일 지점", () 
     });
   });
 
-  it("shared 터미널은 임대 없이 Room 참여자의 입력을 전달한다", () => {
-    const { ctx, room, bob, host, terminalId } = setupWithLease();
-    ctx.setTerminalMode(room, terminalId, "shared");
+  it("shared 터미널은 임대 없이 Room 참여자의 입력을 전달한다", async () => {
+    const { ctx, room, bob, host, terminalId } = await setupWithLease();
+    await ctx.setTerminalMode(room, terminalId, "shared");
     host.allowAgentData();
 
     bob.sendInput(terminalId, 0, "pair input\n");
@@ -71,55 +75,44 @@ describe("routeTerminalInput — 역할: 입력권 검증의 단일 지점", () 
     expect(host.conn.dataFrames).toMatchObject([{ kind: "input", terminalId, leaseId: 0 }]);
   });
 
-  it("malformed 데이터 프레임은 error(bad-message)로 응답한다", () => {
-    const { ctx, alice } = setupWithLease();
+  it("malformed 데이터 프레임은 error(bad-message)로 응답한다", async () => {
+    const { ctx, alice } = await setupWithLease();
 
     ctx.core.handleData(alice.conn, new Uint8Array([0xff]));
 
     expectMessageToMatch(alice.conn.messages, "error", { code: "bad-message" });
   });
 
-  it("테스트가 허용하지 않은 Agent 쓰기는 즉시 실패한다 (가드)", () => {
-    const { alice, terminalId, leaseId } = setupWithLease();
+  it("테스트가 허용하지 않은 Agent 쓰기는 즉시 실패한다 (가드)", async () => {
+    const { alice, terminalId, leaseId } = await setupWithLease();
 
     expect(() => alice.sendInput(terminalId, leaseId, "x")).toThrow(/Unexpected agent write/);
   });
 });
 
-function setupWithLease(): {
+async function setupWithLease(): Promise<{
   ctx: RoomTestContext;
-  room: { roomId: string; token: string };
-  host: ReturnType<RoomTestContext["connectHost"]>;
-  alice: ReturnType<RoomTestContext["connectParticipant"]>;
-  bob: ReturnType<RoomTestContext["connectParticipant"]>;
+  room: TestRoom;
+  host: HostHandle;
+  alice: ParticipantHandle;
+  bob: ParticipantHandle;
   terminalId: number;
   leaseId: number;
-} {
+}> {
   const ctx = new RoomTestContext();
-  const room = ctx.createRoom();
-  const host = ctx.connectHost(room, "h");
-  const alice = ctx.connectParticipant(room, "alice");
-  const bob = ctx.connectParticipant(room, "bob");
-  alice.send({ type: "open-terminal-request", hostId: host.hostId });
-  const open = host.conn.messages.find(
-    (message): message is Extract<ServerMessage, { type: "open-terminal" }> =>
-      message.type === "open-terminal",
-  );
-  if (!open) throw new Error("터미널이 열리지 않았다");
-  host.send({ type: "terminal-opened", terminalId: open.terminalId });
-  alice.send({ type: "acquire-lease", terminalId: open.terminalId });
-  const result = alice.conn.messages.find(
-    (message): message is Extract<ServerMessage, { type: "lease-result" }> =>
-      message.type === "lease-result" && message.result.kind === "granted",
-  );
-  if (!result || result.result.kind !== "granted") throw new Error("임대를 얻지 못했다");
+  const room = await ctx.createRoom();
+  const host = await ctx.connectHost(room, "h");
+  const alice = await ctx.connectParticipant(room, "alice");
+  const bob = await ctx.connectParticipant(room, "bob");
+  const terminalId = await ctx.openTerminal(alice, host);
+  const leaseId = await ctx.acquireLease(alice, terminalId);
   return {
     ctx,
     room,
     host,
     alice,
     bob,
-    terminalId: open.terminalId,
-    leaseId: result.result.leaseId,
+    terminalId,
+    leaseId,
   };
 }

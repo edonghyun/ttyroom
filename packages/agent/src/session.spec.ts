@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { PROTOCOL_VERSION, type HelloMessage } from "@ttyroom/protocol";
+import {
+  PROTOCOL_VERSION,
+  type DataFrame,
+  type HelloMessage,
+  type ServerMessage,
+} from "@ttyroom/protocol";
 import { AgentSession, type SessionEvent } from "./session.js";
 import { FakeAgentTransport } from "./test/fake-agent-transport.js";
 import { FakeClock } from "./test/fake-clock.js";
@@ -22,15 +27,32 @@ function makeSession() {
     { transport, clock },
     { wsUrl: "ws://server.test/ws", hello: HELLO, onEvent: (e) => events.push(e) },
   );
-  return { transport, clock, session, events };
+  const disconnect = () => transport.lastConnection().emitClose();
+  const receive = (message: ServerMessage) => transport.lastConnection().emitMessage(message);
+  const receiveData = (frame: Extract<DataFrame, { kind: "input" }>) =>
+    transport.lastConnection().emitData(frame);
+  return { transport, clock, session, events, disconnect, receive, receiveData };
+}
+
+async function startSession(session: AgentSession, transport: FakeAgentTransport): Promise<void> {
+  session.start();
+  await transport.settle();
+}
+
+async function advanceSession(
+  clock: FakeClock,
+  transport: FakeAgentTransport,
+  delayMs: number,
+): Promise<void> {
+  clock.advance(delayMs);
+  await transport.settle();
 }
 
 describe("AgentSession — 역할: 서버 연결 수명주기", () => {
   it("start하면 연결 후 hello를 보낸다", async () => {
     const { transport, session } = makeSession();
 
-    session.start();
-    await transport.settle();
+    await startSession(session, transport);
 
     expect(transport.lastConnection().sent).toMatchObject([{ type: "hello" }]);
   });
@@ -38,52 +60,44 @@ describe("AgentSession — 역할: 서버 연결 수명주기", () => {
   it("연결이 성립하면 connected 이벤트를 방출한다", async () => {
     const { transport, session, events } = makeSession();
 
-    session.start();
-    await transport.settle();
+    await startSession(session, transport);
 
     expect(events).toContainEqual({ kind: "connected" });
   });
 
   it("연결이 끊기면 지수 백오프(500ms→1s→2s, 상한 10s)로 재접속한다", async () => {
-    const { transport, clock, session, events } = makeSession();
+    const { transport, clock, session, events, disconnect } = makeSession();
 
-    session.start();
-    await transport.settle();
-    transport.lastConnection().emitClose();
+    await startSession(session, transport);
+    disconnect();
     expect(events).toContainEqual({ kind: "reconnecting", attempt: 1, delayMs: 500 });
 
-    clock.advance(500);
-    await transport.settle();
-    transport.lastConnection().emitClose();
+    await advanceSession(clock, transport, 500);
+    disconnect();
     expect(events).toContainEqual({ kind: "reconnecting", attempt: 2, delayMs: 1000 });
   });
 
   it("백오프 지연은 10초를 넘지 않는다", async () => {
-    const { transport, clock, session, events } = makeSession();
+    const { transport, clock, session, events, disconnect } = makeSession();
 
-    session.start();
-    await transport.settle();
+    await startSession(session, transport);
 
-    // attempt 6의 산술값은 16초 — 상한이 없으면 대기가 계속 배로 늘어난다
     for (const delayMs of [500, 1000, 2000, 4000, 8000, 10_000]) {
-      transport.lastConnection().emitClose();
-      clock.advance(delayMs);
-      await transport.settle();
+      disconnect();
+      await advanceSession(clock, transport, delayMs);
     }
 
     expect(events).toContainEqual({ kind: "reconnecting", attempt: 6, delayMs: 10_000 });
   });
 
   it("welcome을 받으면 attempt가 리셋되어 다음 끊김은 attempt 1부터 시작한다", async () => {
-    const { transport, clock, session, events } = makeSession();
+    const { transport, clock, session, events, disconnect, receive } = makeSession();
 
-    session.start();
-    await transport.settle();
-    transport.lastConnection().emitClose();
-    clock.advance(500);
-    await transport.settle();
+    await startSession(session, transport);
+    disconnect();
+    await advanceSession(clock, transport, 500);
 
-    transport.lastConnection().emitMessage({
+    receive({
       type: "welcome",
       selfClientId: "client-1",
       snapshot: {
@@ -95,7 +109,7 @@ describe("AgentSession — 역할: 서버 연결 수명주기", () => {
         leases: [],
       },
     });
-    transport.lastConnection().emitClose();
+    disconnect();
 
     expect(events.filter((e) => e.kind === "reconnecting")).toMatchObject([
       { attempt: 1, delayMs: 500 },
@@ -107,29 +121,25 @@ describe("AgentSession — 역할: 서버 연결 수명주기", () => {
     const { transport, clock, session, events } = makeSession();
     transport.failNextConnect();
 
-    session.start();
-    await transport.settle();
+    await startSession(session, transport);
     expect(events).toContainEqual({ kind: "reconnecting", attempt: 1, delayMs: 500 });
 
-    clock.advance(500);
-    await transport.settle();
+    await advanceSession(clock, transport, 500);
 
     expect(transport.lastConnection().sent).toMatchObject([{ type: "hello" }]);
   });
 
   it("서버 error 메시지를 받으면 재시도 없이 rejected로 끝난다 (버전 불일치 안내)", async () => {
-    const { transport, clock, session, events } = makeSession();
+    const { transport, clock, session, events, disconnect, receive } = makeSession();
 
-    session.start();
-    await transport.settle();
-    transport.lastConnection().emitMessage({
+    await startSession(session, transport);
+    receive({
       type: "error",
       code: "unsupported-protocol-version",
       message: "protocol version 1 required",
     });
-    transport.lastConnection().emitClose();
-    clock.advance(60_000);
-    await transport.settle();
+    disconnect();
+    await advanceSession(clock, transport, 60_000);
 
     expect(events).toContainEqual({ kind: "rejected", code: "unsupported-protocol-version" });
     expect(events.filter((e) => e.kind === "reconnecting")).toEqual([]);
@@ -137,11 +147,10 @@ describe("AgentSession — 역할: 서버 연결 수명주기", () => {
   });
 
   it("서버 error 메시지를 받으면 세션이 연결 close를 완결한다", async () => {
-    const { transport, session } = makeSession();
+    const { transport, session, receive } = makeSession();
 
-    session.start();
-    await transport.settle();
-    transport.lastConnection().emitMessage({
+    await startSession(session, transport);
+    receive({
       type: "error",
       code: "invalid-token",
       message: "token rejected",
@@ -151,20 +160,23 @@ describe("AgentSession — 역할: 서버 연결 수명주기", () => {
   });
 
   it("rejected 이후 수신되는 메시지·데이터는 이벤트로 전달되지 않는다", async () => {
-    const { transport, session, events } = makeSession();
+    const { transport, session, events, receive, receiveData } = makeSession();
 
-    session.start();
-    await transport.settle();
-    transport.lastConnection().emitMessage({
+    await startSession(session, transport);
+    receive({
       type: "error",
       code: "invalid-token",
       message: "token rejected",
     });
 
-    transport.lastConnection().emitMessage({ type: "sync", terminalId: 1, seq: 5 });
-    transport
-      .lastConnection()
-      .emitData({ kind: "input", terminalId: 1, seq: 1, leaseId: 1, payload: new Uint8Array() });
+    receive({ type: "sync", terminalId: 1, seq: 5 });
+    receiveData({
+      kind: "input",
+      terminalId: 1,
+      seq: 1,
+      leaseId: 1,
+      payload: new Uint8Array(),
+    });
 
     expect(events.filter((e) => e.kind === "server-message" || e.kind === "server-data")).toEqual(
       [],
@@ -172,30 +184,26 @@ describe("AgentSession — 역할: 서버 연결 수명주기", () => {
   });
 
   it("stop하면 진행 중 백오프 타이머가 취소된다", async () => {
-    const { transport, clock, session } = makeSession();
+    const { transport, clock, session, disconnect } = makeSession();
 
-    session.start();
-    await transport.settle();
-    transport.lastConnection().emitClose();
+    await startSession(session, transport);
+    disconnect();
 
     session.stop();
-    clock.advance(60_000);
-    await transport.settle();
+    await advanceSession(clock, transport, 60_000);
 
     expect(transport.connectUrls).toHaveLength(1);
     expect(clock.pendingTimerCount()).toBe(0);
   });
 
   it("stop하면 활성 연결을 닫고 그 close 이벤트로도 재접속하지 않는다", async () => {
-    const { transport, clock, session, events } = makeSession();
+    const { transport, clock, session, events, disconnect } = makeSession();
 
-    session.start();
-    await transport.settle();
+    await startSession(session, transport);
 
     session.stop();
-    transport.lastConnection().emitClose();
-    clock.advance(60_000);
-    await transport.settle();
+    disconnect();
+    await advanceSession(clock, transport, 60_000);
 
     expect(transport.lastConnection().closed).toBe(true);
     expect(events.filter((e) => e.kind === "reconnecting")).toEqual([]);
@@ -204,8 +212,7 @@ describe("AgentSession — 역할: 서버 연결 수명주기", () => {
   it("연결된 상태의 send·sendData는 현재 연결로 전달된다", async () => {
     const { transport, session } = makeSession();
 
-    session.start();
-    await transport.settle();
+    await startSession(session, transport);
     session.send({ type: "terminal-opened", terminalId: 1, runtimeId: "runtime-1" });
     session.sendData({ kind: "output", terminalId: 1, seq: 1, payload: new Uint8Array([7]) });
 
@@ -217,29 +224,24 @@ describe("AgentSession — 역할: 서버 연결 수명주기", () => {
   });
 
   it("미연결 상태의 send·sendData는 throw 없이 무시된다", async () => {
-    const { transport, clock, session } = makeSession();
+    const { transport, clock, session, disconnect } = makeSession();
 
-    session.start();
-    await transport.settle();
-    transport.lastConnection().emitClose();
+    await startSession(session, transport);
+    disconnect();
 
     session.send({ type: "terminal-opened", terminalId: 1, runtimeId: "runtime-1" });
     session.sendData({ kind: "output", terminalId: 1, seq: 1, payload: new Uint8Array([7]) });
-    clock.advance(500);
-    await transport.settle();
+    await advanceSession(clock, transport, 500);
 
     expect(transport.lastConnection().sent).toMatchObject([{ type: "hello" }]);
     expect(transport.lastConnection().sentData).toEqual([]);
   });
 
   it("서버 제어 메시지는 server-message 이벤트로 전달된다", async () => {
-    const { transport, session, events } = makeSession();
+    const { transport, session, events, receive } = makeSession();
 
-    session.start();
-    await transport.settle();
-    transport
-      .lastConnection()
-      .emitMessage({ type: "open-terminal", terminalId: 3, cols: 80, rows: 24 });
+    await startSession(session, transport);
+    receive({ type: "open-terminal", terminalId: 3, cols: 80, rows: 24 });
 
     expect(events).toContainEqual({
       kind: "server-message",
@@ -248,10 +250,9 @@ describe("AgentSession — 역할: 서버 연결 수명주기", () => {
   });
 
   it("서버 데이터 프레임은 server-data 이벤트로 전달된다", async () => {
-    const { transport, session, events } = makeSession();
+    const { transport, session, events, receiveData } = makeSession();
 
-    session.start();
-    await transport.settle();
+    await startSession(session, transport);
     const frame = {
       kind: "input",
       terminalId: 3,
@@ -259,7 +260,7 @@ describe("AgentSession — 역할: 서버 연결 수명주기", () => {
       leaseId: 2,
       payload: new Uint8Array([104, 105]),
     } as const;
-    transport.lastConnection().emitData(frame);
+    receiveData(frame);
 
     expect(events).toContainEqual({ kind: "server-data", frame });
   });
@@ -278,8 +279,7 @@ describe("AgentSession — 역할: 서버 연결 수명주기", () => {
       },
     );
 
-    session.start();
-    await transport.settle();
+    await startSession(session, transport);
 
     expect(() => transport.lastConnection().emitClose()).toThrow("listener bug");
     expect(clock.pendingTimerCount()).toBe(1);
@@ -298,7 +298,7 @@ describe("AgentSession — 역할: 서버 연결 수명주기", () => {
   });
 
   it("stop 이후에 실패(reject)로 끝난 진행 중 연결 시도는 재접속을 예약하지 않는다", async () => {
-    const { transport, clock, session, events } = makeSession();
+    const { transport, clock, session, events, disconnect } = makeSession();
     transport.failNextConnect();
 
     session.start();
@@ -313,8 +313,7 @@ describe("AgentSession — 역할: 서버 연결 수명주기", () => {
   it("stop 이후의 send·sendData는 닫힌 연결로 전달되지 않는다", async () => {
     const { transport, session } = makeSession();
 
-    session.start();
-    await transport.settle();
+    await startSession(session, transport);
     session.stop();
 
     session.send({ type: "terminal-opened", terminalId: 1, runtimeId: "runtime-1" });
@@ -338,8 +337,7 @@ describe("AgentSession — 역할: 서버 연결 수명주기", () => {
       },
     );
 
-    session.start();
-    await transport.settle();
+    await startSession(session, transport);
 
     expect(() =>
       transport.lastConnection().emitMessage({
@@ -352,13 +350,12 @@ describe("AgentSession — 역할: 서버 연결 수명주기", () => {
   });
 
   it("같은 연결의 close 이벤트가 중복 도착해도 재접속은 한 번만 예약된다", async () => {
-    const { transport, clock, session, events } = makeSession();
+    const { transport, clock, session, events, disconnect } = makeSession();
 
-    session.start();
-    await transport.settle();
+    await startSession(session, transport);
 
-    transport.lastConnection().emitClose();
-    transport.lastConnection().emitClose();
+    disconnect();
+    disconnect();
 
     expect(clock.pendingTimerCount()).toBe(1);
     expect(events.filter((e) => e.kind === "reconnecting")).toMatchObject([{ attempt: 1 }]);
@@ -367,12 +364,10 @@ describe("AgentSession — 역할: 서버 연결 수명주기", () => {
   it("이전 연결의 유령 close가 늦게 도착해도 현재 연결을 폐기하지 않는다", async () => {
     const { transport, clock, session } = makeSession();
 
-    session.start();
-    await transport.settle();
+    await startSession(session, transport);
     const first = transport.lastConnection();
     first.emitClose();
-    clock.advance(500);
-    await transport.settle();
+    await advanceSession(clock, transport, 500);
 
     first.emitClose();
     session.send({ type: "terminal-opened", terminalId: 1, runtimeId: "runtime-1" });

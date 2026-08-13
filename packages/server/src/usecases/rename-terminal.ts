@@ -4,11 +4,13 @@ import type { ConnectionRegistry, Session } from "./connection-registry.js";
 export class RenameTerminal {
   constructor(private readonly deps: { rooms: RoomRegistry; connections: ConnectionRegistry }) {}
 
-  execute(session: Session, terminalId: number, title: string): void {
+  async execute(session: Session, terminalId: number, title: string): Promise<void> {
     const room = this.deps.rooms.get(session.roomId);
     if (!room?.terminal(terminalId)) return;
-    if (!room.renameTerminal(terminalId, title)) return;
-    this.deps.rooms.save(room);
+    const changed = await this.deps.rooms.change(room, (draft) =>
+      draft.renameTerminal(terminalId, title),
+    );
+    if (!changed) return;
 
     this.deps.connections.broadcast(room.roomId, {
       type: "room-event",

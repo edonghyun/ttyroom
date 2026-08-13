@@ -50,11 +50,7 @@ describe("BrowserTransport — browser protocol boundary", () => {
   });
 
   it("parses JSON server messages through the public protocol", () => {
-    const socket = new FakeBrowserSocket();
-    const transport = createTransport(socket);
-    const subscriber = vi.fn();
-    transport.subscribe(subscriber);
-    transport.start();
+    const { socket, subscriber } = startedTransport();
 
     socket.message(
       JSON.stringify({
@@ -71,11 +67,7 @@ describe("BrowserTransport — browser protocol boundary", () => {
   });
 
   it("decodes binary output frames into protocol output events", () => {
-    const socket = new FakeBrowserSocket();
-    const transport = createTransport(socket);
-    const subscriber = vi.fn();
-    transport.subscribe(subscriber);
-    transport.start();
+    const { socket, subscriber } = startedTransport();
     const encoded = encodeDataFrame({
       kind: "output",
       terminalId: 3,
@@ -97,11 +89,7 @@ describe("BrowserTransport — browser protocol boundary", () => {
   });
 
   it("reports malformed control and data frames as typed failures", () => {
-    const socket = new FakeBrowserSocket();
-    const transport = createTransport(socket);
-    const subscriber = vi.fn();
-    transport.subscribe(subscriber);
-    transport.start();
+    const { socket, subscriber } = startedTransport();
 
     socket.message('{"type":"welcome","token":"secret-token"}');
     socket.message(new Uint8Array([1, 2]).buffer);
@@ -114,11 +102,7 @@ describe("BrowserTransport — browser protocol boundary", () => {
   });
 
   it("disposes once and ignores every late socket event", () => {
-    const socket = new FakeBrowserSocket();
-    const transport = createTransport(socket);
-    const subscriber = vi.fn();
-    transport.subscribe(subscriber);
-    transport.start();
+    const { socket, subscriber, transport } = startedTransport();
 
     transport.dispose();
     transport.dispose();
@@ -133,11 +117,7 @@ describe("BrowserTransport — browser protocol boundary", () => {
   });
 
   it("reports socket close and error without exposing connection details", () => {
-    const socket = new FakeBrowserSocket();
-    const transport = createTransport(socket);
-    const subscriber = vi.fn();
-    transport.subscribe(subscriber);
-    transport.start();
+    const { socket, subscriber } = startedTransport();
 
     socket.closed();
     socket.failed();
@@ -204,4 +184,17 @@ function createTransport(socket: FakeBrowserSocket): BrowserTransport {
       },
     },
   );
+}
+
+function startedTransport(): {
+  socket: FakeBrowserSocket;
+  transport: BrowserTransport;
+  subscriber: ReturnType<typeof vi.fn>;
+} {
+  const socket = new FakeBrowserSocket();
+  const transport = createTransport(socket);
+  const subscriber = vi.fn();
+  transport.subscribe(subscriber);
+  transport.start();
+  return { socket, transport, subscriber };
 }

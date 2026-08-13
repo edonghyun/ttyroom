@@ -42,7 +42,6 @@ describe("MetaCollector — 역할: 터미널 카드 자동 맥락 수집", () =
 
     collector.track(1);
     clock.advance(1000);
-    // 첫 collect가 readlink/lsof await에 머문 같은 이벤트 루프에서 다음 틱도 발화시킨다.
     clock.advance(1000);
     await waitUntil(() => metas.length > 0);
 
@@ -84,12 +83,15 @@ describe("MetaCollector — 역할: 터미널 카드 자동 맥락 수집", () =
     const meta = metas[0]?.meta;
     if (!meta) throw new Error("meta가 수집돼야 한다");
 
-    if (meta.cwd !== null) {
-      expect(meta.cwd).toBe(gitDir);
-      expect(meta.gitBranch).toBe("test-branch");
-    } else {
-      // darwin lsof가 실패하는 환경 폴백 — cwd는 null을 허용하되 fgProcess는 있어야 한다 (계획)
-      expect(meta.fgProcess).not.toBeNull();
-    }
+    expectCollectedProcessContext(meta, gitDir);
   });
 });
+
+function expectCollectedProcessContext(meta: TerminalMeta, gitDir: string): void {
+  if (meta.cwd === null) {
+    expect(meta.fgProcess).not.toBeNull();
+    return;
+  }
+  expect(meta.cwd).toBe(gitDir);
+  expect(meta.gitBranch).toBe("test-branch");
+}

@@ -23,24 +23,20 @@ export function expectNoMessage(received: ServerMessage[], type: ServerMessage["
   throw new Error(`금지된 type "${type}" 메시지가 수신됨: ${JSON.stringify(found)}`);
 }
 
-// vitest 무의존 — 킷이 테스트 러너에 묶이지 않게 순수 비교로 구현한다.
-// 의미론은 모든 깊이에서 partial: 객체는 기대한 키만 검사(부분 집합), 배열은 길이 일치 +
-// 원소별 partial, 리프는 Object.is. 계획 Task 6의
-// `snapshot: { participants: [{ name: "alice" }] }` 같은 중첩 부분 단언이 이 의미론을 요구한다.
 function matchesPartial(message: ServerMessage, partial: object): boolean {
-  return matchesWant(message, partial);
+  return isDeepPartialMatch(message, partial);
 }
 
-function matchesWant(got: unknown, want: unknown): boolean {
+function isDeepPartialMatch(got: unknown, want: unknown): boolean {
   if (Object.is(got, want)) return true;
   if (typeof want !== "object" || want === null) return false;
   if (typeof got !== "object" || got === null) return false;
 
   if (Array.isArray(want) || Array.isArray(got)) {
     if (!Array.isArray(want) || !Array.isArray(got) || want.length !== got.length) return false;
-    return want.every((item, i) => matchesWant(got[i], item));
+    return want.every((item, i) => isDeepPartialMatch(got[i], item));
   }
 
   const gotRecord = got as Record<string, unknown>;
-  return Object.entries(want).every(([key, value]) => matchesWant(gotRecord[key], value));
+  return Object.entries(want).every(([key, value]) => isDeepPartialMatch(gotRecord[key], value));
 }

@@ -9,8 +9,7 @@ describe("데이터 프레임 코덱 — 역할: 터미널 입출력 바이트�
       seq: 42,
       payload: new Uint8Array([104, 105]),
     } as const;
-    const decoded = decodeDataFrame(encodeDataFrame(frame));
-    expect(decoded).toEqual({ kind: "ok", frame });
+    expectRoundTrip(frame);
   });
 
   it("입력 프레임 라운드트립은 leaseId를 보존한다", () => {
@@ -21,12 +20,10 @@ describe("데이터 프레임 코덱 — 역할: 터미널 입출력 바이트�
       leaseId: 9,
       payload: new Uint8Array([108, 115]),
     } as const;
-    const decoded = decodeDataFrame(encodeDataFrame(frame));
-    expect(decoded).toEqual({ kind: "ok", frame });
+    expectRoundTrip(frame);
   });
 
   it("출력 프레임 바이트 레이아웃은 PROTOCOL.md 명세와 일치한다", () => {
-    // 골든 테스트 — 레이아웃 변경은 프로토콜 버전 범프를 요구한다
     const bytes = encodeDataFrame({
       kind: "output",
       terminalId: 0x0102,
@@ -64,8 +61,6 @@ describe("데이터 프레임 코덱 — 역할: 터미널 입출력 바이트�
   });
 
   it("byteOffset이 0이 아닌 서브뷰를 디코딩해도 프레임을 올바르게 읽는다", () => {
-    // ws는 공유 풀 위의 Buffer 뷰(byteOffset≠0)로 프레임을 전달한다 —
-    // bytes.buffer를 offset 없이 읽는 회귀를 여기서 차단한다
     const frame = {
       kind: "output",
       terminalId: 7,
@@ -94,9 +89,12 @@ describe("데이터 프레임 코덱 — 역할: 터미널 입출력 바이트�
   });
 
   it("입력 프레임이 입력 헤더(13B)보다 짧으면 malformed 결과를 돌려준다", () => {
-    // 특성화 테스트 — 출력 헤더(9B)는 통과하지만 leaseId가 잘린 9~12B 구간
     expect(decodeDataFrame(new Uint8Array([FRAME_INPUT, 0, 0, 0, 1, 0, 0, 0, 2]))).toMatchObject({
       kind: "malformed",
     });
   });
 });
+
+function expectRoundTrip(frame: Parameters<typeof encodeDataFrame>[0]): void {
+  expect(decodeDataFrame(encodeDataFrame(frame))).toEqual({ kind: "ok", frame });
+}
