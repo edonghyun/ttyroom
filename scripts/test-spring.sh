@@ -4,8 +4,8 @@ repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$repo_root"
 suite=${1:-}
 case "$suite" in
-  protocol|browser|registration) shift ;;
-  *) echo 'Usage: ./scripts/test-spring.sh protocol|browser|registration [test arguments...]' >&2; exit 2 ;;
+  protocol|browser|registration|authentication) shift ;;
+  *) echo 'Usage: ./scripts/test-spring.sh protocol|browser|registration|authentication [test arguments...]' >&2; exit 2 ;;
 esac
 java_bin=${JAVA_HOME:+$JAVA_HOME/bin/}java
 jar_path="$repo_root/backend/build/libs/ttyroom-backend.jar"
@@ -18,5 +18,6 @@ export TTYROOM_E2E_SERVER_COMMAND
 case "$suite" in
   protocol) exec pnpm --filter @ttyroom/e2e test:e2e "$@" ;;
   registration) exec pnpm --filter @ttyroom/e2e exec vitest run --config vitest.registration.config.ts "$@" ;;
+  authentication) exec pnpm --filter @ttyroom/e2e exec vitest run --config vitest.authentication.config.ts "$@" ;;
   browser) exec pnpm --filter @ttyroom/web exec playwright test "$@" ;;
 esac

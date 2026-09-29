@@ -76,8 +76,6 @@ public final class RoomSessions implements AutoCloseable {
         }
     }
 
-    private static final int PROTOCOL_VERSION = 7;
-
     public record Policy(
             long participantGraceMs, long hostGraceMs, long scrollbackBytesPerTerminal) {
         public static final Policy DEFAULT = new Policy(15_000, 30_000, 1_048_576);
@@ -88,13 +86,43 @@ public final class RoomSessions implements AutoCloseable {
         }
     }
 
+    public sealed interface AdmissionRequest permits Hello, CredentialHello {
+        double protocolVersion();
+
+        String roomId();
+
+        String name();
+    }
+
+    /** v8: role and identity are never supplied by the client. */
+    public record CredentialHello(
+            double protocolVersion, String roomId, String credential, String name)
+            implements AdmissionRequest {
+        @Override
+        public String toString() {
+            return "CredentialHello[credentials=<redacted>]";
+        }
+    }
+
+    /** Temporary process-wide compatibility selection; never negotiated per connection. */
+    public enum AdmissionMode {
+        INVITATION_V7(7),
+        CREDENTIAL_V8(8);
+        private final int version;
+
+        AdmissionMode(int version) {
+            this.version = version;
+        }
+    }
+
     public record Hello(
             double protocolVersion,
             String roomId,
             String token,
             String clientId,
             String name,
-            Role role) {
+            Role role)
+            implements AdmissionRequest {
         @Override
         public String toString() {
             return "Hello[credentials=<redacted>]";
@@ -102,6 +130,8 @@ public final class RoomSessions implements AutoCloseable {
     }
 
     private record Identity(Role role, String clientId) {}
+
+    private record Authenticated(Identity identity, String name) {}
 
     private static final class Member {
         final Identity identity;
@@ -113,13 +143,13 @@ public final class RoomSessions implements AutoCloseable {
         boolean connected = true;
         ExpiryTimers.Cancellation expiry;
 
-        Member(Hello hello, Peer peer) {
-            this.identity = new Identity(hello.role(), hello.clientId());
-            this.name = hello.name();
+        Member(Authenticated authenticated, Peer peer) {
+            this.identity = authenticated.identity();
+            this.name = authenticated.name();
             this.peer = peer;
             this.host =
-                    hello.role() == Role.HOST
-                            ? new HostPresence(hello.clientId(), hello.name())
+                    identity.role() == Role.HOST
+                            ? new HostPresence(identity.clientId(), name)
                             : null;
         }
 
@@ -161,6 +191,7 @@ public final class RoomSessions implements AutoCloseable {
     private final ConcurrentHashMap<String, Presence> presence = new ConcurrentHashMap<>();
     private final ExpiryTimers timers;
     private final Policy policy;
+    private final AdmissionMode admissionMode;
     private volatile boolean closing;
     private volatile boolean closed;
 
@@ -177,40 +208,55 @@ public final class RoomSessions implements AutoCloseable {
     }
 
     private RoomSessions(RoomDirectory rooms, ExpiryTimers timers, Policy policy) {
+        this(rooms, timers, policy, AdmissionMode.INVITATION_V7);
+    }
+
+    public RoomSessions(RoomDirectory rooms, Policy policy, AdmissionMode mode) {
+        this(rooms, new ExpiryTimers(), policy, mode);
+    }
+
+    RoomSessions(RoomDirectory rooms, ExpiryTimers timers, Policy policy, AdmissionMode mode) {
         this.rooms = rooms;
         this.timers = timers;
         this.policy = Objects.requireNonNull(policy);
+        this.admissionMode = Objects.requireNonNull(mode);
     }
 
     /** Returns a connection-scoped session, or null if admission was rejected or failed. */
-    public Session join(Hello hello, Peer peer) {
-        if (hello.protocolVersion() != PROTOCOL_VERSION) {
-            reject(peer, "unsupported-protocol-version", "server=" + PROTOCOL_VERSION);
+    public Session join(AdmissionRequest request, Peer peer) {
+        if (request.protocolVersion() != admissionMode.version
+                || (admissionMode == AdmissionMode.INVITATION_V7 && !(request instanceof Hello))
+                || (admissionMode == AdmissionMode.CREDENTIAL_V8
+                        && !(request instanceof CredentialHello))) {
+            reject(peer, "unsupported-protocol-version", "server=" + admissionMode.version);
             return null;
         }
-        // Reject unauthenticated requests before allocating room presence.
-        var admittedRoom = authenticate(hello, peer);
-        if (admittedRoom == null) return null;
-        var room =
-                presence.computeIfAbsent(
-                        hello.roomId(), ignored -> new Presence(admittedRoom, policy));
-        return rooms.execute(admittedRoom, operation -> admit(room, hello, peer, operation));
-    }
-
-    private Session admit(
-            Presence room, Hello hello, Peer peer, RoomDirectory.RoomOperation operation) {
-        return operation.changeIf(
-                () -> {
-                    if (authenticate(hello, peer) != null) return true;
-                    if (room.members.isEmpty()) presence.remove(room.roomId, room);
-                    return false;
-                },
-                draft -> {
-                    if (hello.role() == Role.HOST)
-                        draft.rememberHost(hello.clientId(), hello.name());
-                    return new Member(hello, peer);
-                },
-                member -> attach(room, member));
+        var state = rooms.roomForAdmission(request.roomId());
+        if (state == null) {
+            var code = request instanceof Hello ? "room-not-found" : "invalid-credential";
+            reject(peer, code, code);
+            return null;
+        }
+        // Authenticate and attach in the same command order as credential revocation/deletion.
+        // Unauthenticated requests never allocate presence or supersede an existing connection.
+        return rooms.execute(
+                state,
+                operation -> {
+                    var authenticated = authenticate(request, state, peer);
+                    if (authenticated == null) return null;
+                    var room =
+                            presence.computeIfAbsent(
+                                    state.id, ignored -> new Presence(state, policy));
+                    return operation.changeIf(
+                            () -> true,
+                            draft -> {
+                                var identity = authenticated.identity();
+                                if (identity.role() == Role.HOST)
+                                    draft.rememberHost(identity.clientId(), authenticated.name());
+                                return new Member(authenticated, peer);
+                            },
+                            member -> attach(room, member));
+                });
     }
 
     /** Runs after registration is committed, under the room state monitor. */
@@ -738,13 +784,32 @@ public final class RoomSessions implements AutoCloseable {
         }
     }
 
-    private RoomDirectory.Room authenticate(Hello hello, Peer peer) {
-        try {
-            return rooms.authenticatedRoom(hello.roomId(), hello.token());
-        } catch (RoomDirectory.InvitationRejected rejected) {
-            reject(peer, rejected.code(), rejected.code());
+    private Authenticated authenticate(
+            AdmissionRequest request, RoomDirectory.Room room, Peer peer) {
+        if (request instanceof Hello legacy) {
+            try {
+                rooms.authenticatedRoom(legacy.roomId(), legacy.token());
+                return new Authenticated(
+                        new Identity(legacy.role(), legacy.clientId()), legacy.name());
+            } catch (RoomDirectory.InvitationRejected rejected) {
+                reject(peer, rejected.code(), rejected.code());
+                return null;
+            }
+        }
+        var credential = (CredentialHello) request;
+        var subject = rooms.authenticateCredential(room, credential.credential()).orElse(null);
+        if (subject == null || subject.role() == RoomCredentials.Role.MANAGER) {
+            reject(peer, "invalid-credential", "invalid-credential");
             return null;
         }
+        var role =
+                switch (subject.role()) {
+                    case PARTICIPANT -> Role.PARTICIPANT;
+                    case HOST -> Role.HOST;
+                    case MANAGER ->
+                            throw new IllegalStateException("Manager cannot hold a socket session");
+                };
+        return new Authenticated(new Identity(role, subject.id()), credential.name());
     }
 
     private Welcome welcome(Presence room, Member self, String name) {

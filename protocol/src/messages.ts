@@ -239,6 +239,7 @@ export type LeaseResult = z.infer<typeof leaseResultSchema>;
 export const errorCodeSchema = z.enum([
   "room-not-found",
   "invalid-token",
+  "invalid-credential",
   "unsupported-protocol-version",
   "bad-message",
 ]);

@@ -39,7 +39,10 @@ lease·focus 같은 live 제어는 같은 명령 순서를 사용하되 draft·�
 credential 발급·취소도 같은 방별 명령 순서에서 독립 draft → 저장 → 확정을 따른다.
 일반 방 상태 저장은 credential 목록을 함께 보존한다. 저장된 목록과 변경 경계는
 [인증 설계와 구현 범위](../docs/AUTHENTICATION.md#발급취소의-저장과-복원)를 참고한다.
-HTTP·WebSocket 입장의 인증 정책은 아직 이 내부 모델을 사용하지 않는다.
+HTTP 등록과 v8 WebSocket 입장은 이 모델을 사용한다. RoomSessions는 credential의 digest를 알지 않고
+RoomDirectory가 반환한 Subject로 역할·ID를 결정한다. 검증·presence 생성·host 저장·연결 교체를
+취소와 같은 명령 순서 안에서 처리한다. 미인증 요청은 presence를 만들지 않는다.
+기본값과 기존 클라이언트는 아직 v7이며, v8 프로세스에는 v7 fallback이 없다.
 
 ## 업무 판단과 전달 효과
 

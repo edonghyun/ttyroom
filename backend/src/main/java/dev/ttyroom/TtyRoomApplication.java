@@ -51,7 +51,10 @@ public class TtyRoomApplication {
                 new RoomSessions.Policy(
                         settings.participantGraceMs(),
                         settings.hostGraceMs(),
-                        settings.scrollbackBytesPerTerminal()));
+                        settings.scrollbackBytesPerTerminal()),
+                settings.protocolVersion() == 8
+                        ? RoomSessions.AdmissionMode.CREDENTIAL_V8
+                        : RoomSessions.AdmissionMode.INVITATION_V7);
     }
 
     @Bean

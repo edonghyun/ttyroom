@@ -27,7 +27,9 @@ Java 21 JDK가 필요하다. `JAVA_HOME`을 해당 JDK 경로로 지정한다. �
 - Spring 종료 유예는 5초다. 기존 E2E 실행기는 250ms 후 강제 종료할 수 있으므로 프로세스 smoke는 graceful drain 보장이 아니다.
 
 `POST /api/rooms`는 이름을 검증하고 방·초대 URL·생성자용 관리 credential을 생성한다.
-HTTP 참가자 등록은 초대 토큰을, host 등록은 해당 방의 관리 credential을 확인한다. WS는 아직 v7 초대 토큰 방식이다. 응답 형식은 [HTTP 계약](../protocol/HTTP.md)을 따른다. 방과 토큰·credential의 SHA-256 digest는 메모리 또는 설정한 SQLite 파일에 보관한다.
+HTTP 참가자 등록은 초대 토큰을, host 등록은 해당 방의 관리 credential을 확인한다. WS 기본값은 v7 초대 토큰 방식이며, `TTYROOM_PROTOCOL_VERSION=8`이면 주체 credential만 받는다.
+프로세스별로 한 버전만 허용한다. 현재 React·Connector는 v7이므로 v8는 별도 포트·새 DB로 검증한다.
+[v8 입장 계약](../protocol/AUTHENTICATION_V8.md)과 [실행 안내](../docs/DEVELOPMENT.md#v8-서버-입장-검증)를 참고한다. 응답 형식은 [HTTP 계약](../protocol/HTTP.md)을 따른다. 방과 토큰·credential의 SHA-256 digest는 메모리 또는 설정한 SQLite 파일에 보관한다.
 새 방은 관리 credential을 포함한 v2 저장 형식을 사용하므로 Node 참조 서버와 파일을 공유하지 않는다. 토큰 원문은 초대 응답에만 사용하며 인증 비교는 고정 길이 digest의 constant-time 비교를 사용한다.
 
 `TTYROOM_STATE_PATH`가 없거나 빈 문자열이면 메모리 모드다. 경로를 지정하면 부모 디렉터리를

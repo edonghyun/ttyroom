@@ -58,8 +58,9 @@ Node/Spring 공통 5xx 형식은 정의하지 않았다. Spring의 저장·종�
 
 ## Spring 등록 API
 
-T9.2에서 구현한 HTTP 확장이다. Node v7 참조 구현에는 없으며 현재 WebSocket은 여전히 v7이다.
-등록 성공만으로 연결 인증이 완료되지 않는다. React·Connector는 아직 이 API를 호출하지 않는다.
+T9.2에서 구현한 HTTP 확장이다. Node v7 참조 구현에는 없다. Spring은 기본 v7 입장과
+선택 가능한 [v8 credential 입장](AUTHENTICATION_V8.md)을 프로세스별로 구분한다.
+등록 뒤 v8 hello로 입장해야 연결이 인증된다. React·Connector는 아직 이 API를 호출하지 않는다.
 
 ### 방 생성의 관리 credential
 
@@ -111,7 +112,7 @@ Bearer scheme의 대소문자는 구분하지 않으며 중복 헤더와 잘못�
 | 503  | `registration unavailable`     | 일시적 저장 실패·서버 종료 상태. 생성에도 적용             |
 
 공개 오류에서 없는 방과 잘못된 권한을 구분하지 않는다. 본문 형식 검사는 권한 검사에 앞선다.
-현재 v7 hello에 초대 토큰과 임의 role/clientId를 보내는 경로는 그대로 남아 있다.
+기본 v7 서버에는 초대 토큰과 임의 role/clientId로 입장하는 경로가 남아 있다. v8 서버에서는 거절한다.
 **이 API만으로 host 접속과 기존 참가자 사칭이 차단됐다고 주장하지 않는다.**
 
 ## 정적 웹과 WebSocket

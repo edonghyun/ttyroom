@@ -178,3 +178,14 @@ Browser TestSystem도 같은 ServerProcess 실행 경계를 사용한다.
 검증한다. 먼저 JAR를 빌드하며 Java 21의 `JAVA_HOME`을 사용한다. 이 Spring 전용 계약은
 `vitest.registration.config.ts`로 실행하고 v7 Node/Spring 공통 E2E에 섞지 않는다.
 CI의 `spring-contract` 작업에서도 실행한다. WebSocket v8 인증을 검증하는 테스트는 아니다.
+
+## Spring v8 입장 계약
+
+`./scripts/test-spring.sh authentication`은 `vitest.authentication.config.ts`로
+[admission.spring.ts](src/admission.spring.ts)를 실행한다. 현재 13개 사례가 실제 JAR의
+credential 인증·신원 필드 거절·버전 격리·동일 주체 교체·새 PID의 host credential 복원을 검증한다.
+HTTP 등록 fixture가 서버·소켓·임시 SQLite 수명을 소유하며 서버 설정에 버전을 명시한다.
+프로세스 하나에서 두 버전을 함께 허용하지 않는다. CI의 `spring-contract`에서도 실행한다.
+
+protocol·Connector와 JAR를 먼저 빌드하고, 테스트가 끝날 때까지 산출물을 다시 쓰지 않는다.
+이 검사는 현재 v7 React·Connector의 v8 연동이나 공개 취소 API를 검증하지 않는다.

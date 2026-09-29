@@ -49,6 +49,8 @@ jobs:
         run: ./scripts/test-spring.sh protocol --exclude src/static-web.e2e.ts
       - name: Spring registration contracts
         run: ./scripts/test-spring.sh registration
+      - name: Spring v8 admission contracts
+        run: ./scripts/test-spring.sh authentication
 
   check:
     runs-on: ubuntu-latest

@@ -15,6 +15,7 @@ import java.util.Set;
 /** Validated public startup settings; JSON and environment details stay at this boundary. */
 public record ServerSettings(
         int port,
+        int protocolVersion,
         String statePath,
         long participantGraceMs,
         long hostGraceMs,
@@ -22,7 +23,8 @@ public record ServerSettings(
         long sendBufferDropThresholdBytes,
         long maxQueuedDataBytesPerConnection) {
     private static final long MAX_SAFE_INTEGER = 9_007_199_254_740_991L;
-    private static final Set<String> ROOT_FIELDS = Set.of("port", "statePath", "policy");
+    private static final Set<String> ROOT_FIELDS =
+            Set.of("port", "protocolVersion", "statePath", "policy");
     private static final Set<String> POLICY_FIELDS =
             Set.of(
                     "participantGraceMs",
@@ -51,6 +53,7 @@ public record ServerSettings(
                     "outputRateLimitBytesPerSec override is not supported");
         return new ServerSettings(
                 root.port(),
+                (int) root.number("protocolVersion", "TTYROOM_PROTOCOL_VERSION", 7, 7, 8),
                 root.statePath(),
                 policyValues.nonNegative(
                         "participantGraceMs", "TTYROOM_PARTICIPANT_GRACE_MS", 15000),

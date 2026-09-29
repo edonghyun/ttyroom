@@ -1,5 +1,42 @@
 # 검증 기록
 
+## 2026-09-30 v8 입장 T9.3
+
+Java 21·macOS에서 서버의 credential 입장·동일 주체 교체를 검증했다. 원본 로그와
+변경 파일 SHA-256 목록은 로컬 `artifacts/t9-3/`에 둔다. 기준 커밋은 `11235ac`이다.
+
+- Java 전체 **432개 통과**, 실패·오류·skip 0. 파서 8개·입장 11개·설정 7개가 추가됐다.
+- Spring v8 프로세스 **13개 통과**: 주체 인증·신원 필드 거절·v7 격리·교체·새 PID의 host 복원.
+- Spring 등록 프로세스 **4개 통과**. HTTP 권한·응답·재시작 계약을 유지한다.
+- Spring v7 공통 프로세스 **205개·17개 파일 통과**. API-only JAR이므로 정적 웹 8개는 제외했다.
+- TS 단위 **544개 통과**: protocol 95, Connector 58, React 175, Node 비교 서버 216.
+- 전체 타입·포맷·의존성 경계 검사 통과. Java는 AOSP 포맷으로 정리했다.
+
+새 동작의 RED와 기존 동작의 특성화, fixture 기대값·파일 소유권 수정은
+[작업 이력](WORK_LOG.md#v8-입장과-연결-교체)에 구분했다. 첫 v8 프로세스 실행에서 발생한
+구버전 디코더 사용 실패 3개는 의존성 빌드를 먼저 완료한 뒤 전체를 재실행해 해소했다.
+첫 v7 전체 실행은 버전 오류 후 연결 종료의 회귀 1개로 204개 통과·1개 실패였다.
+파서 회귀 테스트와 수정 후 전체를 다시 실행했다. 최종 Java 빌드 뒤 JAR를 복사했으며 실행 중 JAR·protocol 산출물을 다시 쓰지 않았다.
+JAR SHA-256: `b5ce0071b3dda26f8a1943c0e9df9f90f2faa1bc3b12ae68123265c8da4e5e49`.
+
+Java 21의 JAVA_HOME과 의존성 설치를 마친 저장소 루트에서 순서대로 실행한다.
+
+```sh
+pnpm --filter @ttyroom/connector... build
+backend/gradlew -p backend test bootJar
+./scripts/test-spring.sh authentication
+./scripts/test-spring.sh registration
+./scripts/test-spring.sh protocol --exclude src/static-web.e2e.ts
+pnpm typecheck
+pnpm test
+pnpm format
+pnpm depcruise
+```
+
+로컬에서는 브라우저·패키징된 정적 웹을 재실행하지 않았다. 기본 v7의 해당 검증은 CI의
+Node/Spring 브라우저 작업에서 수행한다. 현재 React·Connector의 v8 연동, 공개 취소 API,
+운영 배포는 이번 완료 범위가 아니다. 취소 경합은 내부 Java command queue를 제어한 검증이다.
+
 ## 2026-09-30 등록 API 권한 T9.2
 
 [HTTP 계약](../protocol/HTTP.md#spring-등록-api)의 관리 credential과 참가자·host 등록을 검증했다.

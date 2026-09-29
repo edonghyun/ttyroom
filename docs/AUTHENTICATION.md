@@ -1,7 +1,8 @@
 # 인증 경계 보강안: 초대·주체·재접속 증명 분리
 
-상태: credential 원자적 저장·복원(T9.1), 관리 credential과 participant/host HTTP 등록(T9.2)을 구현했다.
-HTTP 취소·WebSocket 입장·클라이언트 연동은 후속 설계다. wire는 현재 v7 그대로다.
+상태: credential 저장·복원(T9.1), HTTP 등록(T9.2), v8 서버 입장·동일 주체 교체(T9.3)를 구현했다.
+기본 서버와 React·Connector는 아직 v7이다. v8는 프로세스 설정으로 선택하며 클라이언트 연동과
+기본값 전환은 T9.4, HTTP 취소·현재 연결 정리는 T9.5 범위다.
 목표는 계정 서비스를 만드는 것이 아니라, 같은 초대 링크를 가진 클라이언트가
 다른 participant나 host의 식별자를 임의로 사용하는 문제를 막는 것이다.
 
@@ -28,7 +29,7 @@ JWT는 이번 범위에 필요하지 않다. 서버가 어차피 방별 등록·
 ## 제안 흐름
 
 1–3의 방 생성·등록은 구현했으며 정확한 payload와 오류는 [HTTP 계약](../protocol/HTTP.md)을 따른다.
-4–6의 클라이언트 전달·연결 인증은 후속 설계다.
+5–6의 서버 연결 인증도 v8 모드에서 구현했다. 4의 전달·보관과 브라우저 연동은 후속 설계다.
 관리 credential은 URL이 아닌 Authorization 헤더로 전달한다.
 
 1. `POST /api/rooms`: 기존 방 초대 정보에 더해 관리 credential을 생성자에게만 반환한다.
@@ -66,6 +67,8 @@ sequenceDiagram
 ```
 
 ## 상태·수명·실패 계약
+
+아래는 목표 계약이다. 저장·입장 순서는 구현했으며 공개 취소 API·활성 연결 정리와 클라이언트 보관은 후속 범위다.
 
 - credential 발급은 레코드 저장 성공 후 응답한다. 저장 실패 시 인증 가능한 credential이 남지 않는다.
   저장 성공 후 응답이 유실되면 사용하지 못하는 등록이 남을 수 있다. 자동 재시도에서
@@ -118,23 +121,20 @@ RoomSessions는 검증된 결과만 받아 연결을 조정하며 credential dig
 
 ## 입장 인증의 호환성 경계
 
-v7의 `token + role + clientId` hello를 그대로 허용하면 보호를 우회할 수 있다.
-따라서 새 인증은 protocol major 변경(후보 v8)과 저장 형식 이행을 함께 다룬다.
-이 설계만으로 현재 `PROTOCOL_VERSION`을 올리지 않는다.
-기존 방에는 관리·주체 credential이 없으므로 조용히 임의 발급하지 않는다.
-토이 프로젝트의 첫 전환은 새 저장 파일·새 방을 사용하고 기존 파일은 유지한다.
-Node 비교 구현은 v7 회귀 기준으로 남기며 v8 테스트와 v7 테스트를 구분한다.
+v8 프로세스는 credential에서 역할·주체를 결정하고 v7 hello를 거절한다. 초대 토큰·관리 credential로
+WS에 연결하거나 요청자가 신원 필드를 고르는 경로는 허용하지 않는다. 검증 실패는 기존 연결을 바꾸지 않는다.
+정확한 payload·오류는 [v8 입장 계약](../protocol/AUTHENTICATION_V8.md)을 따른다.
 
-credential 발급·취소·저장·HTTP 등록의 검증은 [작업 이력](WORK_LOG.md#credential-저장)에 기록했다.
-다음 T9.3에서는 hello의 인증 계약을 먼저 테스트하고 v8 입장을 연결한다. 현재 등록 성공을
-“사칭 문제 해결”로 보고하지 않는다.
+`TTYROOM_PROTOCOL_VERSION=8` 또는 JSON `protocolVersion: 8`로 선택한다. 프로세스 하나는
+선택한 버전만 받으며 연결별 fallback은 없다. **기본값은 아직 7**이다. 현재 React·Connector와
+동시에 사용할 기본값은 T9.4에서 바꾼다. v8를 선택하지 않은 서버의 사칭 문제는 그대로 남아 있다.
 
-완료 조건은 유효한 주체만 자신의 연결을 교체할 수 있고, 초대 토큰만으로 host 접속이나
-기존 participant 교체를 할 수 없으며, 취소 후 재접속이 거절되는 것이다.
-host inventory·PTY 복구와 participant lease 재접속 계약도 새 인증에서 다시 검증해야 한다.
+검증용 v8 서버는 별도 포트·새 저장 파일·새 방으로 실행한다. 기존 ID에 credential을 자동 발급하거나
+여러 서버가 SQLite 파일을 공유하도록 하지 않는다. Node 비교 구현은 v7 회귀 기준으로 유지한다.
 
-[현재 보안 모델](SECURITY_MODEL.md)과 [현재 wire v7](../protocol/PROTOCOL.md)은
-구현된 동작의 기준으로 유지한다. HTTP 생성·등록과 아래 저장 계약 외의 입장·취소 연동은 아직 구현되지 않았다.
+[작업 이력](WORK_LOG.md#v8-입장과-연결-교체)에 실패 테스트와 구현·리뷰 과정을 기록했다.
+동일 credential의 lease 유지·늦은 callback 무효화와 재시작 후 host inventory 복구를 검증했다.
+HTTP 취소·현재 연결 종료·클라이언트 전달·보관까지 완료한 제품 인증으로 해석하지 않는다.
 
 ## 발급·취소의 저장과 복원
 
@@ -146,7 +146,8 @@ host inventory·PTY 복구와 participant lease 재접속 계약도 새 인증�
 일반 workspace 변경도 현재 credential 레코드를 함께 저장한다. credential 변경은 workspace를
 복제·교체하지 않으며, 방 삭제 뒤 남은 내부 참조로 credential을 발급해 방을 되살리지 못한다.
 발급·취소는 저장소 종료 drain에도 포함된다. 인증 조회는 확정 상태의 조회일 뿐, 조회 결과로
-나중에 WebSocket을 붙여도 된다는 허가가 아니다. 취소와 실제 입장의 원자성은 T9.3/T9.5에서 다룬다.
+나중에 WebSocket을 붙여도 된다는 허가가 아니다. v8 입장은 같은 명령 순서 안에서 검증하고 붙인다.
+저장 중인 취소 뒤에 대기한 입장은 확정된 취소를 보고 거절한다. 공개 취소와 활성 연결 정리는 T9.5 범위다.
 
 `RoomCredentials`의 변경 메서드와 생성자는 application 내부에 둔다. SQLite 어댑터가 읽고 쓰는
 `Subject`·`Stored` 불변 값과 그 역할 enum만 공개한다. 저장 목록은 복사하고 같은 주체 ID 또는
@@ -167,5 +168,5 @@ host inventory·PTY 복구와 participant lease 재접속 계약도 새 인증�
 [작업 이력](WORK_LOG.md#credential-저장)에 RED/GREEN·리뷰 과정을,
 [검증 기록](VERIFICATION.md)에 실행 범위를 정리했다.
 
-**v7의 사칭 문제는 아직 해결되지 않았다.** HTTP 등록은 credential을 사용하지만 WS와 클라이언트는
-아직 연결하지 않았다. 다음 T9.3은 v8 입장·동일 주체 교체와 관리자 credential의 WS 사용 거절이다.
+**기본 v7의 사칭 문제는 아직 해결되지 않았다.** v8 서버 입장 경계는 구현했지만 기본 클라이언트가
+아직 사용하지 않는다. 다음 T9.4는 React·Connector의 credential 보관·전달·재접속과 기본 실행 전환이다.

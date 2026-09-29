@@ -1,5 +1,9 @@
 # TTYRoom Wire Protocol
 
+이 문서는 기본 클라이언트와 Node 비교 구현의 v7 계약이다. Spring의 선택 가능한
+[v8 입장 계약](AUTHENTICATION_V8.md)은 hello 인증을 바꾸며 나머지 메시지·binary 형식은 공유한다.
+기본값과 React·Connector는 아직 v7이다.
+
 언어 중립 명세. TypeScript 구현(`src/messages.ts`의 zod 스키마, `src/data-frame.ts`의 코덱)이
 이 문서와 동기되어야 하며, 골든 테스트가 드리프트를 잡는다. 레이아웃·형태 변경은
 프로토콜 버전 범프와 이 문서의 갱신을 요구한다.
@@ -157,7 +161,8 @@
 `lease-invalid.reason`은 `not-holder` · `terminal-closed` · `remote-input-disabled`.
 `terminal-request-rejected.request`는 `close` · `set-mode` · `resync-output`, `reason`은
 `terminal-not-found` · `terminal-not-open` · `host-offline`이다.
-`error.code`는 `room-not-found` · `invalid-token` · `unsupported-protocol-version` · `bad-message`.
+v7 서버의 `error.code`는 `room-not-found` · `invalid-token` · `unsupported-protocol-version` · `bad-message`.
+공통 TS 디코더는 v8 서버의 `invalid-credential`도 해석한다.
 
 ### 서버 → 호스트
 

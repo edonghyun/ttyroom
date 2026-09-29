@@ -175,6 +175,11 @@ public final class RoomDirectory implements AutoCloseable {
         }
     }
 
+    /** Lookup only. Admission must authenticate again inside execute before creating presence. */
+    Room roomForAdmission(String roomId) {
+        return roomId == null ? null : rooms.get(roomId);
+    }
+
     Room authenticatedRoom(String roomId, String token) {
         var room = rooms.get(roomId);
         if (room == null) throw new InvitationRejected("room-not-found");

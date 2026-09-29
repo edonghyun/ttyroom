@@ -53,7 +53,7 @@
 - Java 전체 380개 통과. 프로세스 검증과 실행 범위는 [검증 기록](../../docs/VERIFICATION.md)을 따른다.
 - v7 입장 정책·관리 권한·현재 연결 종료는 변경하지 않았다. 인증 보완 전체의 완료는 아니다.
 
-## 마지막 완료 — T9.2
+## 완료 — T9.2
 
 [T9.2 — 등록 API 권한 경계](https://github.com/edonghyun/ttyroom/issues/6)
 
@@ -64,10 +64,21 @@
 - RED/GREEN·보강 테스트와 실행 중 JAR 교체로 인한 재실행은 [작업 이력](../../docs/WORK_LOG.md#등록-api-권한-경계)·[검증 기록](../../docs/VERIFICATION.md#2026-09-30-등록-api-권한-t92)에 구분했다.
 - HTTP 등록과 실제 v7 WS 입장 정책은 아직 분리돼 있다. 브라우저·Connector 관리 흐름과 취소 API는 후속 범위다.
 
+## 마지막 완료 — T9.3
+
+[T9.3 — v8 입장과 동일 주체 연결 교체](https://github.com/edonghyun/ttyroom/issues/7)
+
+- v8 hello는 credential에서 역할·주체를 결정한다. 초대·관리·다른 방·취소 credential과 신원 필드를 거절한다.
+- 취소와 입장을 같은 방별 명령 순서에 두고 동일 주체만 연결을 교체한다. lease 유지와 이전 callback 차단을 검증했다.
+- Java 432개, Spring v8 프로세스 13개, 등록 4개, v7 공통 205개와 TS 단위 544개 통과.
+- [현재 wire 계약](../../protocol/AUTHENTICATION_V8.md), [작업 이력](../../docs/WORK_LOG.md#v8-입장과-연결-교체),
+  [실행 범위](../../docs/VERIFICATION.md#2026-09-30-v8-입장-t93)를 연결했다.
+- 서버 설정으로 버전을 고르며 프로세스 하나는 한 버전만 받는다. **기본값과 React·Connector는 아직 v7**이다.
+
 ## 다음 작업
 
-[T9.3 — v8 입장과 동일 주체 연결 교체](https://github.com/edonghyun/ttyroom/issues/7).
-credential에서 역할·주체를 결정하고 관리자 credential의 WS 사용과 v7 우회를 거절하는 계약을 먼저 작성한다.
-아직 착수하지 않았다. 인증 완성은 T9.5까지 서버·클라이언트·취소 경합 검증을 마친 뒤 판단한다.
+[T9.4 — React·Connector의 주체 credential 입장](https://github.com/edonghyun/ttyroom/issues/8).
+HTTP 등록·클라이언트 보관/전달·재접속과 서버 기본값을 함께 전환한다. 아직 착수하지 않았다.
+인증 완성은 T9.5의 공개 취소·활성 연결 정리·최종 경합 E2E까지 마친 뒤 판단한다.
 
 [T8.4 — 라이선스](https://github.com/edonghyun/ttyroom/issues/4)는 소유자 선택을 기다리는 별도 백로그로 유지한다.

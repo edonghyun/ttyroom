@@ -17,25 +17,43 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /**
- * Validates session commands and maps session results to protocol v7. Adding a result requires an
- * explicit wire mapping.
+ * Validates v7/v8 admission and maps their shared session commands and results. Adding a result
+ * requires an explicit wire mapping.
  */
 final class RoomProtocol {
     private RoomProtocol() {}
 
-    static RoomSessions.Hello hello(JsonNode node) {
+    static RoomSessions.AdmissionRequest hello(JsonNode node) {
         if (node == null || !node.isObject()) return null;
-        for (var key : new String[] {"type", "roomId", "token", "clientId", "name", "role"})
-            if (!node.has(key) || !node.get(key).isString()) return null;
-        var version = node.get("protocolVersion");
-        if (!node.get("type").asString().equals("hello")
-                || version == null
+        for (var key : new String[] {"type", "roomId", "name"})
+            if (!node.path(key).isString()) return null;
+        var version = node.path("protocolVersion");
+        if (!node.path("type").asString().equals("hello")
                 || !version.isNumber()
                 || !Double.isFinite(version.asDouble())
                 || version.asDouble() <= 0
                 || Math.floor(version.asDouble()) != version.asDouble()) return null;
+        if (node.has("credential") && (version.asDouble() == 8 || !node.has("token"))) {
+            if (!node.propertyNames()
+                            .equals(
+                                    Set.of(
+                                            "type",
+                                            "protocolVersion",
+                                            "roomId",
+                                            "credential",
+                                            "name"))
+                    || !node.path("credential").isString()) return null;
+            return new RoomSessions.CredentialHello(
+                    version.asDouble(),
+                    node.path("roomId").asString(),
+                    node.path("credential").asString(),
+                    node.path("name").asString());
+        }
+        for (var key : new String[] {"token", "clientId", "role"})
+            if (!node.path(key).isString()) return null;
         var role =
                 switch (node.get("role").asString()) {
                     case "participant" -> RoomSessions.Role.PARTICIPANT;

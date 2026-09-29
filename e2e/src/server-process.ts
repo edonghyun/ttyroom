@@ -19,6 +19,7 @@ const WORKSPACE_ROOT = resolve(import.meta.dirname, "../..");
 interface LaunchOptions {
   command?: readonly [string, ...string[]];
   startupTimeoutMs?: number;
+  protocolVersion?: 7 | 8;
 }
 
 /** Starts an actual executable and discovers readiness over stdout plus HTTP.
@@ -35,6 +36,7 @@ export class ServerProcess {
     private readonly policy: Partial<TestPolicy>,
     private readonly command: readonly [string, ...string[]],
     private readonly startupTimeoutMs: number,
+    private readonly protocolVersion?: 7 | 8,
   ) {}
 
   static async start(
@@ -48,6 +50,7 @@ export class ServerProcess {
       policy,
       command,
       options.startupTimeoutMs ?? 10_000,
+      options.protocolVersion,
     );
     try {
       await server.launch(0);
@@ -104,7 +107,15 @@ export class ServerProcess {
   private async launch(port: number): Promise<void> {
     const statePath = join(this.directory, `state-${this.stateGeneration}.sqlite`);
     const configPath = join(this.directory, "ttyroom.config.json");
-    await writeFile(configPath, JSON.stringify({ port, statePath, policy: this.policy }));
+    await writeFile(
+      configPath,
+      JSON.stringify({
+        port,
+        statePath,
+        policy: this.policy,
+        protocolVersion: this.protocolVersion,
+      }),
+    );
     // Prevent developer configuration from leaking into otherwise isolated tests.
     const env = Object.fromEntries(
       Object.entries(process.env).filter(([key]) => !key.startsWith("TTYROOM_")),

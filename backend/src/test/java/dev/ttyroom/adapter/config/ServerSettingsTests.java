@@ -19,6 +19,43 @@ class ServerSettingsTests {
     @TempDir Path directory;
 
     @Test
+    void protocolSelectionUsesEnvironmentThenFileThenTheTemporaryLegacyDefault() throws Exception {
+        var fromFile = configuredFile("{\"protocolVersion\":8}");
+        var overridden =
+                configuredFile("{\"protocolVersion\":7}")
+                        .withProperty("TTYROOM_PROTOCOL_VERSION", "8");
+        var defaults = configuredFile("{}");
+
+        var fileVersion = ServerSettings.load(fromFile).protocolVersion();
+        var environmentVersion = ServerSettings.load(overridden).protocolVersion();
+        var defaultVersion = ServerSettings.load(defaults).protocolVersion();
+
+        assertThat(fileVersion).isEqualTo(8);
+        assertThat(environmentVersion).isEqualTo(8);
+        assertThat(defaultVersion).isEqualTo(7);
+    }
+
+    @Test
+    void aConfigurationFileCanSelectTheCredentialProtocol() throws Exception {
+        var environment = configuredFile("{\"protocolVersion\":8}");
+
+        var failure = catchThrowable(() -> ServerSettings.load(environment));
+
+        assertThat(failure).isNull();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"6", "9", "", "true", "7.5"})
+    void unsupportedProtocolSelectionFailsStartupInsteadOfFallingBack(String value)
+            throws Exception {
+        var environment = configuredFile("{}").withProperty("TTYROOM_PROTOCOL_VERSION", value);
+
+        var failure = catchThrowable(() -> ServerSettings.load(environment));
+
+        assertThat(failure).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
     void environmentOverridesSelectedFileValuesWithoutDiscardingTheOthers() throws Exception {
         var environment =
                 configuredFile(
@@ -181,7 +218,7 @@ class ServerSettingsTests {
     }
 
     private MockEnvironment configuredFile(String contents) throws Exception {
-        var file = directory.resolve("settings.json");
+        var file = Files.createTempFile(directory, "settings-", ".json");
         Files.writeString(file, contents);
         return new MockEnvironment().withProperty("TTYROOM_CONFIG_PATH", file.toString());
     }
