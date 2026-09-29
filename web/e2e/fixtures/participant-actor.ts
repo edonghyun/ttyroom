@@ -18,8 +18,9 @@ export class BrowserParticipantActor {
     this.roomPage = new RoomPage(page);
     // Keep protocol ordering, never credentials or terminal contents, in failure evidence.
     page.on("websocket", (socket) => {
-      for (const direction of ["framesent", "framereceived"] as const) {
-        socket.on(direction, ({ payload }) => {
+      const record =
+        (direction: "sent" | "received") =>
+        ({ payload }: { payload: string | Buffer }) => {
           let summary: object;
           if (typeof payload === "string") {
             try {
@@ -33,8 +34,9 @@ export class BrowserParticipantActor {
           }
           this.wireEvents.push({ direction, ...summary });
           if (this.wireEvents.length > 1024) this.wireEvents.shift();
-        });
-      }
+        };
+      socket.on("framesent", record("sent"));
+      socket.on("framereceived", record("received"));
     });
     page.on("pageerror", (error) => this.errors.push(error));
     page.on("console", (message) => {
