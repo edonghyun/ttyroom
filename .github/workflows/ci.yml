@@ -6,6 +6,48 @@ on:
     branches: [main]
 
 jobs:
+  backend:
+    name: Spring backend — Java 21
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+      - run: ./gradlew test bootJar --no-daemon
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-results
+          if-no-files-found: ignore
+          path: backend/build/reports/tests/
+
+  spring-contract:
+    name: Spring backend — process contracts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: ./backend/gradlew -p backend bootJar --no-daemon
+      - run: pnpm --filter @ttyroom/connector... build
+      - name: All process contracts except packaged web
+        run: ./scripts/test-spring.sh protocol --exclude src/static-web.e2e.ts
+
   check:
     runs-on: ubuntu-latest
     steps:
@@ -22,31 +64,54 @@ jobs:
       - run: pnpm test
 
   browser:
+    name: Browser — ${{ matrix.backend }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        backend: [node, spring]
+    env:
+      SHELL: /bin/zsh
     steps:
       - uses: actions/checkout@v4
+      - if: matrix.backend == 'spring'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
+      - run: sudo apt-get update && sudo apt-get install -y zsh
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @ttyroom/web exec playwright install --with-deps chromium
       - run: pnpm --filter @ttyroom/web build
-      - run: pnpm --filter @ttyroom/server build
-      - run: pnpm --filter @ttyroom/agent build
-      - run: pnpm test:browser
+      - if: matrix.backend == 'node'
+        run: pnpm --filter @ttyroom/server build
+      - if: matrix.backend == 'spring'
+        run: ./backend/gradlew -p backend bootJar -PwebDist=../web/dist --no-daemon
+      - run: pnpm --filter @ttyroom/connector build
+      - if: matrix.backend == 'node'
+        run: |
+          pnpm --filter @ttyroom/e2e test:e2e src/static-web.e2e.ts
+          pnpm test:browser
+      - if: matrix.backend == 'spring'
+        run: |
+          ./scripts/test-spring.sh protocol src/static-web.e2e.ts
+          ./scripts/test-spring.sh browser
       - if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: browser-test-evidence
+          name: browser-test-evidence-${{ matrix.backend }}
           if-no-files-found: ignore
           path: |
-            packages/web/playwright-report
-            packages/web/test-results
+            web/playwright-report
+            web/test-results
 
   full:
-    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

@@ -3,8 +3,8 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const source = resolve(repositoryRoot, "packages/web/dist");
-const target = resolve(repositoryRoot, "packages/server/dist/web");
+const source = resolve(repositoryRoot, "web/dist");
+const target = resolve(repositoryRoot, "legacy/node-server/dist/web");
 
 const sourceInfo = await stat(source).catch(() => null);
 if (!sourceInfo?.isDirectory()) {

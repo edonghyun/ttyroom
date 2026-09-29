@@ -1,0 +1,668 @@
+{
+  "protocolVersion": 7,
+  "messages": [
+    {
+      "name": "client-hello-0",
+      "direction": "client",
+      "raw": "{\"type\":\"hello\",\"protocolVersion\":7,\"roomId\":\"r1\",\"token\":\"t\",\"clientId\":\"c1\",\"name\":\"동현\",\"role\":\"participant\"}",
+      "expected": {
+        "type": "hello",
+        "protocolVersion": 7,
+        "roomId": "r1",
+        "token": "t",
+        "clientId": "c1",
+        "name": "동현",
+        "role": "participant"
+      }
+    },
+    {
+      "name": "client-open-terminal-request-1",
+      "direction": "client",
+      "raw": "{\"type\":\"open-terminal-request\",\"hostId\":\"h1\"}",
+      "expected": {
+        "type": "open-terminal-request",
+        "hostId": "h1"
+      }
+    },
+    {
+      "name": "client-close-terminal-request-2",
+      "direction": "client",
+      "raw": "{\"type\":\"close-terminal-request\",\"terminalId\":3}",
+      "expected": {
+        "type": "close-terminal-request",
+        "terminalId": 3
+      }
+    },
+    {
+      "name": "client-set-terminal-mode-3",
+      "direction": "client",
+      "raw": "{\"type\":\"set-terminal-mode\",\"terminalId\":3,\"mode\":\"shared\"}",
+      "expected": {
+        "type": "set-terminal-mode",
+        "terminalId": 3,
+        "mode": "shared"
+      }
+    },
+    {
+      "name": "client-resync-output-request-4",
+      "direction": "client",
+      "raw": "{\"type\":\"resync-output-request\",\"terminalId\":3}",
+      "expected": {
+        "type": "resync-output-request",
+        "terminalId": 3
+      }
+    },
+    {
+      "name": "client-focus-terminal-5",
+      "direction": "client",
+      "raw": "{\"type\":\"focus-terminal\",\"terminalId\":3}",
+      "expected": {
+        "type": "focus-terminal",
+        "terminalId": 3
+      }
+    },
+    {
+      "name": "client-move-cursor-6",
+      "direction": "client",
+      "raw": "{\"type\":\"move-cursor\",\"position\":{\"x\":120.5,\"y\":80}}",
+      "expected": {
+        "type": "move-cursor",
+        "position": {
+          "x": 120.5,
+          "y": 80
+        }
+      }
+    },
+    {
+      "name": "client-rename-terminal-7",
+      "direction": "client",
+      "raw": "{\"type\":\"rename-terminal\",\"terminalId\":3,\"title\":\"API logs\"}",
+      "expected": {
+        "type": "rename-terminal",
+        "terminalId": 3,
+        "title": "API logs"
+      }
+    },
+    {
+      "name": "client-acquire-lease-8",
+      "direction": "client",
+      "raw": "{\"type\":\"acquire-lease\",\"terminalId\":3}",
+      "expected": {
+        "type": "acquire-lease",
+        "terminalId": 3
+      }
+    },
+    {
+      "name": "client-release-lease-9",
+      "direction": "client",
+      "raw": "{\"type\":\"release-lease\",\"terminalId\":3,\"leaseId\":7}",
+      "expected": {
+        "type": "release-lease",
+        "terminalId": 3,
+        "leaseId": 7
+      }
+    },
+    {
+      "name": "client-resize-request-10",
+      "direction": "client",
+      "raw": "{\"type\":\"resize-request\",\"terminalId\":3,\"cols\":120,\"rows\":40}",
+      "expected": {
+        "type": "resize-request",
+        "terminalId": 3,
+        "cols": 120,
+        "rows": 40
+      }
+    },
+    {
+      "name": "client-update-terminal-geometry-11",
+      "direction": "client",
+      "raw": "{\"type\":\"update-terminal-geometry\",\"terminalId\":3,\"geometry\":{\"x\":120,\"y\":80,\"width\":720,\"height\":480}}",
+      "expected": {
+        "type": "update-terminal-geometry",
+        "terminalId": 3,
+        "geometry": {
+          "x": 120,
+          "y": 80,
+          "width": 720,
+          "height": 480
+        }
+      }
+    },
+    {
+      "name": "client-terminal-opened-12",
+      "direction": "client",
+      "raw": "{\"type\":\"terminal-opened\",\"terminalId\":3,\"runtimeId\":\"runtime-3\"}",
+      "expected": {
+        "type": "terminal-opened",
+        "terminalId": 3,
+        "runtimeId": "runtime-3"
+      }
+    },
+    {
+      "name": "client-terminal-closed-13",
+      "direction": "client",
+      "raw": "{\"type\":\"terminal-closed\",\"terminalId\":3,\"exitCode\":0}",
+      "expected": {
+        "type": "terminal-closed",
+        "terminalId": 3,
+        "exitCode": 0
+      }
+    },
+    {
+      "name": "client-terminal-meta-14",
+      "direction": "client",
+      "raw": "{\"type\":\"terminal-meta\",\"terminalId\":3,\"meta\":{\"cwd\":\"/home/kep\",\"gitBranch\":\"main\",\"fgProcess\":\"vim\"}}",
+      "expected": {
+        "type": "terminal-meta",
+        "terminalId": 3,
+        "meta": {
+          "cwd": "/home/kep",
+          "gitBranch": "main",
+          "fgProcess": "vim"
+        }
+      }
+    },
+    {
+      "name": "client-host-input-state-15",
+      "direction": "client",
+      "raw": "{\"type\":\"host-input-state\",\"remoteInputAllowed\":false}",
+      "expected": {
+        "type": "host-input-state",
+        "remoteInputAllowed": false
+      }
+    },
+    {
+      "name": "client-host-inventory-16",
+      "direction": "client",
+      "raw": "{\"type\":\"host-inventory\",\"terminals\":[{\"terminalId\":3,\"runtimeId\":\"runtime-3\",\"firstRetainedSeq\":4,\"lastOutputSeq\":9}]}",
+      "expected": {
+        "type": "host-inventory",
+        "terminals": [
+          {
+            "terminalId": 3,
+            "runtimeId": "runtime-3",
+            "firstRetainedSeq": 4,
+            "lastOutputSeq": 9
+          }
+        ]
+      }
+    },
+    {
+      "name": "client-terminal-replay-complete-17",
+      "direction": "client",
+      "raw": "{\"type\":\"terminal-replay-complete\",\"terminalId\":3,\"lastOutputSeq\":9}",
+      "expected": {
+        "type": "terminal-replay-complete",
+        "terminalId": 3,
+        "lastOutputSeq": 9
+      }
+    },
+    {
+      "name": "server-welcome-18",
+      "direction": "server",
+      "raw": "{\"type\":\"welcome\",\"selfClientId\":\"c1\",\"snapshot\":{\"roomId\":\"r1\",\"name\":\"Payment Debug\",\"participants\":[],\"hosts\":[],\"terminals\":[],\"leases\":[]}}",
+      "expected": {
+        "type": "welcome",
+        "selfClientId": "c1",
+        "snapshot": {
+          "roomId": "r1",
+          "name": "Payment Debug",
+          "participants": [],
+          "hosts": [],
+          "terminals": [],
+          "leases": []
+        }
+      }
+    },
+    {
+      "name": "server-room-event-19",
+      "direction": "server",
+      "raw": "{\"type\":\"room-event\",\"event\":{\"kind\":\"participant-joined\",\"participant\":{\"clientId\":\"c2\",\"name\":\"민수\"}}}",
+      "expected": {
+        "type": "room-event",
+        "event": {
+          "kind": "participant-joined",
+          "participant": {
+            "clientId": "c2",
+            "name": "민수",
+            "focusedTerminalId": null
+          }
+        }
+      }
+    },
+    {
+      "name": "server-participant-cursor-20",
+      "direction": "server",
+      "raw": "{\"type\":\"participant-cursor\",\"clientId\":\"c2\",\"position\":{\"x\":120.5,\"y\":80}}",
+      "expected": {
+        "type": "participant-cursor",
+        "clientId": "c2",
+        "position": {
+          "x": 120.5,
+          "y": 80
+        }
+      }
+    },
+    {
+      "name": "server-lease-result-21",
+      "direction": "server",
+      "raw": "{\"type\":\"lease-result\",\"terminalId\":3,\"result\":{\"kind\":\"granted\",\"leaseId\":7}}",
+      "expected": {
+        "type": "lease-result",
+        "terminalId": 3,
+        "result": {
+          "kind": "granted",
+          "leaseId": 7
+        }
+      }
+    },
+    {
+      "name": "server-lease-invalid-22",
+      "direction": "server",
+      "raw": "{\"type\":\"lease-invalid\",\"terminalId\":3,\"reason\":\"remote-input-disabled\"}",
+      "expected": {
+        "type": "lease-invalid",
+        "terminalId": 3,
+        "reason": "remote-input-disabled"
+      }
+    },
+    {
+      "name": "server-terminal-request-rejected-23",
+      "direction": "server",
+      "raw": "{\"type\":\"terminal-request-rejected\",\"request\":\"close\",\"terminalId\":3,\"reason\":\"host-offline\"}",
+      "expected": {
+        "type": "terminal-request-rejected",
+        "request": "close",
+        "terminalId": 3,
+        "reason": "host-offline"
+      }
+    },
+    {
+      "name": "server-sync-24",
+      "direction": "server",
+      "raw": "{\"type\":\"sync\",\"terminalId\":3,\"seq\":10}",
+      "expected": {
+        "type": "sync",
+        "terminalId": 3,
+        "seq": 10
+      }
+    },
+    {
+      "name": "server-output-gap-25",
+      "direction": "server",
+      "raw": "{\"type\":\"output-gap\",\"terminalId\":3,\"fromSeq\":11,\"toSeq\":42}",
+      "expected": {
+        "type": "output-gap",
+        "terminalId": 3,
+        "fromSeq": 11,
+        "toSeq": 42
+      }
+    },
+    {
+      "name": "server-error-26",
+      "direction": "server",
+      "raw": "{\"type\":\"error\",\"code\":\"invalid-token\",\"message\":\"token mismatch\"}",
+      "expected": {
+        "type": "error",
+        "code": "invalid-token",
+        "message": "token mismatch"
+      }
+    },
+    {
+      "name": "server-open-terminal-27",
+      "direction": "server",
+      "raw": "{\"type\":\"open-terminal\",\"terminalId\":3,\"cols\":80,\"rows\":24}",
+      "expected": {
+        "type": "open-terminal",
+        "terminalId": 3,
+        "cols": 80,
+        "rows": 24
+      }
+    },
+    {
+      "name": "server-close-terminal-28",
+      "direction": "server",
+      "raw": "{\"type\":\"close-terminal\",\"terminalId\":3}",
+      "expected": {
+        "type": "close-terminal",
+        "terminalId": 3
+      }
+    },
+    {
+      "name": "server-resize-29",
+      "direction": "server",
+      "raw": "{\"type\":\"resize\",\"terminalId\":3,\"cols\":120,\"rows\":40}",
+      "expected": {
+        "type": "resize",
+        "terminalId": 3,
+        "cols": 120,
+        "rows": 40
+      }
+    },
+    {
+      "name": "server-host-ready-30",
+      "direction": "server",
+      "raw": "{\"type\":\"host-ready\",\"terminals\":[{\"terminalId\":3,\"replayAfterSeq\":5}]}",
+      "expected": {
+        "type": "host-ready",
+        "terminals": [
+          {
+            "terminalId": 3,
+            "replayAfterSeq": 5
+          }
+        ]
+      }
+    },
+    {
+      "name": "server-room-event-31",
+      "direction": "server",
+      "raw": "{\"type\":\"room-event\",\"event\":{\"kind\":\"participant-joined\",\"participant\":{\"clientId\":\"c2\",\"name\":\"민수\"}}}",
+      "expected": {
+        "type": "room-event",
+        "event": {
+          "kind": "participant-joined",
+          "participant": {
+            "clientId": "c2",
+            "name": "민수",
+            "focusedTerminalId": null
+          }
+        }
+      }
+    },
+    {
+      "name": "server-room-event-32",
+      "direction": "server",
+      "raw": "{\"type\":\"room-event\",\"event\":{\"kind\":\"participant-left\",\"clientId\":\"c2\"}}",
+      "expected": {
+        "type": "room-event",
+        "event": {
+          "kind": "participant-left",
+          "clientId": "c2"
+        }
+      }
+    },
+    {
+      "name": "server-room-event-33",
+      "direction": "server",
+      "raw": "{\"type\":\"room-event\",\"event\":{\"kind\":\"participant-focus-changed\",\"clientId\":\"c2\",\"focusedTerminalId\":3}}",
+      "expected": {
+        "type": "room-event",
+        "event": {
+          "kind": "participant-focus-changed",
+          "clientId": "c2",
+          "focusedTerminalId": 3
+        }
+      }
+    },
+    {
+      "name": "server-room-event-34",
+      "direction": "server",
+      "raw": "{\"type\":\"room-event\",\"event\":{\"kind\":\"host-connected\",\"host\":{\"hostId\":\"h1\",\"name\":\"dev-server\",\"online\":true,\"remoteInputAllowed\":true}}}",
+      "expected": {
+        "type": "room-event",
+        "event": {
+          "kind": "host-connected",
+          "host": {
+            "hostId": "h1",
+            "name": "dev-server",
+            "online": true,
+            "remoteInputAllowed": true
+          }
+        }
+      }
+    },
+    {
+      "name": "server-room-event-35",
+      "direction": "server",
+      "raw": "{\"type\":\"room-event\",\"event\":{\"kind\":\"host-offline\",\"hostId\":\"h1\"}}",
+      "expected": {
+        "type": "room-event",
+        "event": {
+          "kind": "host-offline",
+          "hostId": "h1"
+        }
+      }
+    },
+    {
+      "name": "server-room-event-36",
+      "direction": "server",
+      "raw": "{\"type\":\"room-event\",\"event\":{\"kind\":\"host-removed\",\"hostId\":\"h1\"}}",
+      "expected": {
+        "type": "room-event",
+        "event": {
+          "kind": "host-removed",
+          "hostId": "h1"
+        }
+      }
+    },
+    {
+      "name": "server-room-event-37",
+      "direction": "server",
+      "raw": "{\"type\":\"room-event\",\"event\":{\"kind\":\"host-input-state-changed\",\"hostId\":\"h1\",\"remoteInputAllowed\":false}}",
+      "expected": {
+        "type": "room-event",
+        "event": {
+          "kind": "host-input-state-changed",
+          "hostId": "h1",
+          "remoteInputAllowed": false
+        }
+      }
+    },
+    {
+      "name": "server-room-event-38",
+      "direction": "server",
+      "raw": "{\"type\":\"room-event\",\"event\":{\"kind\":\"terminal-opened\",\"terminal\":{\"terminalId\":3,\"hostId\":\"h1\",\"title\":\"term-3\",\"geometry\":{\"x\":88,\"y\":88,\"width\":640,\"height\":420},\"mode\":\"exclusive\",\"status\":\"open\",\"exitCode\":null,\"meta\":{\"cwd\":\"/home/kep\",\"gitBranch\":\"main\",\"fgProcess\":\"vim\"}}}}",
+      "expected": {
+        "type": "room-event",
+        "event": {
+          "kind": "terminal-opened",
+          "terminal": {
+            "terminalId": 3,
+            "hostId": "h1",
+            "title": "term-3",
+            "geometry": {
+              "x": 88,
+              "y": 88,
+              "width": 640,
+              "height": 420
+            },
+            "mode": "exclusive",
+            "status": "open",
+            "exitCode": null,
+            "meta": {
+              "cwd": "/home/kep",
+              "gitBranch": "main",
+              "fgProcess": "vim"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "server-room-event-39",
+      "direction": "server",
+      "raw": "{\"type\":\"room-event\",\"event\":{\"kind\":\"terminal-mode-changed\",\"terminalId\":3,\"mode\":\"shared\"}}",
+      "expected": {
+        "type": "room-event",
+        "event": {
+          "kind": "terminal-mode-changed",
+          "terminalId": 3,
+          "mode": "shared"
+        }
+      }
+    },
+    {
+      "name": "server-room-event-40",
+      "direction": "server",
+      "raw": "{\"type\":\"room-event\",\"event\":{\"kind\":\"terminal-geometry-changed\",\"terminalId\":3,\"geometry\":{\"x\":120,\"y\":80,\"width\":720,\"height\":480}}}",
+      "expected": {
+        "type": "room-event",
+        "event": {
+          "kind": "terminal-geometry-changed",
+          "terminalId": 3,
+          "geometry": {
+            "x": 120,
+            "y": 80,
+            "width": 720,
+            "height": 480
+          }
+        }
+      }
+    },
+    {
+      "name": "server-room-event-41",
+      "direction": "server",
+      "raw": "{\"type\":\"room-event\",\"event\":{\"kind\":\"terminal-renamed\",\"terminalId\":3,\"title\":\"API logs\"}}",
+      "expected": {
+        "type": "room-event",
+        "event": {
+          "kind": "terminal-renamed",
+          "terminalId": 3,
+          "title": "API logs"
+        }
+      }
+    },
+    {
+      "name": "server-room-event-42",
+      "direction": "server",
+      "raw": "{\"type\":\"room-event\",\"event\":{\"kind\":\"terminal-closed\",\"terminalId\":3,\"exitCode\":0}}",
+      "expected": {
+        "type": "room-event",
+        "event": {
+          "kind": "terminal-closed",
+          "terminalId": 3,
+          "exitCode": 0
+        }
+      }
+    },
+    {
+      "name": "server-room-event-43",
+      "direction": "server",
+      "raw": "{\"type\":\"room-event\",\"event\":{\"kind\":\"lease-granted\",\"lease\":{\"terminalId\":3,\"leaseId\":7,\"holderClientId\":\"c1\"}}}",
+      "expected": {
+        "type": "room-event",
+        "event": {
+          "kind": "lease-granted",
+          "lease": {
+            "terminalId": 3,
+            "leaseId": 7,
+            "holderClientId": "c1"
+          }
+        }
+      }
+    },
+    {
+      "name": "server-room-event-44",
+      "direction": "server",
+      "raw": "{\"type\":\"room-event\",\"event\":{\"kind\":\"lease-released\",\"terminalId\":3}}",
+      "expected": {
+        "type": "room-event",
+        "event": {
+          "kind": "lease-released",
+          "terminalId": 3
+        }
+      }
+    },
+    {
+      "name": "server-room-event-45",
+      "direction": "server",
+      "raw": "{\"type\":\"room-event\",\"event\":{\"kind\":\"terminal-meta\",\"terminalId\":3,\"meta\":{\"cwd\":\"/home/kep\",\"gitBranch\":null,\"fgProcess\":null}}}",
+      "expected": {
+        "type": "room-event",
+        "event": {
+          "kind": "terminal-meta",
+          "terminalId": 3,
+          "meta": {
+            "cwd": "/home/kep",
+            "gitBranch": null,
+            "fgProcess": null
+          }
+        }
+      }
+    },
+    {
+      "name": "hello-host",
+      "direction": "client",
+      "raw": "{\"type\": \"hello\", \"protocolVersion\": 7, \"roomId\": \"r1\", \"token\": \"fixture-only\", \"clientId\": \"c1\", \"name\": \"테스트\", \"role\": \"host\"}",
+      "expected": {
+        "type": "hello",
+        "protocolVersion": 7,
+        "roomId": "r1",
+        "token": "fixture-only",
+        "clientId": "c1",
+        "name": "테스트",
+        "role": "host"
+      }
+    },
+    {
+      "name": "hello-participant",
+      "direction": "client",
+      "raw": "{\"type\": \"hello\", \"protocolVersion\": 7, \"roomId\": \"r1\", \"token\": \"fixture-only\", \"clientId\": \"c1\", \"name\": \"테스트\", \"role\": \"participant\"}",
+      "expected": {
+        "type": "hello",
+        "protocolVersion": 7,
+        "roomId": "r1",
+        "token": "fixture-only",
+        "clientId": "c1",
+        "name": "테스트",
+        "role": "participant"
+      }
+    }
+  ],
+  "invalidMessages": [
+    {
+      "name": "invalid-json",
+      "direction": "client",
+      "raw": "{"
+    },
+    {
+      "name": "unknown-type",
+      "direction": "client",
+      "raw": "{\"type\":\"unknown\"}"
+    },
+    {
+      "name": "uint32-overflow",
+      "direction": "client",
+      "raw": "{\"type\":\"acquire-lease\",\"terminalId\":4294967296}"
+    },
+    {
+      "name": "negative-id",
+      "direction": "client",
+      "raw": "{\"type\":\"acquire-lease\",\"terminalId\":-1}"
+    }
+  ],
+  "binary": [
+    {
+      "name": "output-0",
+      "hex": "010000000000000000",
+      "expected": {
+        "kind": "output",
+        "terminalId": 0,
+        "seq": 0,
+        "payloadHex": ""
+      }
+    },
+    {
+      "name": "output-4294967295",
+      "hex": "01ffffffffffffffffed959ceab8800a",
+      "expected": {
+        "kind": "output",
+        "terminalId": 4294967295,
+        "seq": 4294967295,
+        "payloadHex": "ed959ceab8800a"
+      }
+    },
+    {
+      "name": "input-2147483648",
+      "hex": "0280000000ffffffffffffffff6c730d",
+      "expected": {
+        "kind": "input",
+        "terminalId": 2147483648,
+        "seq": 4294967295,
+        "payloadHex": "6c730d",
+        "leaseId": 4294967295
+      }
+    }
+  ],
+  "malformedBinary": ["", "0100000000000000", "020000000000000000", "030000000000000000"]
+}

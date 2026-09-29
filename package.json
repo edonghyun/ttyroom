@@ -14,10 +14,10 @@
     "test:visual": "pnpm --filter @ttyroom/web run test:visual",
     "typecheck": "pnpm -r --if-present run typecheck",
     "format": "prettier --check .",
-    "depcruise": "depcruise packages/*/src"
+    "depcruise": "depcruise web/src connector/src protocol/src e2e/src legacy/node-server/src"
   },
   "devDependencies": {
-    "@ttyroom/agent": "workspace:*",
+    "@ttyroom/connector": "workspace:*",
     "dependency-cruiser": "^17.2.0",
     "prettier": "^3.3.0",
     "typescript": "^5.6.0",

@@ -1,0 +1,59 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '4.0.8'
+    id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'dev.ttyroom'
+version = '0.0.1-SNAPSHOT'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+    implementation 'org.springframework.boot:spring-boot-starter-websocket'
+    runtimeOnly 'org.xerial:sqlite-jdbc:3.53.4.0'
+    testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+    testImplementation 'com.tngtech.archunit:archunit:1.5.0'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+tasks.named('bootJar') {
+    archiveFileName = 'ttyroom-backend.jar'
+}
+
+// Shared protocol fixtures are test inputs, not a Node build/runtime dependency.
+tasks.named('processTestResources') {
+    from('../protocol/fixtures/wire-v7.json') {
+        into 'protocol'
+    }
+}
+
+// Optional product packaging. Java-only builds and tests never invoke Node or pnpm.
+// Add assets directly to the archive so a later API-only build cannot retain stale web resources.
+def webDist = providers.gradleProperty('webDist')
+tasks.named('bootJar') {
+    if (webDist.isPresent()) {
+        def webDirectory = file(webDist.get())
+        from(webDirectory) {
+            into 'BOOT-INF/classes/web'
+        }
+        doFirst {
+            if (!new File(webDirectory, 'index.html').isFile()) {
+                throw new GradleException('webDist must contain a built index.html')
+            }
+        }
+    }
+}

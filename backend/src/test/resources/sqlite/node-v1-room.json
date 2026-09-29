@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "roomId": "room-1",
+  "tokenHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "name": "Debug room",
+  "nextTerminalId": 4,
+  "hosts": [
+    {
+      "hostId": "host",
+      "name": "Laptop"
+    }
+  ],
+  "terminals": [
+    {
+      "view": {
+        "terminalId": 1,
+        "hostId": "host",
+        "title": "term-1",
+        "geometry": {
+          "x": 24,
+          "y": 24,
+          "width": 640,
+          "height": 420
+        },
+        "mode": "exclusive",
+        "status": "open",
+        "exitCode": null,
+        "meta": {
+          "cwd": null,
+          "gitBranch": null,
+          "fgProcess": null
+        }
+      },
+      "runtimeId": null
+    },
+    {
+      "view": {
+        "terminalId": 2,
+        "hostId": "host",
+        "title": "API logs",
+        "geometry": {
+          "x": 1,
+          "y": 2,
+          "width": 800,
+          "height": 600
+        },
+        "mode": "shared",
+        "status": "open",
+        "exitCode": null,
+        "meta": {
+          "cwd": "/work/로그",
+          "gitBranch": "main",
+          "fgProcess": "java"
+        }
+      },
+      "runtimeId": "runtime-2"
+    },
+    {
+      "view": {
+        "terminalId": 3,
+        "hostId": "host",
+        "title": "term-3",
+        "geometry": {
+          "x": 88,
+          "y": 88,
+          "width": 640,
+          "height": 420
+        },
+        "mode": "exclusive",
+        "status": "exited",
+        "exitCode": 9,
+        "meta": {
+          "cwd": null,
+          "gitBranch": null,
+          "fgProcess": null
+        }
+      },
+      "runtimeId": null
+    }
+  ]
+}
