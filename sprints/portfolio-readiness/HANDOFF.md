@@ -19,7 +19,7 @@
 - 녹화 환경 수정과 실패 시 정리·이전 결과 오사용 방지를 독립 리뷰로 점검했다.
 - 첨부된 과거 CI 실패 알림도 병렬 점검했다. 최신 런타임 기준 ae395b2와 직전 8a5a0b8 모두 6개 작업 성공. [실패→수정 매핑](../../docs/VERIFICATION.md) 참조.
 
-## 마지막 완료 — T8.3
+## 완료 — T8.3
 
 [T8.3 — 대표 설계 설명](https://github.com/edonghyun/ttyroom/issues/3)
 
@@ -42,10 +42,21 @@
 - 첫 공개 CI가 로컬 산출물 의존과 개인 셸 설정 의존을 드러냈다. 새 환경 검증과 테스트 실행 환경의 소유권을 유지한다.
 - 문서는 현재 구현과 계속 대조한다. 출력 중복 제거를 입력 실행 보장으로 확대하지 않는다.
 
+## 마지막 완료 — T9.1
+
+[T9.1 — credential 원자적 저장](https://github.com/edonghyun/ttyroom/issues/5)
+
+- 방별 명령 순서에서 credential draft를 저장한 뒤 확정한다. 실패 시 성공 응답·인증 상태를 노출하지 않는다.
+- SQLite 파일 재열기 후 발급·선택 취소를 복원하고 일반 방 상태 저장에서도 credential을 보존한다.
+- 비밀값 대신 digest만 저장한다. 중복·손상된 credential 레코드를 거절하며 v1/v2 저장 표현을 구분한다.
+- 실패 테스트와 후속 구현·리뷰 과정은 [T9.1 기록](../../docs/2026-09-29-identity-design.md#t91-발급취소의-저장과-복원)에 있다.
+- Java 전체 380개 통과. 프로세스 검증과 실행 범위는 [검증 기록](../../docs/VERIFICATION.md)을 따른다.
+- v7 입장 정책·관리 권한·현재 연결 종료는 변경하지 않았다. 인증 보완 전체의 완료는 아니다.
+
 ## 다음 작업
 
-[T9.1 — credential 원자적 저장](https://github.com/edonghyun/ttyroom/issues/5)을 후속 스프린트의 첫 구현 후보로 둔다.
-아직 착수하지 않았다. 기존 credential 모델의 발급·취소를 저장 실패 비노출 경계에 연결하는 계약부터 고정한다.
+[T9.2 — 등록 API 권한 경계](https://github.com/edonghyun/ttyroom/issues/6).
+관리 credential의 발급·저장·검증과 참가자/host 등록을 구현한다. 아직 착수하지 않았다.
 인증 완성은 T9.5까지 서버·클라이언트·취소 경합 검증을 마친 뒤 판단한다.
 
 [T8.4 — 라이선스](https://github.com/edonghyun/ttyroom/issues/4)는 소유자 선택을 기다리는 별도 백로그로 유지한다.

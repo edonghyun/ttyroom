@@ -1,5 +1,6 @@
 package dev.ttyroom.adapter.sqlite;
 
+import dev.ttyroom.application.RoomCredentials;
 import dev.ttyroom.application.RoomDirectory.StoredRoom;
 import dev.ttyroom.domain.RoomControl;
 import dev.ttyroom.domain.TerminalWorkspace;
@@ -26,15 +27,21 @@ final class StoredRoomJson {
                     .build();
 
     String encode(StoredRoom room) {
-        return json.writeValueAsString(
-                new RecordV1(
-                        1,
-                        room.roomId(),
-                        room.name(),
-                        room.tokenHash(),
-                        room.control().workspace().nextTerminalId(),
-                        room.control().hosts(),
-                        room.control().workspace().terminals()));
+        ObjectNode root =
+                json.valueToTree(
+                        new RecordV1(
+                                1,
+                                room.roomId(),
+                                room.name(),
+                                room.tokenHash(),
+                                room.control().workspace().nextTerminalId(),
+                                room.control().hosts(),
+                                room.control().workspace().terminals()));
+        if (!room.credentials().isEmpty()) {
+            root.put("schemaVersion", 2);
+            root.set("credentials", json.valueToTree(room.credentials()));
+        }
+        return json.writeValueAsString(root);
     }
 
     StoredRoom decode(String text) {
@@ -47,6 +54,17 @@ final class StoredRoomJson {
                             "geometry",
                             json.valueToTree(new TerminalWorkspace.Geometry(24, 24, 640, 420)));
             }
+            List<RoomCredentials.Stored> credentials = List.of();
+            if (root.path("schemaVersion").isIntegralNumber()
+                    && root.path("schemaVersion").asInt() == 2) {
+                require(root.path("credentials").isArray());
+                credentials =
+                        List.of(
+                                json.treeToValue(
+                                        root.path("credentials"), RoomCredentials.Stored[].class));
+                ((ObjectNode) root).remove("credentials");
+                ((ObjectNode) root).put("schemaVersion", 1);
+            }
             var record = json.treeToValue(root, RecordV1.class);
             return new StoredRoom(
                     record.roomId(),
@@ -55,7 +73,8 @@ final class StoredRoomJson {
                     new RoomControl.DurableState(
                             record.hosts(),
                             new TerminalWorkspace.DurableState(
-                                    record.nextTerminalId(), record.terminals())));
+                                    record.nextTerminalId(), record.terminals())),
+                    credentials);
         } catch (RuntimeException invalid) {
             // Parser exceptions can include the stored digest or terminal metadata. Do not echo
             // rows.

@@ -36,6 +36,11 @@ lease·focus 같은 live 제어는 같은 명령 순서를 사용하되 draft·�
 전체 흐름과 실패 경로는 [시퀀스 도식](../docs/ARCHITECTURE.md),
 검증은 [RoomPersistenceTests](src/test/java/dev/ttyroom/application/RoomPersistenceTests.java)를 따른다.
 
+credential 발급·취소도 같은 방별 명령 순서에서 독립 draft → 저장 → 확정을 따른다.
+일반 방 상태 저장은 credential 목록을 함께 보존한다. 저장된 목록과 변경 경계는
+[인증 설계와 구현 범위](../docs/2026-09-29-identity-design.md#t91-발급취소의-저장과-복원)를 참고한다.
+HTTP·WebSocket 입장의 인증 정책은 아직 이 내부 모델을 사용하지 않는다.
+
 ## 업무 판단과 전달 효과
 
 [RoomControl](src/main/java/dev/ttyroom/domain/RoomControl.java)은 terminal·lease를 함께 보며

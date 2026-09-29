@@ -5,23 +5,72 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.Base64;
-import java.util.HashMap;
+import java.util.HashSet;
+import java.util.HexFormat;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
-/** Internal credential model; not yet connected to wire admission or durable storage. */
-final class RoomCredentials {
+/** Room-local credentials. Only immutable storage values cross the application boundary. */
+public final class RoomCredentials {
     private final SecureRandom random = new SecureRandom();
-    private final Map<String, Entry> subjects = new HashMap<>();
+    private final Map<String, Entry> subjects = new LinkedHashMap<>();
 
-    enum Role {
+    RoomCredentials() {}
+
+    public enum Role {
         PARTICIPANT,
         HOST
     }
 
-    record Subject(Role role, String id) {}
+    public record Subject(Role role, String id) {
+        public Subject {
+            Objects.requireNonNull(role, "role");
+            if (id == null || !UUID.fromString(id).toString().equals(id))
+                throw new IllegalArgumentException("Invalid credential subject");
+        }
+    }
+
+    public record Stored(Subject subject, String digest) {
+        public Stored {
+            Objects.requireNonNull(subject, "subject");
+            if (digest == null || !digest.matches("[a-f0-9]{64}"))
+                throw new IllegalArgumentException("Invalid credential digest");
+        }
+
+        @Override
+        public String toString() {
+            return "Stored[subject=" + subject + ", digest=<redacted>]";
+        }
+    }
+
+    static void validate(List<Stored> records) {
+        var ids = new HashSet<String>();
+        var digests = new HashSet<String>();
+        for (var record : records) {
+            if (!ids.add(record.subject().id()) || !digests.add(record.digest()))
+                throw new IllegalArgumentException("Duplicate credential subject or digest");
+        }
+    }
+
+    static RoomCredentials restore(List<Stored> records) {
+        validate(records);
+        var restored = new RoomCredentials();
+        for (var record : records) {
+            var entry = new Entry(record.subject(), HexFormat.of().parseHex(record.digest()));
+            restored.subjects.put(entry.subject.id(), entry);
+        }
+        return restored;
+    }
+
+    synchronized List<Stored> durableState() {
+        return subjects.values().stream()
+                .map(entry -> new Stored(entry.subject, HexFormat.of().formatHex(entry.digest)))
+                .toList();
+    }
 
     record Issued(Subject subject, String secret) {
         @Override

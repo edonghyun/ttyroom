@@ -10,6 +10,7 @@ import java.util.Base64;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
@@ -59,7 +60,8 @@ public final class RoomDirectory implements AutoCloseable {
                             stored.roomId(),
                             stored.name(),
                             HexFormat.of().parseHex(stored.tokenHash()),
-                            RoomControl.restore(stored.control()));
+                            RoomControl.restore(stored.control()),
+                            RoomCredentials.restore(stored.credentials()));
             if (rooms.putIfAbsent(room.id, room) != null)
                 throw new IllegalArgumentException("Duplicate room ID");
         }
@@ -78,7 +80,8 @@ public final class RoomDirectory implements AutoCloseable {
                         UUID.randomUUID().toString(),
                         name == null ? "Quick Room" : name,
                         digest(token),
-                        new RoomControl());
+                        new RoomControl(),
+                        new RoomCredentials());
         store.save(room.durableState());
         rooms.put(room.id, room);
         return new Invitation(room.id, room.name, token);
@@ -88,6 +91,33 @@ public final class RoomDirectory implements AutoCloseable {
         if (roomId == null || candidate == null) return false;
         var room = rooms.get(roomId);
         return room != null && MessageDigest.isEqual(room.tokenHash, digest(candidate));
+    }
+
+    /**
+     * Internal registration step. Caller authorization and wire admission are separate contracts.
+     */
+    RoomCredentials.Issued issueCredential(Room room, RoomCredentials.Role role) {
+        return execute(room, operation -> operation.changeCredentials(draft -> draft.issue(role)));
+    }
+
+    void revokeCredential(Room room, String subjectId) {
+        execute(
+                room,
+                operation ->
+                        operation.changeCredentials(
+                                draft -> {
+                                    draft.revoke(subjectId);
+                                    return null;
+                                }));
+    }
+
+    /** A committed-state lookup, not permission to attach a WebSocket session. */
+    Optional<RoomCredentials.Subject> authenticateCredential(Room room, String secret) {
+        synchronized (room) {
+            return rooms.get(room.id) == room
+                    ? room.credentials.authenticate(secret)
+                    : Optional.empty();
+        }
     }
 
     public static final class InvitationRejected extends RuntimeException {
@@ -174,6 +204,27 @@ public final class RoomDirectory implements AutoCloseable {
             }
         }
 
+        private <T> T changeCredentials(Function<RoomCredentials, T> update) {
+            RoomCredentials draft;
+            StoredRoom record;
+            T result;
+            synchronized (room) {
+                if (rooms.get(room.id) != room)
+                    throw new IllegalStateException("Room is no longer registered");
+                var before = room.credentials.durableState();
+                draft = RoomCredentials.restore(before);
+                result = update.apply(draft);
+                var after = draft.durableState();
+                if (before.equals(after)) return result;
+                record = room.durableState(room.control.durableState(), after);
+            }
+            store.save(record);
+            synchronized (room) {
+                room.credentials = draft;
+                return result;
+            }
+        }
+
         /** A separate durable decision: delete failure cannot undo an earlier change. */
         void remove() {
             store.delete(room.id);
@@ -215,12 +266,23 @@ public final class RoomDirectory implements AutoCloseable {
 
     /** Format/version mapping belongs to the storage adapter, not this application value. */
     public record StoredRoom(
-            String roomId, String name, String tokenHash, RoomControl.DurableState control) {
+            String roomId,
+            String name,
+            String tokenHash,
+            RoomControl.DurableState control,
+            List<RoomCredentials.Stored> credentials) {
+        public StoredRoom(
+                String roomId, String name, String tokenHash, RoomControl.DurableState control) {
+            this(roomId, name, tokenHash, control, List.of());
+        }
+
         public StoredRoom {
             Objects.requireNonNull(roomId);
             Objects.requireNonNull(name);
             Objects.requireNonNull(tokenHash);
             Objects.requireNonNull(control);
+            credentials = List.copyOf(credentials);
+            RoomCredentials.validate(credentials);
             if (!tokenHash.matches("[0-9a-f]{64}"))
                 throw new IllegalArgumentException("Invalid invitation digest");
         }
@@ -235,14 +297,21 @@ public final class RoomDirectory implements AutoCloseable {
         final String id;
         final String name;
         final RoomControl control;
+        private RoomCredentials credentials;
         private final ReentrantLock commands = new ReentrantLock(true);
         private final byte[] tokenHash;
 
-        Room(String id, String name, byte[] tokenHash, RoomControl control) {
+        Room(
+                String id,
+                String name,
+                byte[] tokenHash,
+                RoomControl control,
+                RoomCredentials credentials) {
             this.id = id;
             this.name = name;
             this.tokenHash = tokenHash.clone();
             this.control = control;
+            this.credentials = credentials;
         }
 
         /** Shares the room monitor with mutations and realtime session access. */
@@ -253,7 +322,13 @@ public final class RoomDirectory implements AutoCloseable {
         }
 
         StoredRoom durableState(RoomControl.DurableState state) {
-            return new StoredRoom(id, name, HexFormat.of().formatHex(tokenHash), state);
+            return durableState(state, credentials.durableState());
+        }
+
+        private StoredRoom durableState(
+                RoomControl.DurableState state, List<RoomCredentials.Stored> credentials) {
+            return new StoredRoom(
+                    id, name, HexFormat.of().formatHex(tokenHash), state, credentials);
         }
     }
 

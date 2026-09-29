@@ -256,6 +256,64 @@ class SqliteRoomStoreTests {
         }
     }
 
+    @ParameterizedTest
+    @ValueSource(
+            strings = {
+                "missing",
+                "null",
+                "unknown-role",
+                "bad-id",
+                "bad-digest",
+                "duplicate-subject",
+                "duplicate-digest",
+                "unexpected-secret",
+                "overflow-version"
+            })
+    void invalidCredentialRecordsFailLoadingWithoutExposingStoredValues(String corruption)
+            throws Exception {
+        var file = directory.resolve("invalid-credentials.sqlite");
+        insertRawRecord(file, corruptCredentialRecord(corruption));
+
+        try (var store = new SqliteRoomStore(file)) {
+            var failure = catchThrowable(store::loadAll);
+
+            assertThat(failure)
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessage("Invalid stored room record")
+                    .hasNoCause();
+        }
+    }
+
+    private static String corruptCredentialRecord(String corruption) throws Exception {
+        var json = JsonMapper.builder().build();
+        var root = (ObjectNode) json.readTree(nodeRecord());
+        root.put("schemaVersion", 2);
+        var credentials = root.putArray("credentials");
+        var stored = credentials.addObject();
+        var subject = stored.putObject("subject");
+        subject.put("role", "participant");
+        subject.put("id", "00000000-0000-4000-8000-000000000001");
+        stored.put("digest", "a".repeat(64));
+        switch (corruption) {
+            case "missing" -> root.remove("credentials");
+            case "null" -> root.putNull("credentials");
+            case "unknown-role" -> subject.put("role", "admin");
+            case "bad-id" -> subject.put("id", "not-a-subject");
+            case "bad-digest" -> stored.put("digest", "not-a-digest");
+            case "duplicate-subject" -> credentials.add(stored.deepCopy());
+            case "duplicate-digest" -> {
+                var duplicate = stored.deepCopy();
+                ((ObjectNode) duplicate.path("subject"))
+                        .put("id", "00000000-0000-4000-8000-000000000002");
+                credentials.add(duplicate);
+            }
+            case "unexpected-secret" -> stored.put("secret", "sensitive-test-value");
+            case "overflow-version" -> root.put("schemaVersion", 4_294_967_298L);
+            default -> throw new IllegalArgumentException("Unknown corruption fixture");
+        }
+        return json.writeValueAsString(root);
+    }
+
     private static void executeSql(Path file, String sql) throws Exception {
         try (var connection = DriverManager.getConnection("jdbc:sqlite:" + file.toAbsolutePath());
                 var statement = connection.createStatement()) {

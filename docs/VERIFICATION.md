@@ -1,5 +1,28 @@
 # 검증 기록
 
+## 2026-09-29 credential 저장 T9.1
+
+내부 발급·취소를 방별 명령 순서와 SQLite 저장에 연결했다. 변경 내용과 저장 버전은
+[인증 설계의 T9.1 기록](2026-09-29-identity-design.md#t91-발급취소의-저장과-복원)을 따른다.
+
+- Java 전체 **380개 통과**, 실패·오류·skip 0. 새 저장 계약 19개와 기존 361개다.
+- `test bootJar -PwebDist=../web/dist` 성공. 테스트 fixture 정리 후 전체 Java를 다시 실행했다.
+- 새 JAR의 `admission.e2e.ts` 17개·`persistence.e2e.ts` 4개, 총 **21개 통과**.
+- macOS·Java 21 환경. 기존 React 빌드 자산을 JAR에 포함했으며 웹 코드는 바꾸지 않았다.
+- credential 저장 검증은 Java에서 실제 SQLite 파일을 닫고 새 Directory/저장소로 복원하는 방식이다.
+  프로세스 E2E 21개는 기존 v7 입장·재시작 계약이며 credential 등록 API 검증이 아니다.
+- Node·브라우저 전체·취소와 실제 입장의 경합은 이번 실행 범위가 아니다.
+
+```sh
+backend/gradlew -p backend test bootJar -PwebDist=../web/dist
+./scripts/test-spring.sh protocol src/persistence.e2e.ts src/admission.e2e.ts
+```
+
+JAR 명령은 기존 `web/dist`가 있는 환경 기준이다. 처음에는 [제품 빌드 안내](DEVELOPMENT.md)를 따른다.
+로컬 `artifacts/credential-persistence/`에 두 차례의 기능 RED/GREEN, 리뷰의 중복 digest 실패,
+최종 Java·프로세스 로그, JAR SHA-256과 테스트 집계를 보관한다. 실패를 먼저 확인한 항목과
+처음부터 통과한 보강 검증을 구분하며 당시 로그의 민감 값은 공개하지 않는다.
+
 ## 2026-09-29 대표 설계 설명 T8.3
 
 작업 기준은 `1cc3018`이며 이번 변경은 문서에 한정된다. 설계 설명을 실제 코드와
