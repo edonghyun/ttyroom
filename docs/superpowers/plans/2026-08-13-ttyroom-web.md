@@ -1,5 +1,7 @@
 # TTYRoom Web Frontend + Integration Implementation Plan
 
+> `artifacts/` 경로는 로컬 보관 자료이며 공개 저장소에는 포함하지 않습니다. 수치와 명령은 작성 당시의 검증 기록입니다.
+
 > **Execution rule:** 이 문서는 F7 구현자가 한 Task씩 순서대로 실행하는 계획이다. 각 행동은
 > `RED 실행 -> 실패 원인 확인 -> 최소 GREEN -> 관련 게이트 -> GREEN 상태에서만 REFACTOR -> 커밋`
 > 순서를 지킨다. 테스트를 나중에 추가하거나 실행하지 않은 RED/GREEN을 보고하지 않는다.
