@@ -89,9 +89,12 @@ export class TestSystem {
       {
         cwd: WORKSPACE_ROOT,
         env: Object.fromEntries(
-          Object.entries({ ...process.env, TERM: "xterm-256color" }).filter(
-            (entry): entry is [string, string] => entry[1] !== undefined,
-          ),
+          Object.entries({
+            ...process.env,
+            TERM: "xterm-256color",
+            SHELL: "/bin/zsh",
+            ZDOTDIR: resolve(import.meta.dirname, "shell"),
+          }).filter((entry): entry is [string, string] => entry[1] !== undefined),
         ),
         cols: 80,
         rows: 24,

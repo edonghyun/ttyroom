@@ -75,19 +75,21 @@ Connector 실행 터미널에서 `k`는 원격 입력 차단을 전환하고 `Ct
 
 변경에 가까운 단위 테스트부터 실행하고, 영향을 받는 통합/E2E로 넓힙니다.
 E2E 실행 전 `./scripts/build-spring.sh`로 최신 제품을 빌드합니다.
-브라우저 테스트는 Chromium 설치와 `zsh`가 필요합니다(실제 셸 키보드 계약).
+브라우저 테스트는 Chromium 설치와 `/bin/zsh`가 필요합니다(실제 셸 키보드 계약).
+fixture가 테스트 전용 ZDOTDIR을 사용해 개인 설정·시스템 completion·첫 실행 안내가 입력을 가로채지 않도록 합니다.
+사용자별 셸 초기화 설정의 호환성까지 검증하는 것은 아닙니다.
 
 ```sh
 pnpm --filter @ttyroom/web exec playwright install chromium
-SHELL=/bin/zsh ./scripts/test-spring.sh browser
+./scripts/test-spring.sh browser
 # 특정 파일만 실행
 ./scripts/test-spring.sh protocol src/persistence.e2e.ts
-SHELL=/bin/zsh ./scripts/test-spring.sh browser e2e/room-recovery.e2e.ts
+./scripts/test-spring.sh browser e2e/room-recovery.e2e.ts
 ```
 
 E2E 실행기는 서버·Connector 프로세스를 직접 시작하고 정리합니다. 서버를 수동으로
 켜 둘 필요는 없습니다. 스크립트는 Java/JAR 경로를 JSON argv로 전달하며 자동 빌드하지 않습니다.
-Node 비교 구현을 빌드한 후에는 `pnpm test:e2e`, `SHELL=/bin/zsh pnpm test:browser`로
+Node 비교 구현을 빌드한 후에는 `pnpm test:e2e`, `pnpm test:browser`로
 같은 테스트를 실행합니다. 이 pnpm 명령들은 Java 단위 테스트를 포함하지 않습니다.
 포맷 검사는 `pnpm format`입니다. 자세한 작성 기준은 [E2E 안내](../e2e/README.md)를 참고합니다.
 
