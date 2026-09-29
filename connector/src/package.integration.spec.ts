@@ -16,7 +16,7 @@ describe("@ttyroom/connector 패키지 — 역할: 실행 가능한 CLI 배포�
     expect(result.stderr).not.toContain("could not determine executable to run");
   });
 
-  it("pack 결과는 빌드 산출물·설치 보조 스크립트·manifest만 포함한다", () => {
+  it("pack 결과는 CLI 진입점·빌드 산출물·설치 보조 스크립트·manifest만 포함한다", () => {
     const destination = mkdtempSync(path.join(tmpdir(), "ttyroom-connector-pack-"));
     try {
       execFileSync("pnpm", ["pack", "--pack-destination", destination], {
@@ -31,13 +31,16 @@ describe("@ttyroom/connector 패키지 — 역할: 실행 가능한 CLI 배포�
         .map((entry) => entry.replace(/^package\//, ""));
 
       expect(paths).toContain("dist/index.js");
-      expect(paths.every((entry) => /^(dist\/|scripts\/|package\.json$)/.test(entry))).toBe(true);
+      expect(paths).toContain("bin/ttyroom.js");
+      expect(paths.every((entry) => /^(bin\/|dist\/|scripts\/|package\.json$)/.test(entry))).toBe(
+        true,
+      );
 
       const manifest = execFileSync("tar", ["-xOf", tarball, "package/package.json"], {
         encoding: "utf8",
       });
       expect(manifest).not.toContain("workspace:");
-      expect(manifest).toContain('"ttyroom": "./dist/index.js"');
+      expect(manifest).toContain('"ttyroom": "./bin/ttyroom.js"');
     } finally {
       rmSync(destination, { recursive: true, force: true });
     }

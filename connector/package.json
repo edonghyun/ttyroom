@@ -4,9 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "bin": {
-    "ttyroom": "./dist/index.js"
+    "ttyroom": "./bin/ttyroom.js"
   },
   "files": [
+    "bin",
     "dist",
     "scripts"
   ],
