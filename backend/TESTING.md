@@ -59,7 +59,7 @@ fixture 준비가 실패하면 명확한 예외로 중단하고 자원을 정리
 - `Thread.State.WAITING`만으로 특정 방 lock을 기다린다고 단정할 수 없다. `RoomPersistenceTests`는
   대상 명령 큐와 종료 큐를 구별해 관찰하고 마지막에 상태·이벤트·종료 순서를 검증한다.
   접수 확인은 fixture 내부의 제한된 reflection에 의존한다. 이 white-box 의존성과 선택 이유는
-  [동시성 테스트 정리](../docs/2026-09-27-concurrency-test-conventions.md)에 기록했다.
+  [동시성 테스트 정리](../docs/WORK_LOG.md#테스트-표현과-동시성-관찰)에 기록했다.
 - domain/application 테스트는 업무 상태와 typed 결과를 검증한다. JSON 필드명·binary 형식은
   adapter와 공통 프로토콜 E2E에서 검증한다. 해당 계층의 테스트에서는 실제 wire 표현이 필요하다.
 - 테스트 장치가 이벤트 순서·중복을 정렬하거나 제거해서 실제 결함을 가리지 않도록 한다.
@@ -86,6 +86,6 @@ production 코드와 기존 행동 기대값은 변경하지 않는다. 이것�
 이번 테스트 리팩터링 후 Java 전체 277개가 실패/오류/건너뜀 없이 통과했다. production 코드는 바꾸지
 않아 E2E를 재실행하지 않았다. 직전 P3x의 Spring JAR 공통 E2E 168개 통과는 별도 실행 기록이다.
 
-후속 P4a는 [저장 생략 시나리오](../docs/2026-09-28-persistence-test-scenarios.md)를 행동별로 분리했다.
+후속 P4a는 [저장 생략 시나리오](../docs/WORK_LOG.md#테스트-표현과-동시성-관찰)를 행동별로 분리했다.
 공통 계약만 파라미터화하고 다른 기대 결과는 별도 본문으로 읽히게 했다. 알림 비교는 준비 이후의
 전체 알림을 보존하여 예상 밖 종류·중복도 검출한다.

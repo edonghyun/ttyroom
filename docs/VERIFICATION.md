@@ -3,7 +3,7 @@
 ## 2026-09-29 credential 저장 T9.1
 
 내부 발급·취소를 방별 명령 순서와 SQLite 저장에 연결했다. 변경 내용과 저장 버전은
-[인증 설계의 T9.1 기록](2026-09-29-identity-design.md#t91-발급취소의-저장과-복원)을 따른다.
+[인증 설계의 T9.1 기록](AUTHENTICATION.md#발급취소의-저장과-복원)을 따른다.
 
 - Java 전체 **380개 통과**, 실패·오류·skip 0. 새 저장 계약 19개와 기존 361개다.
 - `test bootJar -PwebDist=../web/dist` 성공. 테스트 fixture 정리 후 전체 Java를 다시 실행했다.

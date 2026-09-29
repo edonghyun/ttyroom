@@ -167,7 +167,7 @@ cursor의 발신자 제외·반복/null 전달·비저장·방 격리를 검사�
 `RoomPersistenceTests`에서 저장소 gate로 검증한다.
 
 `policy.e2e.ts`는 유예 0, history 보관량, live 드롭과 replay 분리, header를 포함한 수신 binary 한도를
-검증한다. 누적 큐의 내부 동작이 두 서버에서 같다는 뜻은 아니다. [설정 차이](../docs/2026-09-28-server-settings.md)를 따른다.
+검증한다. 누적 큐의 내부 동작이 두 서버에서 같다는 뜻은 아니다. [설정 차이](../docs/WORK_LOG.md#sqlite와-실행-설정)를 따른다.
 
-브라우저 UI 검증은 [web/e2e와 Spring 실행 안내](../docs/2026-09-28-spring-browser-e2e.md)를 따른다.
+브라우저 UI 검증은 [web/e2e와 Spring 실행 안내](../docs/WORK_LOG.md#실제-프로세스와-브라우저-검증)를 따른다.
 Browser TestSystem도 같은 ServerProcess 실행 경계를 사용한다.

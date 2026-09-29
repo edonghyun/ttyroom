@@ -93,6 +93,55 @@ Node 비교 구현을 빌드한 후에는 `pnpm test:e2e`, `pnpm test:browser`�
 같은 테스트를 실행합니다. 이 pnpm 명령들은 Java 단위 테스트를 포함하지 않습니다.
 포맷 검사는 `pnpm format`입니다. 자세한 작성 기준은 [E2E 안내](../e2e/README.md)를 참고합니다.
 
+## 서버 설정
+
+우선순위는 **TTYROOM 환경변수/property → JSON 파일 → 기본값**이다. port의 마지막 기본값에는
+Spring의 `server.port`가 적용되고, 그마저 없으면 3000이다. Spring 명령행 property는 일반 환경변수보다
+우선하는 Spring 자체의 규칙을 따른다. `server.port`로 TTYROOM 설정을 다시 덮는 두 번째 경로는 없다.
+
+```json
+{
+  "port": 3000,
+  "statePath": ".ttyroom/rooms.sqlite",
+  "policy": {
+    "participantGraceMs": 15000,
+    "hostGraceMs": 30000,
+    "scrollbackBytesPerTerminal": 1048576,
+    "sendBufferDropThresholdBytes": 1048576,
+    "maxQueuedDataBytesPerConnection": 1048576
+  }
+}
+```
+
+```sh
+TTYROOM_CONFIG_PATH=/absolute/path/ttyroom.config.json \
+  java -jar backend/build/libs/ttyroom-backend.jar
+```
+
+설정 파일과 SQLite의 상대 경로는 실행 디렉터리 기준이다. 설정 파일이 있는 디렉터리 기준이 아니다.
+설정은 시작 시 한 번 읽는다. 실행 중 파일 변경을 자동 반영하지 않는다.
+
+| JSON 항목                              | 환경변수                                     | 기본값·허용 범위                                           |
+| -------------------------------------- | -------------------------------------------- | ---------------------------------------------------------- |
+| port                                   | TTYROOM_PORT                                 | 3000, 정수 0..65535. 0은 임의 포트                         |
+| statePath                              | TTYROOM_STATE_PATH                           | 미설정은 메모리. 환경변수의 빈 문자열도 명시적 메모리 선택 |
+| policy.participantGraceMs              | TTYROOM_PARTICIPANT_GRACE_MS                 | 15000, 0 이상 정수                                         |
+| policy.hostGraceMs                     | TTYROOM_HOST_GRACE_MS                        | 30000, 0 이상 정수                                         |
+| policy.scrollbackBytesPerTerminal      | TTYROOM_SCROLLBACK_BYTES_PER_TERMINAL        | 1048576, 0 이상 정수                                       |
+| policy.sendBufferDropThresholdBytes    | TTYROOM_SEND_BUFFER_DROP_THRESHOLD_BYTES     | 1048576, 0 이상 정수                                       |
+| policy.maxQueuedDataBytesPerConnection | TTYROOM_MAX_QUEUED_DATA_BYTES_PER_CONNECTION | 1048576, 양의 정수                                         |
+| policy.outputRateLimitBytesPerSec      | TTYROOM_OUTPUT_RATE_LIMIT_BYTES_PER_SEC      | 기존 기본값 4194304만 허용. 다른 값은 미지원 오류          |
+
+JSON 숫자는 숫자 타입이어야 하며 문자열/boolean/null은 허용하지 않는다. 환경변수는 십진수·지수
+표현을 정수로 해석하며 빈 값·소수·범위 초과를 거절한다. 정책 수치는 JS safe integer 상한 이하로
+제한한다. JSON 최상위와 policy는 객체여야 하며 알 수 없는 키도 오류다. 잘못된 최종 필드는 이름으로
+진단하지만 파일 원문·임의 키·입력값을 예외에 복사하지 않는다. 환경변수는 이미 파싱한 파일의 잘못된
+값을 대체할 수 있다. JSON 문법 오류나 알 수 없는 키 자체를 숨기지는 않는다.
+
+Spring의 `maxQueuedDataBytesPerConnection`은 한 수신 binary frame 전체(header 포함)의 한도다.
+출력 속도 설정은 Connector 협상이 없어 기본값만 허용한다. 송신 드롭 기준을 높여도
+SocketSender의 별도 큐·replay 안전 상한이 없어지는 것은 아니다.
+
 ## CI 역할
 
 실제 설정은 [.github/workflows/ci.yml](../.github/workflows/ci.yml)을 기준으로 합니다.

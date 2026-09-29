@@ -93,13 +93,13 @@ CLI는 저장소 설치 기준이며 npm 공개 배포를 의미하지 않습니
 ## 설계와 테스트를 읽는 순서
 
 - [핵심 계약–코드–테스트 대응표](docs/CONTRACTS.md): 대표 설계를 실제 구현과 검증에서 따라가는 경로.
-- [산출물 없는 복사본의 실행 재현](docs/2026-09-29-portfolio-readiness.md): 첫 설치에서 발견한 CLI 경로 문제와 수정·검증 범위.
+- [산출물 없는 복사본의 실행 재현](docs/WORK_LOG.md#공개-재현과-시연): 첫 설치에서 발견한 CLI 경로 문제와 수정·검증 범위.
 - [포트폴리오·면접용 설계 설명](docs/PORTFOLIO.md): 협업 기능의 설계 판단, 선택과 비용, 코드·테스트 근거.
 - [코드·테스트 작성 가이드](docs/CODE_STYLE.md): fixture·행동·관찰·assertion의 책임과 예시.
 - [백엔드 설계](backend/ARCHITECTURE.md): 상태·세션·전송·저장의 책임과 실패 처리 경계.
-- [저장 성공 후 알림 실패](docs/2026-09-28-post-commit-delivery.md): commit과 전달 성공을 구분하는 계약 테스트.
-- [Connector 실패 분류 수정](docs/2026-09-28-connector-failure-boundary.md): 실패 테스트부터 수정한 RED → GREEN 사례.
-- [프론트엔드 종료 경계 수정](docs/2026-09-28-runtime-lifecycle.md): 종료 후 재시작 방지의 RED → GREEN 사례.
+- [저장 성공 후 알림 실패](docs/WORK_LOG.md#자원-수명과-실패-처리): commit과 전달 성공을 구분하는 계약 테스트.
+- [Connector 실패 분류 수정](docs/WORK_LOG.md#자원-수명과-실패-처리): 실패 테스트부터 수정한 RED → GREEN 사례.
+- [프론트엔드 종료 경계 수정](docs/WORK_LOG.md#자원-수명과-실패-처리): 종료 후 재시작 방지의 RED → GREEN 사례.
 - [검증 기록](docs/VERIFICATION.md): 현재 점검과 이전 Node/Spring 브라우저 검증의 범위.
 
 리팩터링의 GREEN → REFACTOR → GREEN과 오류 수정의 RED → GREEN을 구분합니다.

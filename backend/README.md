@@ -35,17 +35,17 @@ Java 21 JDK가 필요하다. `JAVA_HOME`을 해당 JDK 경로로 지정한다. �
 
 새 프로세스에서도 초대·host 식별·terminal 상태와 다음 ID를 복원한다. 연결·lease·focus·출력 history는
 초기화한다. 살아 있는 Connector가 재접속하여 PTY inventory와 단절 중 출력을 다시 전달한다.
-[부팅 연결·재시작 검증](../docs/2026-09-28-sqlite-startup.md)에 근거와 한계를 기록했다.
+[부팅 연결·재시작 검증](../docs/WORK_LOG.md#sqlite와-실행-설정)에 근거와 한계를 기록했다.
 
 `TTYROOM_CONFIG_PATH`로 JSON 설정을 선택하며, 생략하면 실행 디렉터리의 `ttyroom.config.json`을
 읽는다. 기본 파일이 없을 때만 기본값을 쓴다. `TTYROOM_*` 값이 파일보다 우선한다. 유예·출력 보관량·
 송신 드롭·수신 바이너리 한도를 적용하며 잘못된 값은 시작 오류로 처리한다.
-[설정 키·우선순위](../docs/2026-09-28-server-settings.md)를 참고한다.
+[설정 키·우선순위](../docs/DEVELOPMENT.md#서버-설정)를 참고한다.
 출력 속도 변경은 Connector 협상이 없어 아직 지원하지 않는다.
 
 웹 빌드 결과를 `bootJar -PwebDist=../web/dist`로 묶으면 Spring에서 React 화면도 제공한다. 기본
 Java 빌드와 bootRun은 API-only이며 Node를 호출하지 않는다. 실제 Chromium·Connector로 검사하는
-[브라우저 E2E](../docs/2026-09-28-spring-browser-e2e.md)도 연결했다.
+[브라우저 E2E](../docs/WORK_LOG.md#실제-프로세스와-브라우저-검증)도 연결했다.
 
 ## 실제 JAR 프로세스 검사
 
@@ -63,7 +63,7 @@ TTYROOM_E2E_SERVER_COMMAND='["java","-jar","/absolute/path/to/main/backend/build
 `./gradlew test`에 [ArchitectureTests](src/test/java/dev/ttyroom/architecture/ArchitectureTests.java)가
 포함된다. 계층 검사만 실행하려면 `./gradlew test --tests dev.ttyroom.architecture.ArchitectureTests`를
 사용한다. ArchUnit은 테스트 의존성이며 실행 JAR에는 들어가지 않는다.
-[허용 의존성·탐지 범위·위반 주입 검증](../docs/2026-09-22-java-architecture-tests.md)을 함께 기록했다.
+[허용 의존성·탐지 범위·위반 주입 검증](../docs/WORK_LOG.md#모델과-계층-경계)을 함께 기록했다.
 기존 Java CI도 같은 test 작업을 실행하므로 별도 실행 단계를 요구하지 않는다.
 
 ## 검증과 설계 근거
@@ -74,4 +74,4 @@ TTYROOM_E2E_SERVER_COMMAND='["java","-jar","/absolute/path/to/main/backend/build
 - [검증 기록](../docs/VERIFICATION.md): 실행 소스·환경·범위별 결과.
 - [보안 모델](../docs/SECURITY_MODEL.md): 현재 토큰·역할 신뢰와 외부 운영 전 과제.
 
-단계별 개발 결과와 당시의 미구현 항목은 [구현 이력](history/implementation-notes.md)에 보관한다.
+단계별 개발 결과와 당시의 미구현 항목은 [구현 이력](../docs/WORK_LOG.md#초기-백엔드-기록)에 보관한다.

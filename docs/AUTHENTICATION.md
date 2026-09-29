@@ -1,7 +1,5 @@
 # 인증 경계 보강안: 초대·주체·재접속 증명 분리
 
-> `artifacts/` 경로는 로컬 보관 자료이며 공개 저장소에는 포함하지 않습니다. 수치와 명령은 작성 당시의 검증 기록입니다.
-
 상태: 내부 credential 발급·취소 모델과 원자적 저장·복원을 구현했다(T9.1).
 HTTP 등록·취소, 관리 credential과 WebSocket 입장은 후속 설계다. wire는 현재 v7 그대로다.
 목표는 계정 서비스를 만드는 것이 아니라, 같은 초대 링크를 가진 클라이언트가
@@ -140,33 +138,7 @@ host inventory·PTY 복구와 participant lease 재접속 계약도 새 인증�
 [현재 보안 모델](SECURITY_MODEL.md)과 [현재 wire v7](../protocol/PROTOCOL.md)은
 구현된 동작의 기준으로 유지한다. 아래 내부 모델·저장 외의 연동 항목은 아직 구현되지 않았다.
 
-## 첫 구현 기록: 내부 credential 모델
-
-첫 단계의 `RoomCredentials`는 방마다 별도로 생성하는 package-private 모델이었다. 역할과 UUID 식별자를
-서버에서 발급하고, 24바이트 무작위 비밀값을 한 번 반환한다. 모델에는 SHA-256 digest만 남긴다.
-인증 호출은 비밀값만 받으며, 요청자가 역할이나 식별자를 지정하는 인자가 없다.
-주체별 취소는 다른 등록을 보존하며 반복 호출할 수 있다. 발급 결과의 `toString()`은 비밀값을 가린다.
-
-발급·인증·취소는 모델 인스턴스 안에서 직렬화한다. 인증은 등록된 주체 수에 비례하는 순회이며,
-개별 digest 비교에 `MessageDigest.isEqual`을 사용한다. 전체 조회의 일정한 실행 시간을 보장하는 것은 아니다.
-범용 저장소 인터페이스나 인증 프레임워크는 이 단계에서 추가하지 않았다.
-
-`RoomCredentialsTests`의 6개 실행 사례는 역할별 인증 결과, 다른 방의 거절, 선택적·반복 취소,
-공개 ID·누락·알 수 없는 비밀값의 거절, 독립 발급과 출력 시 비밀값 가림을 검증한다.
-준비 → 행동·관찰 → 마지막 assertion 순서를 유지한다.
-
-검증 기록은 `artifacts/identity-model/`에 있다.
-
-- RED: 컴파일 가능한 미구현 placeholder에서 6개 모두 `UnsupportedOperationException`으로 실패했다.
-  기존 운영 코드의 결함을 assertion으로 재현한 기록은 아니다. 변경 전 소스도 보관했다.
-- GREEN: 구현 후 Java 전체 361개 통과, 실패·오류·건너뜀 0개.
-- 여섯 사례를 한 묶음으로 진행했으며, 행동별로 각각 RED → GREEN을 반복한 것은 아니다.
-- HTTP·WebSocket·RoomDirectory에는 아직 연결하지 않아 E2E는 이번 단계에서 재실행하지 않았다.
-
-이 첫 단계에서는 저장 연동이 없어 재시작 시 credential이 사라졌다. 아래 T9.1에서 그 경계를 연결했다.
-현재 v7의 사칭 문제와 연결 종료·취소/입장의 경합·등록 권한은 후속 작업으로 남아 있다.
-
-## T9.1: 발급·취소의 저장과 복원
+## 발급·취소의 저장과 복원
 
 `RoomDirectory`의 내부 발급·취소 진입점은 기존 방별 `execute` 명령 순서를 사용한다.
 `RoomOperation.changeCredentials`는 별도 credential draft를 만들고 전체 방 레코드를 저장한 뒤
@@ -191,14 +163,10 @@ host inventory·PTY 복구와 participant lease 재접속 계약도 새 인증�
 - 비밀값은 저장하지 않는다. 방 상태와 credential은 같은 SQLite row의 한 번의 교체로 저장한다.
 - Node 참조 구현은 v2 레코드를 지원하지 않는다. **저장 버전 2와 wire v8은 서로 다르며**, 이 변경은 v7 입장 정책을 바꾸지 않는다.
 
-### 검증과 작업 과정
+### 검증과 다음 경계
 
-- 발급·취소 저장 실패 2개: 저장 없는 초기 내부 진입점에서 assertion 실패를 확인한 뒤 저장 후 확정 구현으로 통과시켰다. 기존 공개 API의 버그 재현은 아니다.
-- 파일 재열기 5개: 기존 codec이 credential을 저장하지 않아 4개 실패, 마지막 취소 후 빈 상태 1개는 처음부터 통과했다. v2 저장·복원 후 모두 통과했다.
-- 리뷰에서 서로 다른 주체의 동일 digest를 허용하는 결함을 1개 실패 테스트로 확인한 뒤 중복 거절을 추가했다.
-- 저장 대기 중 이전 인증 상태 유지, 반복 취소의 저장 생략, 삭제된 방의 인증·발급 거절, 손상 레코드 거절을 보강했다.
-- SQLite 검증은 파일을 닫고 새로운 RoomDirectory/저장소로 여는 Java 테스트다. credential 전용 HTTP·프로세스·브라우저 인증 검증은 아직 아니다.
-- Java 전체 380개 통과. 코드·계층 검사와 로컬 실행 근거는 [검증 기록](VERIFICATION.md)에 연결한다. 원본은 `artifacts/credential-persistence/`에 보관한다.
+[작업 이력](WORK_LOG.md#credential-저장)에 RED/GREEN·리뷰 과정을,
+[검증 기록](VERIFICATION.md)에 실행 범위를 정리했다.
 
 **v7의 사칭 문제는 아직 해결되지 않았다.** 실제 HTTP·WS 요청은 이 내부 credential을 사용하지 않는다.
 다음은 T9.2에서 관리 credential과 participant/host 등록 API의 권한·비밀 응답 계약을 구현하는 단계다.

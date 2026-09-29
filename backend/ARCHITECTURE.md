@@ -38,7 +38,7 @@ lease·focus 같은 live 제어는 같은 명령 순서를 사용하되 draft·�
 
 credential 발급·취소도 같은 방별 명령 순서에서 독립 draft → 저장 → 확정을 따른다.
 일반 방 상태 저장은 credential 목록을 함께 보존한다. 저장된 목록과 변경 경계는
-[인증 설계와 구현 범위](../docs/2026-09-29-identity-design.md#t91-발급취소의-저장과-복원)를 참고한다.
+[인증 설계와 구현 범위](../docs/AUTHENTICATION.md#발급취소의-저장과-복원)를 참고한다.
 HTTP·WebSocket 입장의 인증 정책은 아직 이 내부 모델을 사용하지 않는다.
 
 ## 업무 판단과 전달 효과
@@ -81,4 +81,4 @@ browser 순번, 제한된 history와 수신자별 output gap을 소유한다.
 저장소는 단일 서버 프로세스를 전제로 하며 분산 lease·입력 exactly-once·무한 replay를 보장하지 않는다.
 현재 v7의 초대 토큰·역할 신뢰와 후속 인증 과제는 [보안 모델](../docs/SECURITY_MODEL.md)에 있다.
 
-개발 당시의 구조 비교와 단계별 변경은 [설계 이력](history/design-notes.md)에 보관한다.
+개발 당시의 구조 비교와 단계별 변경은 [설계 이력](../docs/WORK_LOG.md#초기-백엔드-기록)에 보관한다.

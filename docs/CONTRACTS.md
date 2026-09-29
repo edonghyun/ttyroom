@@ -28,4 +28,4 @@ fixture는 해당 계약의 전제와 자원 정리를 소유한다. 본문에�
 RED → GREEN 사례로 설명하지 않는다.
 
 [작성 가이드](CODE_STYLE.md), [검증 명령](DEVELOPMENT.md),
-[실제 오류 수정 사례](2026-09-28-connector-failure-boundary.md)를 함께 참고한다.
+[실제 오류 수정 사례](WORK_LOG.md#자원-수명과-실패-처리)를 함께 참고한다.

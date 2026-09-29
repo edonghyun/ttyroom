@@ -30,18 +30,12 @@ credential 발급·취소의 저장·복원은 구현했지만 입장 경로에�
 
 ## 개발 이력
 
-날짜가 붙은 문서는 해당 시점의 변경·검증 기록이다. 과거 디렉터리명, 테스트 수와 미구현 항목은
-그 시점의 상태를 설명하며 현재 실행 안내를 대체하지 않는다. `artifacts/`는 로컬 보관 자료다.
-공개 저장소에는 원본 실행 로그·trace·임시 소스 복사본을 넣지 않는다.
-GitHub Actions의 공개 실행 결과와 현재 테스트를 통해 별도로 재검증할 수 있다.
+완료한 작업은 [WORK_LOG](WORK_LOG.md)에 주제별로 모았다. 변경 이유·검증 성격과
+고정 커밋의 상세 원문을 함께 찾을 수 있다. 날짜별 작업 파일은 추가하지 않는다.
 
-개인 개발 과정의 언어·디렉터리 변경과 구현 비교는 이력 자료로 보관한다.
-프로젝트의 대표 설명은 현재 제품의 기능과 설계 판단을 기준으로 읽는다.
-
-- [백엔드 구현 이력](../backend/history/implementation-notes.md): 초기 부팅부터 협업 기능까지의 단계별 검증.
-- [백엔드 설계 이력](../backend/history/design-notes.md): 구조 비교와 변경 당시의 판단.
-- [초기 구현 계획](2026-09-18-connector-spring-boot-plan.md): 당시의 범위와 진행 순서.
-- [디렉터리 정리 기록](2026-09-19-project-layout.md): 과거 `packages/*`와 현재 경로의 관계.
+현재 계약을 바꾸면 해당 설계 문서를 갱신하고, 실행 결과는 [VERIFICATION](VERIFICATION.md),
+남은 작업은 GitHub issue와 sprint에 반영한다. 진행 중인 [인증 설계](AUTHENTICATION.md)는
+작업 일지가 아닌 현재 설계·구현 범위 문서로 관리한다.
 
 현재 기본 서버는 Spring Boot이며 `legacy/node-server`는 프로토콜 회귀 비교용 참조 구현이다.
-예전 문서의 Agent는 현재 Connector에 해당한다. 프로토콜의 host·hostId는 연결된 컴퓨터를 뜻한다.
+예전 기록의 Agent는 현재 Connector에 해당한다. 프로토콜의 host·hostId는 연결된 컴퓨터를 뜻한다.
