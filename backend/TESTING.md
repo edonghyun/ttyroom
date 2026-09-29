@@ -3,8 +3,8 @@
 공통 작성 관점과 Java/TypeScript 예시는 [코드·테스트 작성 가이드](../docs/CODE_STYLE.md)를 따른다.
 이 문서는 Java의 TDD 기록·동시성·계층별 검증 기준을 보완한다.
 
-기존 `e2e/src/fixtures.ts`, `actions.ts`, `assertions.ts`와
-`legacy/node-server/src/usecases/persistence-contract.spec.ts`의 책임 분리를 Java에서도 유지한다.
+fixture는 전제와 자원 정리, action은 행동, assertion은 관찰 결과의 검증을 맡는다.
+Java와 TypeScript 모두 같은 책임 분리를 적용한다.
 테스트 개수나 통과 여부뿐 아니라 행동·기대 결과와 변경 과정을 읽을 수 있어야 한다.
 
 ## TDD와 리팩터링 기록

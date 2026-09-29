@@ -1,5 +1,8 @@
 # TTYRoom Connector 명칭 변경 및 Spring Boot 전환 계획
 
+> 개발 당시의 기록이다. 언어 변경과 비교 내용은 작업 이력이며, 현재 프로젝트 소개는
+> [포트폴리오](PORTFOLIO.md), 구현 상태와 실행 방법은 [백엔드 안내](../backend/README.md)를 따른다.
+
 작성일: 2026-09-18. 상태: P0·P1·P2 완료, P3 진행 중. P3a는 Spring HTTP 부팅 기반이며 협업 기능·배포는 아직 미완료.
 
 진행 업데이트: [P0 기준 확보](2026-09-18-migration-baseline.md), [P1 명칭 변경](2026-09-18-connector-rename.md) 완료. 아래 현재 코드 설명은 계획 작성 시점의 명칭이며, 현재 Agent는 Connector로 변경되었다.

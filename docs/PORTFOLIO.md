@@ -1,32 +1,26 @@
-# TTYRoom: 협업 터미널의 상태·실패 계약을 유지한 Spring 전환
+# TTYRoom: 로컬 셸을 함께 사용하는 협업 터미널
 
-TTYRoom은 한 사람이 실행한 로컬 셸을 여러 참여자가 브라우저로 함께 보고,
-입력 권한을 받아 조작하는 토이 프로젝트다. React 화면, Spring 서버,
-사용자 PC의 Node Connector로 구성된다. Connector가 실제 PTY를 실행한다.
-
-이 문서는 저장소에서 확인할 수 있는 설계와 로컬 검증을 정리한다.
-개인 기여 비율, 운영 사용자 수, 배포 성과를 증명하는 자료는 아니다.
+TTYRoom은 로컬 셸을 여러 사람이 브라우저로 함께 보고 조작하는 개인 프로젝트다.
+React 화면, Spring Boot 서버, 사용자 PC의 Connector와 통신 규약·테스트를 직접 설계하고 개발했다.
+셸을 공유하는 사람은 Connector를 실행하고, 참여자는 초대 주소로 입장해 제어권을 얻는다.
 
 ## 프로젝트를 짧게 소개한다면
 
-> 기존 TypeScript 협업 서버를 Spring으로 옮기면서 외부 동작을 공통 E2E로 비교했습니다.
-> 핵심은 프레임워크 문법보다, 방 상태의 저장·확정·알림 순서와 연결 교체 시의
-> 동시성 계약을 유지하는 일이었습니다. 저장 실패와 전송 실패를 구분하고,
-> 실제 Connector·PTY·브라우저로 재접속과 복구를 검증했습니다.
+> 여러 사람이 같은 로컬 터미널에서 작업할 수 있는 협업 도구를 만들었습니다.
+> 셸은 공유자 PC에서 실행하고, 서버는 방 상태와 입력 제어권을 관리하며 출력을 중계합니다.
+> 동시 요청과 연결 단절이 생겨도 확정된 상태를 일관되게 보여주는 데 집중했습니다.
+> 저장 실패 시 상태를 노출하지 않는 변경 경계, 수신자별 전달 실패 처리,
+> 살아 있는 셸과 보관된 출력의 재접속 복구를 구현하고 오류 주입·실제 PTY·브라우저 테스트로 검증했습니다.
 
-## 왜 Spring으로 전환했는가
+## 구현 범위와 기술 선택
 
-목표는 Java/Spring 학습과 백엔드 설계·테스트를 설명할 수 있는 포트폴리오다.
-Spring 채택 자체가 성능 개선을 입증하지는 않는다. 처리량이나 지연시간의
-Node 대비 우위는 측정하지 않았다.
-
-전환 과정에서 Java의 명시적인 동시성 제어, 타입으로 표현한 명령·결과,
-프레임워크 어댑터와 업무 모델의 분리를 다뤘다. 기존 Node 구현을 비교 기준으로
-남겨 두어 언어 변경과 외부 계약 변경을 구분할 수 있게 했다.
-
-React는 브라우저 UI를, Connector는 사용자 컴퓨터의 PTY를 소유한다.
-둘까지 Java로 옮기는 것은 서버 전환과 독립적인 재작성이다. 현재 학습 범위에서는
-검증된 실행 경계를 유지하고 HTTP/WebSocket 서버를 전환하는 선택을 했다.
+| 구성                          | 직접 구현한 책임                                    | 선택 이유                                                                                                  |
+| ----------------------------- | --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| React · TypeScript            | 협업 창, 터미널 출력, 제어권·연결 상태 UI           | 화면 상태와 서버 메시지 처리의 경계를 나누고 사용자 동작을 컴포넌트와 브라우저 테스트에서 검증한다.        |
+| Java 21 · Spring Boot         | 방·세션·입력 정책, 저장 순서, HTTP/WebSocket 어댑터 | 프레임워크의 통신·수명주기 기능을 사용하고 업무 모델의 동시성·실패 계약은 명시적인 타입과 경계로 구현한다. |
+| Node.js · node-pty Connector  | 로컬 셸 실행, 출력 보관, 재접속, Kill Switch        | PTY를 공유자 PC에 두어 작업 중인 셸의 수명과 로컬 차단권을 소유하게 한다.                                  |
+| SQLite · JDBC                 | 방·터미널의 영속 상태                               | 단일 서버에서 별도 DB 서비스 없이 파일로 상태를 보관한다. 연결·lease·셸 메모리까지 저장하는 것은 아니다.   |
+| 단위·프로세스·브라우저 테스트 | 실패 조건, 통신 규약, 실제 협업 흐름                | 오류 주입으로 내부 실패 의미를 확인하고 실제 실행 경계에서 사용자 관찰 결과를 검증한다.                    |
 
 ```mermaid
 flowchart LR
@@ -73,14 +67,6 @@ flowchart LR
 - `queuedRenameCommitsAndPublishesAfterTheEarlierSave`: 앞선 저장 뒤에 후속 제목 변경이 확정·알림된다.
 - `anotherRoomCanCommitWhileThisRoomsSaveWaits`: 방별 직렬화 범위를 검사한다. DB 처리량 측정은 아니다.
 
-**Node와 Spring.** [Node RoomRegistry](../legacy/node-server/src/usecases/room-registry.ts)는
-방별 Promise queue에서 stage → await save → commit한다. Spring은 여러 스레드가
-접근하므로 방별 `ReentrantLock`과 짧은 상태 monitor를 나눈다. 또한 Spring의 명령 범위는
-후속 효과의 큐 수락까지 포함하지만, Node의 `change`는 결과를 반환하고 use case가
-알림을 처리한다. 공통인 것은 저장 실패 비노출 계약이며 잠금·스케줄링 구현이 같다는 뜻은 아니다.
-[Node 저장 테스트](../legacy/node-server/src/usecases/room-registry.spec.ts)에서도
-저장 대기 중 비노출과 실패 중 live 상태 보존을 확인할 수 있다.
-
 ### 90초 설명
 
 > 협업 터미널에서는 한 요청의 성공보다 여러 참여자가 같은 확정 상태를 보는 것이 중요합니다.
@@ -92,7 +78,7 @@ flowchart LR
 > Java에서는 명령 순서를 지키는 lock과 상태를 읽고 확정하는 monitor를 나눴습니다.
 > 저장을 기다리는 동안 같은 방의 제어 명령은 대기하지만 실시간 경로는 이전 확정 상태를
 > 사용할 수 있습니다. 테스트는 저장 gate로 대기를 만들고 상태·알림·ID가 바뀌지 않는지
-> 확인합니다. Node에서도 같은 저장 순서를 Promise queue로 구현했습니다.
+> 확인합니다.
 > 비용은 같은 방의 명령 대기와 draft 복제이며, 분산 서버의 전역 순서나 성능 우위를
 > 증명한 설계는 아닙니다.
 
@@ -128,13 +114,6 @@ commit과 전송 사이에 종료되면 알림이 유실될 수 있다. 지속�
 
 두 테스트는 기존 구현에서 바로 통과한 **특성 테스트**다.
 [추가 당시 기록](2026-09-28-post-commit-delivery.md)을 RED → GREEN 오류 수정으로 바꾸어 설명하지 않는다.
-
-**Node와 Spring.** [Node RenameTerminal](../legacy/node-server/src/usecases/rename-terminal.ts)도
-`rooms.change` 완료 후 알림을 발행한다. 다만 [ConnectionRegistry](../legacy/node-server/src/usecases/connection-registry.ts)의
-broadcast에는 수신자별 예외 처리가 없고, [WsConnection](../legacy/node-server/src/adapters/ws/ws-transport.ts)은
-OPEN이 아닌 소켓의 send를 반환한다. Spring은 `PeerUnavailable`과 송신 worker의 실패 경계를
-명시한다. 따라서 저장 → commit → 알림이라는 공통 순서를 근거로 두 구현의 모든 전송 오류
-처리가 동일하다고 주장하지 않는다. 이 수신자별 오류 주입의 직접 근거는 Spring 테스트다.
 
 ### 90초 설명
 
@@ -183,12 +162,6 @@ runtime의 소유권·충돌·누락을 대조한다.
 - [persistence E2E](../e2e/src/persistence.e2e.ts): 새 PID에서 workspace를 복원하고 lease·presence·출력은 초기화한다. 저장 오류 주입과 구별한다.
 - [resilience E2E](../e2e/src/resilience.e2e.ts): 실제 Connector·PTY를 유지한 서버 재시작과 단절 중 출력 복구를 검사한다.
 - [브라우저 recovery](../web/e2e/room-recovery.e2e.ts): 실제 화면의 한 번 출력, gap 복구, 영속 서버 재시작 후 같은 PTY를 확인한다.
-
-**Node와 Spring.** 같은 Connector·React와 공통 프로토콜 E2E를 사용한다.
-[Node BroadcastTerminalOutput](../legacy/node-server/src/usecases/broadcast-terminal-output.ts)과 Spring의
-TerminalOutput은 source/browser 순번을 분리한다. Node는 `bufferedBytes`로 live 출력 drop을
-판단하고, Spring은 `Peer.offerOutput`과 SocketSender에 큐 수락을 맡긴다.
-재생·순번 계약은 비교하지만 메모리 사용량·처리량이나 모든 과부하 동작의 동등성은 측정하지 않았다.
 
 ### 90초 설명
 
@@ -251,8 +224,8 @@ Java 결과는 [저장 후 알림 검토](2026-09-28-post-commit-delivery.md)에
 | SQLite 상태 복원과 살아 있는 Connector의 재접속 | 임의 장애에서도 상태·메시지를 함께 확정하는 분산 트랜잭션 |
 | Chromium의 협업·복구 시나리오                   | Safari·모바일·실사용 규모의 성능·보안 검증                |
 
-Node의 structured diagnostics는 Spring에 아직 완전히 이식하지 않았다.
-기능별 공통 E2E 통과를 운영 기능 전체의 동등성으로 확대 해석하지 않는다.
+구조화된 운영 진단과 실사용 규모의 부하·장시간 실행 검증은 후속 과제다.
+검증 환경과 조건을 고정한 뒤 처리량·지연시간·메모리 사용을 측정한다.
 
 ## 5분 시연 순서
 
@@ -347,8 +320,8 @@ SHELL=/bin/zsh ./scripts/test-spring.sh browser e2e/room-recovery.e2e.ts
 
 ## 면접에서 이어질 질문
 
-- **Spring이 Node보다 좋은가?** 이 프로젝트에서는 학습 목표와 명시적 계약 설계가 선택 이유다.
-  언어 간 성능 우위는 측정하지 않았고, Node에도 같은 저장 순서 계약이 있었다.
+- **왜 셸을 서버에서 실행하지 않았는가?** 공유자 PC의 작업 환경과 실행 중인 셸을 함께 사용하는 제품이다.
+  Connector가 PTY 수명과 로컬 차단권을 소유한다. 이 선택은 샌드박스나 원격 접근 보안을 대신하지 않는다.
 - **왜 큰 RoomSessions를 더 쪼개지 않았는가?** 인증된 연결의 동일성·수명·효과 순서가
   공유하는 지식을 유지했다. 독립적인 변경 이유와 호출 부담 감소가 확인될 때 분리한다.
 - **왜 `@Transactional`만으로 해결하지 않았는가?** DB 저장뿐 아니라 메모리 상태 확정과

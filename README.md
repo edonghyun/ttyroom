@@ -2,6 +2,7 @@
 
 브라우저에서 여러 사람이 로컬 터미널을 함께 보고 조작하는 협업 도구입니다.
 셸을 공유하는 사람은 자신의 PC에서 Connector를 실행하고, 다른 참여자는 초대 주소로 입장합니다.
+프론트엔드·백엔드·Connector와 통신 규약·테스트를 직접 설계하고 개발한 개인 프로젝트입니다.
 
 ## 실제 협업 화면
 
@@ -93,21 +94,21 @@ CLI는 저장소 설치 기준이며 npm 공개 배포를 의미하지 않습니
 
 - [핵심 계약–코드–테스트 대응표](docs/CONTRACTS.md): 대표 설계를 실제 구현과 검증에서 따라가는 경로.
 - [산출물 없는 복사본의 실행 재현](docs/2026-09-29-portfolio-readiness.md): 첫 설치에서 발견한 CLI 경로 문제와 수정·검증 범위.
-- [포트폴리오·면접용 설계 설명](docs/PORTFOLIO.md): Spring 전환 이유, 선택과 대안, 코드·테스트 근거, 보장 범위.
+- [포트폴리오·면접용 설계 설명](docs/PORTFOLIO.md): 협업 기능의 설계 판단, 선택과 비용, 코드·테스트 근거.
 - [코드·테스트 작성 가이드](docs/CODE_STYLE.md): fixture·행동·관찰·assertion의 책임과 예시.
-- [운영 코드 책임 경계 비교](docs/2026-09-28-production-boundaries.md): Node와 Spring의 저장 순서, Connector·화면 상태 소유권.
+- [백엔드 설계](backend/ARCHITECTURE.md): 상태·세션·전송·저장의 책임과 실패 처리 경계.
 - [저장 성공 후 알림 실패](docs/2026-09-28-post-commit-delivery.md): commit과 전달 성공을 구분하는 계약 테스트.
 - [Connector 실패 분류 수정](docs/2026-09-28-connector-failure-boundary.md): 실패 테스트부터 수정한 RED → GREEN 사례.
 - [프론트엔드 종료 경계 수정](docs/2026-09-28-runtime-lifecycle.md): 종료 후 재시작 방지의 RED → GREEN 사례.
 - [검증 기록](docs/VERIFICATION.md): 현재 점검과 이전 Node/Spring 브라우저 검증의 범위.
 
 리팩터링의 GREEN → REFACTOR → GREEN과 오류 수정의 RED → GREEN을 구분합니다.
-이 기록은 로컬 검증이며 배포·사용자 성과나 exactly-once 전달 보장을 의미하지 않습니다.
+실행 환경과 소스별 로컬·CI 결과를 구분해 기록합니다. 입력 exactly-once와 공개 서비스 운영은 보장 범위에 포함하지 않습니다.
 
 ## 개발과 검증
 
 [개발·검증 안내](docs/DEVELOPMENT.md)에 디렉터리 구조, Java 단독 개발,
-Node 비교 실행, 테스트별 명령, CI 역할과 전환 이력을 정리했습니다.
+테스트별 명령과 CI 역할을 정리했습니다.
 
 - [백엔드 상세 안내](backend/README.md)
 - [E2E 실행·작성 기준](e2e/README.md)

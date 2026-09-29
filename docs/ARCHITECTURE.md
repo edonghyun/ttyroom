@@ -75,5 +75,5 @@ eligibility는 저장 뒤 다시 검사하지 않으며, 후속 효과가 현재
 - [SocketSender](../backend/src/main/java/dev/ttyroom/adapter/ws/SocketSender.java): 비동기 송신·큐 한도·시간 초과·연결 종료.
 - [RoomPersistenceTests](../backend/src/test/java/dev/ttyroom/application/RoomPersistenceTests.java): 저장 대기·실패와 commit 후 전송 실패.
 - [저장 후 알림 검토](2026-09-28-post-commit-delivery.md): 추가한 계약 테스트와 로컬 검증 범위.
-- [백엔드 상세 설계](../backend/ARCHITECTURE.md): 기존 Node 구현에서 유지한 기준과 단계별 변경.
+- [백엔드 상세 설계](../backend/ARCHITECTURE.md): 현재 모듈의 책임, 동시성·저장·전달 계약.
 - [포트폴리오 설명](PORTFOLIO.md): 선택·대안·한계 및 시연 흐름.
