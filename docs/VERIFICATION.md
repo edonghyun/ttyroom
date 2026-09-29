@@ -1,5 +1,38 @@
 # 검증 기록
 
+## 2026-09-29 대표 설계 설명 T8.3
+
+작업 기준은 `1cc3018`이며 이번 변경은 문서에 한정된다. 설계 설명을 실제 코드와
+대조하고 다음 기존 테스트를 재실행했다. 새로운 동작의 RED → GREEN이 아니다.
+
+| 대상                      | 이번 실행 결과              | 범위                                      |
+| ------------------------- | --------------------------- | ----------------------------------------- |
+| Java RoomPersistenceTests | 35개 통과, 실패·오류·skip 0 | 저장 대기·실패·순서와 commit 후 전달 실패 |
+| Node 프로세스 계약        | 2개 파일, 14개 통과         | terminal-recovery 10개 + persistence 4개  |
+| Spring 프로세스 계약      | 같은 2개 파일, 14개 통과    | Node와 동일한 wire·프로세스 복원 계약     |
+
+macOS에서 Java 21과 현재 pnpm 환경으로 실행했다. Java는 `--rerun-tasks`로 다시
+컴파일·실행했고 Node 서버도 TypeScript를 다시 빌드했다. Spring 프로세스 검증에는
+T8.2에서 빌드한 기존 JAR를 사용했다. 이후 운영 소스 변경은 없다. JAR SHA-256은
+`41cef7df0eb9d4c8a6e69e437b994825d936a57ebf87ae89a6401b90dc56ba68`이다.
+
+Java 21의 JAVA_HOME과 의존성 설치를 마친 저장소 루트에서 재현한다.
+Spring JAR가 없거나 소스가 바뀌었다면 [웹 포함 빌드](DEVELOPMENT.md)를 먼저 실행한다.
+
+```sh
+backend/gradlew -p backend test --tests dev.ttyroom.application.RoomPersistenceTests --rerun-tasks
+pnpm --filter @ttyroom/server exec tsc -p tsconfig.build.json
+pnpm test:e2e src/terminal-recovery.e2e.ts src/persistence.e2e.ts
+./scripts/test-spring.sh protocol src/terminal-recovery.e2e.ts src/persistence.e2e.ts
+```
+
+Node 빌드 전에 protocol 산출물이 필요하다. 최초 환경에서는
+[개발 환경 안내](DEVELOPMENT.md)의 의존성 빌드를 먼저 따른다.
+로컬 원본은 `artifacts/design-cases/`의 `java-persistence.log`, `node-contracts.log`,
+`spring-contracts.log`에 보관한다. 변경 문서의 형식·상대 링크·참조한 테스트 이름도 확인했다.
+브라우저 전체·실제 PTY resilience·Java 전체 테스트는 이번 단계에서 재실행하지 않았다.
+그 범위는 아래 원격 CI와 앞선 시연 기록의 별도 근거다. 성능·운영·배포 검증은 아니다.
+
 ## GitHub Actions 검증 — ae395b2
 
 [실행 36567089186](https://github.com/edonghyun/ttyroom/actions/runs/36567089186)은

@@ -40,63 +40,177 @@ flowchart LR
 여러 사람이 인터넷에서 사용하는 배포·접근 제어 구성을 완료했다는 뜻은 아니다.
 [실행 안내](../README.md)를 먼저 따라갈 수 있다.
 
-## 판단 1: 방의 변경을 한 경계에서 직렬화한다
+## 대표 설계 세 가지를 읽는 순서
 
-[상태 변경 시퀀스 도식](ARCHITECTURE.md)에서 정상 처리와 저장·알림 실패 경로를 함께 볼 수 있다.
+각 사례는 문제 → 선택 → 대안·비용 → 코드·테스트 근거 순서로 읽는다.
+90초 설명은 면접 연습용 원고이며 실제 발화 시간을 측정한 결과는 아니다.
+[계약 대응표](CONTRACTS.md)는 테스트를 찾는 색인이고, 아래는 그 선택을 설명하는 자료다.
 
-**문제.** 터미널 생성, 모드 변경, host 복구가 서로 다른 경로에서 상태를 변경하면
-저장 실패 후 ID가 소비되거나, 저장되지 않은 상태가 참여자에게 보일 수 있다.
+## 판단 1: 저장이 끝나기 전에는 변경을 공개하지 않는다
 
-**선택.** Node의 room별 queue와 stage/save/commit 계약을 Java에서도 유지했다.
-`RoomDirectory.RoomOperation.changeIf`가 변경 가능 여부 확인, draft, 저장,
-commit과 후속 효과 실행 순서를 소유한다. 저장 대기 중에는 짧은 room monitor를
-놓지만 방별 명령 직렬화는 유지한다. 실시간 입력·출력·cursor는 별도 경계에서
-확정된 상태를 사용한다.
+**문제.** 같은 방에서 터미널 생성과 제목 변경이 겹칠 때, 메모리를 먼저 바꾸고
+나중에 저장하면 저장 실패를 다른 참여자가 이미 관찰할 수 있다. 생성 ID와 lease까지
+되돌리려면 저장 중 도착한 다른 작업의 상태를 덮어쓸 위험도 있다.
 
-**대안과 비용.** 각 use case가 개별적으로 저장·알림 순서를 조합하면 같은 실패 지식을
-반복해야 한다. 반대로 네트워크 I/O까지 방 잠금 안에서 기다리면 느린 수신자가 방을
-막을 수 있다. 전송은 비동기 큐 수락 계약으로 분리했다.
+**선택.** 방별 명령 순서 안에서 독립 draft를 만들고, durable record가 달라졌을 때만
+저장한 뒤 메모리에 commit한다. Spring의 `RoomDirectory.RoomOperation.changeIf`가
+이 순서를 소유한다. 저장 중에는 상태 monitor를 놓지만 방별 명령 lock은 유지한다.
+따라서 다음 제어 명령은 기다리고, 실시간 경로는 확정된 이전 상태를 사용할 수 있다.
+저장 뒤 eligibility를 다시 검사하지 않으므로, 중간에 연결이 끊겨도 시작한 저장 결정을
+확정할 수 있다. 후속 효과에서 현재 연결에 전달 가능한지를 판단한다.
 
-**검증.** 저장 gate를 이용해 대기·실패를 재현하고, 실패 시 이전 상태와 ID가 유지되며
-알림이 나오지 않는지 확인한다. 다른 방과 실시간 경로가 진행 가능한지도 검사한다.
+**대안·비용.** 메모리 선반영 후 rollback은 live 상태까지 복구하는 복잡성을 만든다.
+전체 서버 lock은 관계없는 방을 묶고, DB 트랜잭션만으로는 메모리·소켓까지 원자화되지 않는다.
+현재 방식도 같은 방의 제어 명령은 느린 저장을 기다리고 draft 복제 비용을 지불한다.
+다른 방의 명령 lock이 독립적이어도 실제 저장 장치의 처리량까지 독립적인 것은 아니다.
 
-- [Java 변경 경계](../backend/src/main/java/dev/ttyroom/application/RoomDirectory.java)
-- [Node 비교 구현](../legacy/node-server/src/usecases/room-registry.ts)
-- [저장·동시성 테스트](../backend/src/test/java/dev/ttyroom/application/RoomPersistenceTests.java)
+**코드·테스트 근거.** [RoomDirectory](../backend/src/main/java/dev/ttyroom/application/RoomDirectory.java)의
+`execute`와 `changeIf`, [RoomPersistenceTests](../backend/src/test/java/dev/ttyroom/application/RoomPersistenceTests.java)의
+다음 사례를 함께 읽는다.
+
+- `failedReservationDoesNotConsumeIdLeaseOrSendHostCommandAndTheNextCommandRuns`: 저장 실패 뒤 ID·lease·host 명령을 보존하고 다음 명령은 진행한다.
+- `pendingSaveKeepsTheCommittedViewWhileRealtimeProceeds`: 저장 gate가 닫혀 있는 동안 확정 상태와 실시간 진행을 관찰한다.
+- `queuedRenameCommitsAndPublishesAfterTheEarlierSave`: 앞선 저장 뒤에 후속 제목 변경이 확정·알림된다.
+- `anotherRoomCanCommitWhileThisRoomsSaveWaits`: 방별 직렬화 범위를 검사한다. DB 처리량 측정은 아니다.
+
+**Node와 Spring.** [Node RoomRegistry](../legacy/node-server/src/usecases/room-registry.ts)는
+방별 Promise queue에서 stage → await save → commit한다. Spring은 여러 스레드가
+접근하므로 방별 `ReentrantLock`과 짧은 상태 monitor를 나눈다. 또한 Spring의 명령 범위는
+후속 효과의 큐 수락까지 포함하지만, Node의 `change`는 결과를 반환하고 use case가
+알림을 처리한다. 공통인 것은 저장 실패 비노출 계약이며 잠금·스케줄링 구현이 같다는 뜻은 아니다.
+[Node 저장 테스트](../legacy/node-server/src/usecases/room-registry.spec.ts)에서도
+저장 대기 중 비노출과 실패 중 live 상태 보존을 확인할 수 있다.
+
+### 90초 설명
+
+> 협업 터미널에서는 한 요청의 성공보다 여러 참여자가 같은 확정 상태를 보는 것이 중요합니다.
+> 예를 들어 터미널 ID를 발급해 화면에 보여준 뒤 저장이 실패하면, 참여자는 존재한다고 본
+> 터미널을 다시 잃게 됩니다. 그래서 메모리를 먼저 바꾸고 되돌리는 대신 독립 draft에 변경하고,
+> 저장 성공 후에만 실제 상태를 확정하도록 했습니다. 이 순서를 각 기능에 반복하지 않고
+> 방의 변경 경계가 소유하도록 했습니다.
+>
+> Java에서는 명령 순서를 지키는 lock과 상태를 읽고 확정하는 monitor를 나눴습니다.
+> 저장을 기다리는 동안 같은 방의 제어 명령은 대기하지만 실시간 경로는 이전 확정 상태를
+> 사용할 수 있습니다. 테스트는 저장 gate로 대기를 만들고 상태·알림·ID가 바뀌지 않는지
+> 확인합니다. Node에서도 같은 저장 순서를 Promise queue로 구현했습니다.
+> 비용은 같은 방의 명령 대기와 draft 복제이며, 분산 서버의 전역 순서나 성능 우위를
+> 증명한 설계는 아닙니다.
+
+**후속 질문과 답변 포인트**
+
+- **왜 `@Transactional`로 끝내지 않았나?** DB 저장, 메모리 확정, 소켓 수락은 서로 다른 자원이다. 현재 경계는 순서를 보장하며 세 자원의 원자성을 주장하지 않는다.
+- **모든 이벤트가 같은 큐를 지나나?** 입장·제어·만료는 명령 순서를 공유한다. binary 입력·출력·cursor·단절 처리는 짧은 상태 monitor를 사용한다. 논리적 분리가 동일 소켓의 지연까지 제거하지는 않는다.
+- **여러 서버가 같은 방을 처리한다면?** 프로세스 lock으로 부족하다. 방 소유권과 라우팅, 동시 갱신 충돌 정책을 먼저 정해야 한다.
 
 ## 판단 2: 저장 성공과 전달 성공을 구분한다
 
-**문제.** 저장한 뒤 수신자 하나의 연결이 끊어졌다고 저장을 재시도하거나 되돌리면
-이미 확정한 상태와 다른 참여자가 관찰한 결과가 어긋난다.
+**문제.** 제목 변경을 저장한 뒤 첫 수신자의 연결이 끊겼다고 저장을 다시 실행하거나
+되돌리면, 이미 확정한 상태와 다른 참여자가 관찰한 결과가 어긋난다.
 
-**선택.** `ChangeResult`로 Reply/Broadcast/HostRequest 등의 효과를 표현하고 commit 후
-처리한다. 예상된 `PeerUnavailable`은 해당 수신자를 정리하고 다음 수신자로 진행한다.
-예상 밖 구현 예외는 숨기지 않는다. 이 경우 전체 알림 완료까지 보장하지는 않는다.
+**선택.** `ChangeResult`로 Reply/Broadcast/HostRequest 등의 결과를 표현하고 commit 후
+효과를 처리한다. Spring의 `broadcast`는 수신자별 `PeerUnavailable`을 처리해 해당
+연결을 정리하고 다음 수신자로 진행한다. 예상 밖 구현 예외는 전파하며, 이때 나머지
+수신자까지 알림을 완료한다는 보장은 없다. 어느 쪽도 저장을 되돌리거나 반복하지 않는다.
+`SocketSender`의 성공은 비동기 송신 큐 수락이며 실제 클라이언트 수신 확인이 아니다.
 
-**검증.** 알림 실패 후 저장 상태와 메모리 상태가 동일하고 저장은 한 번만 발생하는지,
-정상 수신자에게 알림이 이어지는지 검사한다. 교체된 연결의 늦은 disconnect와 expiry가
-새 연결을 제거하지 않는 테스트도 있다.
+**대안·비용.** 전송 실패까지 저장 실패로 취급하면 재실행 부작용이 생긴다. 반대로 모든
+예외를 무시하면 구현 오류를 숨긴다. 현재는 예상된 연결 실패만 격리하지만 프로세스가
+commit과 전송 사이에 종료되면 알림이 유실될 수 있다. 지속적 전달이 필요해지면 outbox와
+소비자 중복 처리 등을 검토해야 하며, 저장·재시도·정리 비용도 추가된다. 현재 구현은 outbox가 아니다.
 
-- [세션과 효과 처리](../backend/src/main/java/dev/ttyroom/application/RoomSessions.java)
-- [송신 큐와 시간 초과 처리](../backend/src/main/java/dev/ttyroom/adapter/ws/SocketSender.java)
-- [검토 및 테스트 근거](2026-09-28-post-commit-delivery.md)
+**코드·테스트 근거.** [RoomSessions](../backend/src/main/java/dev/ttyroom/application/RoomSessions.java)의
+`publish`·`broadcast`, [SocketSender](../backend/src/main/java/dev/ttyroom/adapter/ws/SocketSender.java),
+[RoomPersistenceTests](../backend/src/test/java/dev/ttyroom/application/RoomPersistenceTests.java)의
+두 테스트가 저장 상태·메모리 상태·저장 횟수와 수신자 관찰을 연결한다.
 
-이는 메모리 내 후속 효과다. commit과 전송 사이 프로세스가 종료되면 알림이 유실될 수 있다.
-지속적 전달이 요구될 때 outbox 등을 검토할 수 있지만 현재 구현했다고 설명하지 않는다.
+- `unavailableRecipientDoesNotUndoCommittedRenameOrBlockOtherRecipients`: 실패한 수신자만 정리하고 정상 수신자가 한 번 알림을 받는다.
+- `unexpectedDeliveryFailurePropagatesWithoutUndoingOrRepeatingCommittedRename`: 같은 예외가 전파되어도 저장과 commit은 유지되고 저장을 반복하지 않는다.
 
-## 판단 3: 수명주기와 중복 상태는 소유한 모듈에서 해결한다
+두 테스트는 기존 구현에서 바로 통과한 **특성 테스트**다.
+[추가 당시 기록](2026-09-28-post-commit-delivery.md)을 RED → GREEN 오류 수정으로 바꾸어 설명하지 않는다.
 
-ConnectorSession은 현재 연결과 재시도 타이머를, PtyManager는 실제 셸의 종료를 소유한다.
-close 요청과 실제 exit을 구분하고, 남은 출력을 내보낸 뒤 종료를 보고한다.
-프론트엔드 런타임은 구독·컨트롤러·타이머 정리를 소유한다.
+**Node와 Spring.** [Node RenameTerminal](../legacy/node-server/src/usecases/rename-terminal.ts)도
+`rooms.change` 완료 후 알림을 발행한다. 다만 [ConnectionRegistry](../legacy/node-server/src/usecases/connection-registry.ts)의
+broadcast에는 수신자별 예외 처리가 없고, [WsConnection](../legacy/node-server/src/adapters/ws/ws-transport.ts)은
+OPEN이 아닌 소켓의 send를 반환한다. Spring은 `PeerUnavailable`과 송신 worker의 실패 경계를
+명시한다. 따라서 저장 → commit → 알림이라는 공통 순서를 근거로 두 구현의 모든 전송 오류
+처리가 동일하다고 주장하지 않는다. 이 수신자별 오류 주입의 직접 근거는 Spring 테스트다.
 
-출력 순번은 앱 Map과 replay buffer에서 중복 관리하던 상태를 버퍼 기준으로 일원화했다.
-반면 공유 geometry의 마지막 반영값은 로컬 이동을 무관한 이벤트가 덮어쓰지 않도록
-필요한 정보여서 유지했다. Map 개수나 파일 길이보다 정보의 의미와 소유권을 기준으로 삼았다.
+### 90초 설명
 
-- [Connector와 PTY](../connector/src/pty-manager.ts)
-- [프론트엔드 런타임](../web/src/app/room-app.tsx)
-- [유지·변경 판단 비교](2026-09-28-production-boundaries.md)
+> 제목 변경의 저장이 성공했는데 첫 참여자의 연결이 끊기는 경우를 따로 다뤘습니다.
+> 이 실패를 요청 전체의 실패로 보고 저장을 재시도하면 이미 확정된 결정을 다시 실행할 수
+> 있습니다. 그래서 저장 성공과 전달 성공을 분리했습니다. 업무 변경은 결과 값을 반환하고,
+> 메모리에 commit한 뒤 세션 계층이 알림을 보냅니다.
+>
+> 예상된 연결 불가는 해당 수신자만 정리하고 다음 수신자로 진행합니다. 반면 구현 오류까지
+> 연결 장애로 숨기지는 않습니다. 테스트에서는 송신 실패를 주입한 뒤 저장된 제목과 메모리
+> 제목이 같고, 저장이 한 번만 추가되며, 정상 참여자가 알림을 받는지 확인합니다.
+> 이 테스트는 이미 있던 동작을 고정한 특성 테스트였습니다.
+> 또 송신 큐 수락은 실제 수신 확인이 아닙니다. commit 직후 프로세스가 죽는 구간까지
+> 보장하려면 지속적 전달 장치가 필요하지만, 지금은 그런 요구와 비용을 추가하지 않았습니다.
+
+**후속 질문과 답변 포인트**
+
+- **응답을 못 받았으니 같은 요청을 재시도해도 되나?** 전송 실패만으로 미확정을 단정할 수 없다. 명령별 멱등성·조회·재조정 정책이 필요하며 입력 명령 자동 재실행은 하지 않는다.
+- **왜 이벤트 버스를 추가하지 않았나?** 현재 결과의 소비와 순서는 세션 계층에서 설명 가능하다. 중간 버스가 전달 보장을 자동으로 만들지는 않는다.
+- **새 연결을 이전 연결의 실패가 닫지 않나?** `disconnected`가 현재 Member와 동일한 객체인지 검사한다. 별도의 연결 교체·만료 테스트로 확인한다.
+
+## 판단 3: 재접속은 셸 재실행이 아니라 상태 대조와 출력 복구다
+
+**문제.** 네트워크 단절은 셸 종료와 다르다. Connector의 PTY가 살아 있는데 새 셸을 만들면
+작업 맥락을 잃고, 출력 재전송을 그대로 붙이면 같은 내용이 두 번 보일 수 있다.
+반대로 서버 재시작 후 메모리 출력을 모두 복원했다고 가정하면 보관하지 않은 내용을 약속하게 된다.
+
+**선택.** Connector는 실제 PTY와 제한된 출력 버퍼를 소유하고 재접속 때 terminalId·runtimeId의
+inventory를 보낸다. 서버는 저장된 workspace와 실제 runtime을 대조한 뒤 replay 위치를 알린다.
+Connector source 순번은 중복·역순 제거에, 서버가 부여하는 browser 순번은 화면 출력의 순서에 쓴다.
+서버 재시작은 출력 메모리를 초기화하므로 브라우저도 welcome을 기준으로 투영 상태를 다시 만든다.
+클라이언트가 받은 `sync`는 서버가 선언한 출력 경계이며 PTY 입력 실행의 확인이 아니다.
+
+**대안·비용.** 재접속마다 셸을 다시 만들면 간단하지만 진행 중인 작업을 잃는다. 모든 출력을
+영구 보관하면 복구 범위는 늘릴 수 있으나 저장 비용과 터미널 민감 정보의 보관 문제가 추가된다.
+현재는 bounded replay를 선택해 버퍼 밖 출력과 종료한 Connector의 셸 메모리는 복원하지 못한다.
+서버 재시작 후 lease·presence도 영속 상태처럼 복원하지 않는다. 브라우저만 유예 내에 재접속할 때의
+lease 유지와 서버 프로세스 재시작은 다른 계약이다.
+
+**코드·테스트 근거.** [ConnectorApp](../connector/src/connector-app.ts)이 inventory와 replay를,
+[TerminalOutput](../backend/src/main/java/dev/ttyroom/application/TerminalOutput.java)이 source 중복 제거와
+browser 순번·보관 한도를 소유한다. [TerminalWorkspace](../backend/src/main/java/dev/ttyroom/domain/TerminalWorkspace.java)가
+runtime의 소유권·충돌·누락을 대조한다.
+
+- [terminal-recovery E2E](../e2e/src/terminal-recovery.e2e.ts): source 중복·역순 제거, runtime 충돌 거절, late join과 resync의 출력 순서를 검사한다. wire peer를 사용하는 계약 테스트다.
+- [persistence E2E](../e2e/src/persistence.e2e.ts): 새 PID에서 workspace를 복원하고 lease·presence·출력은 초기화한다. 저장 오류 주입과 구별한다.
+- [resilience E2E](../e2e/src/resilience.e2e.ts): 실제 Connector·PTY를 유지한 서버 재시작과 단절 중 출력 복구를 검사한다.
+- [브라우저 recovery](../web/e2e/room-recovery.e2e.ts): 실제 화면의 한 번 출력, gap 복구, 영속 서버 재시작 후 같은 PTY를 확인한다.
+
+**Node와 Spring.** 같은 Connector·React와 공통 프로토콜 E2E를 사용한다.
+[Node BroadcastTerminalOutput](../legacy/node-server/src/usecases/broadcast-terminal-output.ts)과 Spring의
+TerminalOutput은 source/browser 순번을 분리한다. Node는 `bufferedBytes`로 live 출력 drop을
+판단하고, Spring은 `Peer.offerOutput`과 SocketSender에 큐 수락을 맡긴다.
+재생·순번 계약은 비교하지만 메모리 사용량·처리량이나 모든 과부하 동작의 동등성은 측정하지 않았다.
+
+### 90초 설명
+
+> 재접속을 새 셸 실행으로 처리하면 사용자가 하던 작업이 사라집니다. 이 프로젝트에서는
+> 셸의 소유자를 사용자 PC의 Connector로 두고, 서버 연결이 끊겨도 PTY가 살아 있는 경우를
+> 복구 대상으로 삼았습니다. 다시 연결되면 Connector가 terminalId와 runtimeId 목록을 보내고,
+> 서버가 자신의 workspace와 대조해 같은 실행인지 확인한 뒤 보관된 출력을 요청합니다.
+>
+> 출력에는 두 순번이 있습니다. Connector 순번으로 재전송 중복을 제거하고, 서버 순번으로
+> 브라우저에 보이는 순서를 관리합니다. 서버가 재시작하면 출력 메모리와 lease는 초기화되고,
+> 살아 있는 Connector의 제한된 버퍼에서 다시 복구합니다. 테스트도 프로토콜 순번 검사와
+> 실제 PTY·브라우저 복구를 나눴습니다. 화면에 한 번 출력된다는 검증을 입력 exactly-once로
+> 확대하지 않으며, Connector 종료 후 셸 메모리나 버퍼 밖 출력까지 복원한다고 설명하지 않습니다.
+
+**후속 질문과 답변 포인트**
+
+- **같은 clientId로 돌아오면 인증된 같은 사람인가?** 현재 v7은 방 토큰과 클라이언트가 제시한 식별자를 사용한다. 연결 교체 보호는 신원 인증이 아니며 주체별 credential 입장은 후속 백로그다.
+- **입력도 순번이 있으니 재전송하면 되나?** PTY가 실행했는지 모르는 단절 구간에서 재실행하면 부작용이 중복될 수 있다. 현재 입력 exactly-once 계약은 없다.
+- **89초 시연이 서버 재시작도 증명하나?** [영상](demo/README.md)은 브라우저 연결 복구를 보여준다. 서버 재시작은 위 자동화 테스트와 아래 수동 발표 절차의 별도 범위다.
+
+수명주기와 중복 상태의 소유권을 더 묻는다면 [운영 코드 경계 검토](2026-09-28-production-boundaries.md)를
+참고한다. replay 순번 일원화와 필요한 geometry 상태를 유지한 이유를 함께 설명한다.
 
 ## 테스트로 설명할 수 있는 실제 사례
 
@@ -127,7 +241,8 @@ Chromium 브라우저 E2E Node/Spring 각각 38개다. 서로 다른 단계의 �
 
 브라우저 결과는 [검증 범위와 로컬 기록 안내](VERIFICATION.md),
 Java 결과는 [저장 후 알림 검토](2026-09-28-post-commit-delivery.md)에 연결되어 있다.
-CI 설정이 존재한다는 사실과 원격 실행 성공은 구분한다. 현재 문서는 원격 CI·배포 성공을 주장하지 않는다.
+이후 공개 CI의 소스 `ae395b2`에서 6개 job 성공을 확인했다. 실행 링크와 환경·집계 범위는
+[공개 CI 기록](VERIFICATION.md)에 있다. 위 로컬 수치와 합산하지 않으며, CI 성공을 배포·운영 성공으로 표현하지 않는다.
 
 | 확인한 범위                                     | 아직 주장하지 않는 보장                                   |
 | ----------------------------------------------- | --------------------------------------------------------- |
