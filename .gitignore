@@ -4,5 +4,11 @@ dist/
 .env
 .ttyroom/
 refs/sshx/
-packages/web/playwright-report/
-packages/web/test-results/
+web/playwright-report/
+web/test-results/
+
+# Local verification evidence and machine-specific files.
+/artifacts/
+.DS_Store
+.env.*
+!.env.example

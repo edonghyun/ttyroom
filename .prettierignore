@@ -1,2 +1,12 @@
 pnpm-lock.yaml
 docs/superpowers/
+
+# Gradle generated files and wrapper; Java formatting is outside Prettier.
+backend/.gradle/
+backend/build/
+backend/HELP.md
+backend/gradlew
+backend/gradlew.bat
+
+# Local verification evidence is not part of the published source.
+artifacts/
