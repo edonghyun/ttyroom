@@ -1,24 +1,38 @@
 # 검증 기록
 
-## GitHub Actions 검증 — 8a5a0b8
+## GitHub Actions 검증 — ae395b2
 
-[실행 36565833540](https://github.com/edonghyun/ttyroom/actions/runs/36565833540)은
-소스 `8a5a0b894ba47a4b740a2f07c3df9db0117cfdf1`을 대상으로 하며 **6개 작업 모두 성공**했다.
+[실행 36567089186](https://github.com/edonghyun/ttyroom/actions/runs/36567089186)은
+소스 `ae395b2f86ded2ff101e3882556630d40a696c90`을 대상으로 하며 **6개 작업 모두 성공**했다.
+2026-09-29 21:26 KST에 완료되었고, 아래 수치는 이 실행의 로그에서 다시 확인했다.
 Ubuntu의 Java 21·Node 22 환경에서 실행했으며 아래 결과는 각 job 로그에서 확인했다.
 
-| 작업                               | 확인한 결과                                                                    |
-| ---------------------------------- | ------------------------------------------------------------------------------ |
-| check                              | 타입·형식·의존성 검사, TypeScript 단위 544개 통과                              |
-| Spring backend — Java 21           | Gradle test 및 bootJar 성공. 이 로그만으로 Java 실행 개수를 새로 집계하지 않음 |
-| full                               | Connector·Node 통합 37개, Node 프로토콜 213개 통과                             |
-| Browser — node                     | 정적 웹 계약 8개, Chromium 브라우저 38개 통과                                  |
-| Browser — spring                   | 정적 웹 계약 8개, Chromium 브라우저 38개 통과                                  |
-| Spring backend — process contracts | 정적 웹을 제외한 프로세스 계약 205개 통과                                      |
+| 작업                               | 확인한 결과                                                                       |
+| ---------------------------------- | --------------------------------------------------------------------------------- |
+| check                              | 타입·형식·의존성 검사, TypeScript 단위 544개 통과                                 |
+| Spring backend — Java 21           | Gradle test 및 bootJar 성공, 7개 task 실행. Java 테스트 개수는 별도 집계하지 않음 |
+| full                               | Connector·Node 통합 37개, Node 프로토콜 213개 통과                                |
+| Browser — node                     | 정적 웹 계약 8개, Chromium 브라우저 38개 통과                                     |
+| Browser — spring                   | 정적 웹 계약 8개, Chromium 브라우저 38개 통과                                     |
+| Spring backend — process contracts | 정적 웹을 제외한 프로세스 계약 205개 통과                                         |
 
 Node 프로토콜 213개에는 정적 웹 8개가 포함되며, browser job의 같은 8개와 합산해
 서로 다른 테스트 수로 주장하지 않는다. 과거 macOS 검증과 이번 Linux CI도 별개의 실행이다.
 셸은 테스트 전용 설정을 사용하므로 개인 셸 설정 호환성이나 공개 서비스 운영 검증은 아니다.
-원본 로컬 복사 로그는 `artifacts/sprint-planning/`에 보관한다.
+직전 소스 `8a5a0b8`의 [실행 36565833540](https://github.com/edonghyun/ttyroom/actions/runs/36565833540)도
+6개 작업 모두 성공했다. 직전 실행의 원본 로컬 복사 로그는 `artifacts/sprint-planning/`에 보관하며,
+최신 실행의 원본은 위 GitHub Actions 링크에서 확인할 수 있다.
+
+### 이전 실패 알림과 수정 이력
+
+| 실패 실행                                                                                | 확인한 원인                                                                                                                                | 적용된 수정                                                                                                                                                           |
+| ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`dd5001a` / 36564895875](https://github.com/edonghyun/ttyroom/actions/runs/36564895875) | 깨끗한 runner에서 protocol 산출물이 없어 typecheck와 양쪽 browser job의 web 빌드가 `TS2307: Cannot find module '@ttyroom/protocol'`로 실패 | [`3d3a90c`](https://github.com/edonghyun/ttyroom/commit/3d3a90cc1b22aca694b0e7cbfe3bfecbca63da3c): typecheck 전에 protocol 빌드, web 빌드에 workspace 의존성 포함     |
+| [`3d3a90c` / 36565123232](https://github.com/edonghyun/ttyroom/actions/runs/36565123232) | 빌드는 통과했지만 Linux zsh 초기 설정·compinit 안내가 PTY 테스트 입력을 소비해 양쪽 browser job의 출력·종료 검증 실패                      | [`8a5a0b8`](https://github.com/edonghyun/ttyroom/commit/8a5a0b894ba47a4b740a2f07c3df9db0117cfdf1): browser fixture에 전용 `ZDOTDIR`, `.zshrc`, `GLOBAL_RCS` 해제 적용 |
+
+위 두 실패는 수정 전 소스의 실행 기록이다. 이후 두 실행에서 같은 검증이 성공했으며,
+기존 실패 알림은 최신 소스의 실패를 뜻하지 않는다. 실패 실행을 삭제하거나 알림을 끄지 않고
+실패 원인과 수정 뒤 검증을 연결해 보존한다.
 
 ## 2026-09-29 공개 준비
 
