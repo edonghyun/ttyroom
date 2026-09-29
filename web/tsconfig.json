@@ -10,6 +10,8 @@
   "include": [
     "src",
     "e2e",
+    "demo",
+    "playwright.demo.config.ts",
     "playwright.config.ts",
     "vite.config.ts",
     "vitest.config.ts",
