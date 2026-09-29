@@ -1,5 +1,25 @@
 # 검증 기록
 
+## GitHub Actions 검증 — 8a5a0b8
+
+[실행 36565833540](https://github.com/edonghyun/ttyroom/actions/runs/36565833540)은
+소스 `8a5a0b894ba47a4b740a2f07c3df9db0117cfdf1`을 대상으로 하며 **6개 작업 모두 성공**했다.
+Ubuntu의 Java 21·Node 22 환경에서 실행했으며 아래 결과는 각 job 로그에서 확인했다.
+
+| 작업                               | 확인한 결과                                                                    |
+| ---------------------------------- | ------------------------------------------------------------------------------ |
+| check                              | 타입·형식·의존성 검사, TypeScript 단위 544개 통과                              |
+| Spring backend — Java 21           | Gradle test 및 bootJar 성공. 이 로그만으로 Java 실행 개수를 새로 집계하지 않음 |
+| full                               | Connector·Node 통합 37개, Node 프로토콜 213개 통과                             |
+| Browser — node                     | 정적 웹 계약 8개, Chromium 브라우저 38개 통과                                  |
+| Browser — spring                   | 정적 웹 계약 8개, Chromium 브라우저 38개 통과                                  |
+| Spring backend — process contracts | 정적 웹을 제외한 프로세스 계약 205개 통과                                      |
+
+Node 프로토콜 213개에는 정적 웹 8개가 포함되며, browser job의 같은 8개와 합산해
+서로 다른 테스트 수로 주장하지 않는다. 과거 macOS 검증과 이번 Linux CI도 별개의 실행이다.
+셸은 테스트 전용 설정을 사용하므로 개인 셸 설정 호환성이나 공개 서비스 운영 검증은 아니다.
+원본 로컬 복사 로그는 `artifacts/sprint-planning/`에 보관한다.
+
 ## 2026-09-29 공개 준비
 
 첫 GitHub 실행에서 protocol 선행 빌드 누락을 발견해 CI 순서를 수정했다.
