@@ -1,14 +1,14 @@
 // 엔트리는 경계 책임만 (가이드라인 §1.6) — 파싱은 순수 함수로 스펙한다
 export type CliCommand =
-  | { kind: "join"; httpUrl: string; roomId: string; token: string; wsUrl: string; name: string }
+  | { kind: "join"; httpUrl: string; roomId: string; wsUrl: string; name: string }
   | { kind: "invalid"; reason: string };
 
-// 입력 형식: ttyroom join <joinUrl> [--name <표시명>]
-//   joinUrl = http(s)://host[:port]/r/<roomId>#<token> → wsUrl = ws(s)://host[:port]/ws
+// 입력 형식: ttyroom join <roomUrl> [--name <표시명>]
+//   joinUrl = http(s)://host[:port]/r/<roomId>→ wsUrl = ws(s)://host[:port]/ws
 export function parseCli(argv: string[], env: { hostname: string }): CliCommand {
   const [subcommand, joinUrl] = argv;
   if (subcommand !== "join" || !joinUrl) {
-    return { kind: "invalid", reason: "사용법: ttyroom join <joinUrl> [--name <표시명>]" };
+    return { kind: "invalid", reason: "사용법: ttyroom join <roomUrl> [--name <표시명>]" };
   }
 
   let url: URL;
@@ -26,13 +26,18 @@ export function parseCli(argv: string[], env: { hostname: string }): CliCommand 
   if (!roomMatch || !roomMatch[1]) {
     return {
       kind: "invalid",
-      reason: `joinUrl 경로는 /r/<roomId> 형식이어야 합니다: ${url.pathname}`,
+      reason: "방 URL 경로는 /r/<roomId> 형식이어야 합니다",
     };
   }
 
-  const token = url.hash.slice(1);
-  if (!token) {
-    return { kind: "invalid", reason: "joinUrl에 #<token>이 없습니다" };
+  if (url.hash || url.search || url.username || url.password) {
+    return {
+      kind: "invalid",
+      reason: "방 URL에는 비밀값이나 쿼리를 넣지 마세요. Host credential은 stdin으로 입력합니다",
+    };
+  }
+  if (argv.length !== 2 && !(argv.length === 4 && argv[2] === "--name")) {
+    return { kind: "invalid", reason: "사용법: ttyroom join <roomUrl> [--name <표시명>]" };
   }
 
   const nameFlagIndex = argv.indexOf("--name");
@@ -47,7 +52,6 @@ export function parseCli(argv: string[], env: { hostname: string }): CliCommand 
     kind: "join",
     httpUrl: url.origin,
     roomId: roomMatch[1],
-    token,
     wsUrl: `${wsProtocol}//${url.host}/ws`,
     name: nameOverride ?? env.hostname,
   };

@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { decodeDataFrame, encodeDataFrame, PROTOCOL_VERSION } from "./data-frame.js";
+import { decodeDataFrame, encodeDataFrame, LEGACY_PROTOCOL_VERSION } from "./data-frame.js";
 import {
-  clientMessageSchema,
+  legacyClientMessageSchema,
   parseClientMessage,
   parseServerMessage,
   roomEventSchema,
@@ -33,12 +33,12 @@ const fixtures = JSON.parse(
 
 describe("language-neutral protocol v7 fixtures", () => {
   it("pins the negotiated protocol version", () => {
-    expect(PROTOCOL_VERSION).toBe(fixtures.protocolVersion);
+    expect(LEGACY_PROTOCOL_VERSION).toBe(fixtures.protocolVersion);
   });
 
   it("covers every message type and room event kind", () => {
     for (const [direction, schema] of [
-      ["client", clientMessageSchema],
+      ["client", legacyClientMessageSchema],
       ["server", serverMessageSchema],
     ] as const) {
       const covered = new Set(

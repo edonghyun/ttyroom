@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
-  clientMessageSchema,
+  legacyClientMessageSchema,
   parseClientMessage,
   parseServerMessage,
   roomEventSchema,
@@ -81,7 +81,7 @@ describe("PROTOCOL.md 드리프트 가드 — 역할: 문서 예시와 스키마
           .map((example) => (JSON.parse(example.json) as Record<string, unknown>)[key]),
       );
     expect(documented("client", "type")).toEqual(
-      new Set(clientMessageSchema.options.map((option) => option.shape.type.value)),
+      new Set(legacyClientMessageSchema.options.map((option) => option.shape.type.value)),
     );
     expect(documented("server", "type")).toEqual(
       new Set(serverMessageSchema.options.map((option) => option.shape.type.value)),

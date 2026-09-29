@@ -65,7 +65,7 @@ export type RoomSnapshot = z.infer<typeof roomSnapshotSchema>;
 
 // ── 클라이언트(참여자·호스트 공통)→서버 ──────────────────────────────────────
 
-const helloSchema = z.object({
+const legacyHelloSchema = z.object({
   type: z.literal("hello"),
   // PROTOCOL_VERSION은 1부터 시작 — 0·음수는 계약상 불법이라 파싱 단계에서 거른다
   protocolVersion: z.number().int().positive(),
@@ -75,6 +75,16 @@ const helloSchema = z.object({
   name: z.string(),
   role: z.enum(["participant", "host"]),
 });
+const credentialHelloSchema = z
+  .object({
+    type: z.literal("hello"),
+    protocolVersion: z.literal(8),
+    roomId: z.string(),
+    credential: z.string().regex(/^[A-Za-z0-9_-]{32}$/),
+    name: z.string(),
+  })
+  .strict();
+
 const openTerminalRequestSchema = z.object({
   type: z.literal("open-terminal-request"),
   hostId: z.string(),
@@ -162,8 +172,8 @@ const terminalReplayCompleteSchema = z.object({
   lastOutputSeq: u32,
 });
 
-export const clientMessageSchema = z.discriminatedUnion("type", [
-  helloSchema,
+export const legacyClientMessageSchema = z.discriminatedUnion("type", [
+  legacyHelloSchema,
   openTerminalRequestSchema,
   closeTerminalRequestSchema,
   setTerminalModeSchema,
@@ -182,8 +192,14 @@ export const clientMessageSchema = z.discriminatedUnion("type", [
   hostInventorySchema,
   terminalReplayCompleteSchema,
 ]);
+export const clientMessageSchema = z.union([
+  credentialHelloSchema,
+  z.intersection(z.object({ credential: z.never().optional() }), legacyClientMessageSchema),
+]);
 export type ClientMessage = z.infer<typeof clientMessageSchema>;
-export type HelloMessage = z.infer<typeof helloSchema>;
+export type LegacyHelloMessage = z.infer<typeof legacyHelloSchema>;
+export type CredentialHelloMessage = z.infer<typeof credentialHelloSchema>;
+export type HelloMessage = LegacyHelloMessage | CredentialHelloMessage;
 
 // ── Room 이벤트와 임대 결과 ──────────────────────────────────────────────────
 

@@ -6,7 +6,7 @@ import { RoomSession, type RoomSessionEvent } from "./room-session.js";
 import {
   PROTOCOL_VERSION,
   type ClientMessage,
-  type HelloMessage,
+  type CredentialHelloMessage,
   type InputFrame,
   type ServerMessage,
 } from "@ttyroom/protocol";
@@ -26,10 +26,8 @@ describe("RoomSession — collaborative Room lifecycle", () => {
         type: "hello",
         protocolVersion: PROTOCOL_VERSION,
         roomId: "room-1",
-        token: "secret-token",
-        clientId: "alice-id",
+        credential: "participant-credential",
         name: "Alice",
-        role: "participant",
       },
     ]);
     expect(transports.latest().startCount).toBe(1);
@@ -57,11 +55,26 @@ describe("RoomSession — collaborative Room lifecycle", () => {
     disconnect(transports);
 
     expect(clock.delays).toEqual([100, 200, 200]);
-    expect(transports.hellos.map((hello) => hello.clientId)).toEqual([
-      "alice-id",
-      "alice-id",
-      "alice-id",
+    expect(transports.hellos.map((hello) => hello.credential)).toEqual([
+      "participant-credential",
+      "participant-credential",
+      "participant-credential",
     ]);
+  });
+
+  it("stops reconnecting when the credential is rejected", () => {
+    const { clock, projection, transports } = startRoomSession();
+
+    receiveServerMessage(transports, {
+      type: "error",
+      code: "invalid-credential",
+      message: "invalid-credential",
+    });
+    disconnect(transports);
+
+    expect(projection.view().connection).toBe("unauthorized");
+    expect(clock.delays).toEqual([]);
+    expect(transports.latest().disposeCount).toBe(1);
   });
 
   it("ends reconnect when the server reports that the Room is gone", () => {
@@ -352,10 +365,10 @@ class FakeSessionTransport implements SessionTransport {
 }
 
 class FakeSessionTransportFactory implements SessionTransportFactory {
-  readonly hellos: HelloMessage[] = [];
+  readonly hellos: CredentialHelloMessage[] = [];
   readonly transports: FakeSessionTransport[] = [];
 
-  create(hello: HelloMessage): FakeSessionTransport {
+  create(hello: CredentialHelloMessage): FakeSessionTransport {
     const transport = new FakeSessionTransport();
     this.hellos.push(hello);
     this.transports.push(transport);
@@ -418,8 +431,7 @@ function createSession(options: {
     {
       identity: {
         roomId: "room-1",
-        token: "secret-token",
-        clientId: "alice-id",
+        credential: "participant-credential",
         name: "Alice",
       },
       reconnectDelaysMs: [100, 200],

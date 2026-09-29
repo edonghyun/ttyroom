@@ -1,8 +1,8 @@
 # TTYRoom Wire Protocol
 
-이 문서는 기본 클라이언트와 Node 비교 구현의 v7 계약이다. Spring의 선택 가능한
-[v8 입장 계약](AUTHENTICATION_V8.md)은 hello 인증을 바꾸며 나머지 메시지·binary 형식은 공유한다.
-기본값과 React·Connector는 아직 v7이다.
+이 문서는 Node 비교 구현의 v7 hello와 공통 제어·binary 계약을 보존한다.
+현재 Spring·React·Connector의 기본 버전은 **v8**이며, 입장은 [v8 인증 계약](AUTHENTICATION_V8.md)을 따른다.
+hello 외의 메시지·binary 형식은 두 버전이 공유한다.
 
 언어 중립 명세. TypeScript 구현(`src/messages.ts`의 zod 스키마, `src/data-frame.ts`의 코덱)이
 이 문서와 동기되어야 하며, 골든 테스트가 드리프트를 잡는다. 레이아웃·형태 변경은
@@ -10,7 +10,7 @@
 
 ## 버전과 협상
 
-- 현재 버전: `PROTOCOL_VERSION = 7`. 버전은 1 이상의 정수만 유효하다 (0·음수는 hello 파싱 단계에서 거부).
+- 제품 버전: `PROTOCOL_VERSION = 8`, 비교 기준: `LEGACY_PROTOCOL_VERSION = 7`. 버전은 1 이상의 정수만 유효하다 (0·음수는 hello 파싱 단계에서 거부).
 - v7은 참가자의 canvas cursor 좌표를 Room 안의 다른 참가자에게만 일시 중계하는
   `move-cursor` / `participant-cursor` 메시지를 추가한다. cursor는 Room snapshot에 저장하지 않는다.
 - v6는 서버 재시작 뒤 살아 있는 PTY를 복구하는 Host inventory·ready·output replay handshake와

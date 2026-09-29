@@ -4,6 +4,8 @@ import type { TerminalGeometry } from "@ttyroom/protocol";
 import type { RoomRoute } from "./room-route.js";
 import { parseRoomRoute } from "./room-route.js";
 import { RoomIdentity } from "./room-identity.js";
+import { RoomManagement } from "./room-management.js";
+import type { ParticipantRegistration, HostRegistration } from "./room-api.js";
 import { RoomApi } from "./room-api.js";
 import { RoomProjection } from "../projection/room-projection.js";
 import type { RoomSessionEvent } from "../session/room-session.js";
@@ -70,15 +72,16 @@ export interface RoomAppRuntimeDeps {
   readonly layoutRepository?: LayoutRepository;
   readonly createSession: (identity: {
     roomId: string;
-    token: string;
-    clientId: string;
+    credential: string;
     name: string;
   }) => RoomAppSession;
+  readonly registerParticipant: () => Promise<ParticipantRegistration>;
+  readonly registerHost: () => Promise<HostRegistration | { kind: "unavailable" }>;
   readonly createController: (terminalId: number) => RuntimeTerminalController;
   readonly createRoom: (name: string) => Promise<void> | void;
   readonly navigate: (location: string) => void;
   readonly copyInvite: () => void;
-  readonly copyText?: (text: string) => void;
+  readonly copyText?: (text: string) => Promise<void> | void;
   readonly inviteUrl?: string;
   readonly narrowViewport?: boolean;
   readonly viewportBucket?: string;
@@ -127,7 +130,7 @@ export class RoomAppRuntime {
   private readonly unsubscribeViewport: () => void;
   private session: RoomAppSession | null = null;
   private unsubscribeSession: (() => void) | null = null;
-  private joined = false;
+  private admission: "idle" | "registering" | "registered" | "failed" = "idle";
   private disposed = false;
   private currentView: RoomAppView;
   private toasts: ToastMessage[] = [];
@@ -155,7 +158,8 @@ export class RoomAppRuntime {
     }
     this.unsubscribeProjection = deps.projection.subscribe(() => {
       if (
-        deps.projection.view().connection === "gone" &&
+        (deps.projection.view().connection === "gone" ||
+          deps.projection.view().connection === "unauthorized") &&
         deps.route.kind === "room" &&
         deps.layoutRepository
       ) {
@@ -192,7 +196,7 @@ export class RoomAppRuntime {
       (() => undefined);
     if (deps.route.kind === "room") {
       const savedNickname = deps.identity.nickname(deps.route.roomId);
-      if (savedNickname) this.join(deps.route.roomId, savedNickname);
+      if (savedNickname) void this.join(deps.route.roomId, savedNickname);
     }
   }
 
@@ -268,14 +272,28 @@ export class RoomAppRuntime {
     };
   }
 
-  join = (_roomId: string, nickname: string): void => {
-    if (this.disposed || this.deps.route.kind !== "room" || this.session) return;
+  join = async (_roomId: string, nickname: string): Promise<void> => {
+    if (
+      this.disposed ||
+      this.deps.route.kind !== "room" ||
+      this.session ||
+      this.admission === "registering"
+    )
+      return;
     this.deps.identity.saveNickname(this.deps.route.roomId, nickname);
-    this.joined = true;
+    this.admission = "registering";
+    this.publish();
+    const registration = await this.deps.registerParticipant();
+    if (this.disposed) return;
+    if (registration.kind === "failed") {
+      this.admission = "failed";
+      this.publish();
+      return;
+    }
+    this.admission = "registered";
     this.session = this.deps.createSession({
       roomId: this.deps.route.roomId,
-      token: this.deps.route.token,
-      clientId: this.deps.identity.clientId(this.deps.route.roomId),
+      credential: registration.credential,
       name: nickname,
     });
     this.unsubscribeSession = this.session.subscribe((event) => {
@@ -420,11 +438,18 @@ export class RoomAppRuntime {
   }
 
   hostCommand(): string {
-    return `npx ttyroom join ${this.deps.inviteUrl ?? "this-room-url"}`;
+    const url = new URL(this.deps.inviteUrl ?? "http://localhost:3000/r/room");
+    url.hash = "";
+    url.search = "";
+    return `node connector/dist/index.js join '${url.href.replaceAll("'", "'\\''")}'`;
   }
 
-  copyText(text: string): void {
-    this.deps.copyText?.(text);
+  registerHost() {
+    return this.deps.registerHost();
+  }
+
+  copyText(text: string): Promise<void> | void {
+    return this.deps.copyText?.(text);
   }
 
   dispose(): void {
@@ -531,7 +556,9 @@ export class RoomAppRuntime {
     const connection = this.deps.projection.view().connection;
     if (connection === "gone") return "gone";
     if (connection === "incompatible") return "incompatible";
-    if (!this.joined) return "nickname";
+    if (connection === "unauthorized") return "unauthorized";
+    if (this.admission === "failed") return "registration-failed";
+    if (this.admission === "idle") return "nickname";
     if (!this.deps.projection.view().room) return "joining";
     const restoring = this.deps.projection
       .view()
@@ -649,6 +676,7 @@ export function RoomApp({ runtime }: { readonly runtime: RoomAppRuntime }) {
         state={
           connectedHost ? { kind: "connected", hostName: connectedHost.name } : { kind: "waiting" }
         }
+        register={() => runtime.registerHost()}
         copy={(command) => runtime.copyText(command)}
         close={() => setAddHostOpen(false)}
         opener={{ current: addHostOpener }}
@@ -720,6 +748,7 @@ export function createProductionRoomRuntime(
   // The repository owns the versioned browser storage boundary; WindowManager owns clamping.
   const layoutRepository = new LayoutRepository({ storage });
   const roomApi = new RoomApi();
+  const management = new RoomManagement(identityStorage, roomApi);
   let session: RoomSession | null = null;
   const navigate = options.navigate ?? ((next: string) => globalThis.location.assign(next));
 
@@ -730,6 +759,14 @@ export function createProductionRoomRuntime(
     windowManager,
     cursorMotion,
     layoutRepository,
+    registerParticipant: () =>
+      route.kind === "room"
+        ? identity.register(route.roomId, route.token, roomApi)
+        : Promise.resolve({ kind: "failed", reason: "request-rejected" }),
+    registerHost: () =>
+      route.kind === "room"
+        ? management.registerHost(route.roomId)
+        : Promise.resolve({ kind: "unavailable" }),
     createSession: (sessionIdentity) => {
       session = new RoomSession(
         {
@@ -773,14 +810,18 @@ export function createProductionRoomRuntime(
       ),
     createRoom: async (name) => {
       const result = await roomApi.createRoom(name);
-      if (result.kind === "created") navigate(result.joinUrl);
+      if (result.kind !== "created") throw new Error("Could not create room. Try again.");
+      if (!management.remember(result.roomId, result.managerCredential))
+        throw new Error("Allow session storage before creating a room so you can add hosts.");
+      navigate(result.joinUrl);
     },
     navigate,
     copyInvite: () => {
       void globalThis.navigator.clipboard?.writeText(location.href);
     },
-    copyText: (text) => {
-      void globalThis.navigator.clipboard?.writeText(text);
+    copyText: async (text) => {
+      if (!globalThis.navigator.clipboard) throw new Error("Clipboard unavailable");
+      await globalThis.navigator.clipboard.writeText(text);
     },
     inviteUrl: location.href,
     narrowViewport: globalThis.innerWidth < 1024,

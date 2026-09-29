@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PROTOCOL_VERSION } from "@ttyroom/protocol";
+import { LEGACY_PROTOCOL_VERSION } from "@ttyroom/protocol";
 import { RoomTestContext } from "../test/room-test-context.js";
 import { expectMessageToMatch } from "../test/matchers.js";
 
@@ -77,7 +77,7 @@ describe("joinRoom — 역할: hello 검증과 Room 입장", () => {
 
     expectMessageToMatch(conn.messages, "error", {
       code: "unsupported-protocol-version",
-      message: `server=${PROTOCOL_VERSION}`,
+      message: `server=${LEGACY_PROTOCOL_VERSION}`,
     });
     expect(conn.closed).toBe(true);
   });

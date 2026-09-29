@@ -12,7 +12,7 @@ describe("@ttyroom/connector 패키지 — 역할: 실행 가능한 CLI 배포�
     });
 
     expect(result.status).toBe(1);
-    expect(result.stderr).toContain("사용법: ttyroom join <joinUrl>");
+    expect(result.stderr).toContain("사용법: ttyroom join <roomUrl>");
     expect(result.stderr).not.toContain("could not determine executable to run");
   });
 

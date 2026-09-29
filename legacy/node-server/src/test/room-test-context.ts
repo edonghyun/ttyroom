@@ -1,6 +1,6 @@
 import {
   encodeDataFrame,
-  PROTOCOL_VERSION,
+  LEGACY_PROTOCOL_VERSION,
   serializeClientMessage,
   type ClientMessage,
   type RoomSnapshot,
@@ -126,7 +126,7 @@ export class RoomTestContext {
       this.core.handleMessage(conn, serializeClientMessage(msg));
     await send({
       type: "hello",
-      protocolVersion: PROTOCOL_VERSION,
+      protocolVersion: LEGACY_PROTOCOL_VERSION,
       roomId: room.roomId,
       token: room.token,
       clientId: id,
@@ -199,7 +199,7 @@ export class RoomTestContext {
     };
     await send({
       type: "hello",
-      protocolVersion: PROTOCOL_VERSION,
+      protocolVersion: LEGACY_PROTOCOL_VERSION,
       roomId: room.roomId,
       token: room.token,
       clientId,

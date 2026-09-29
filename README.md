@@ -69,7 +69,7 @@ Java 21 JDK(`JAVA_HOME`), Node.js 22 이상, pnpm 10.10.0이 필요합니다.
 ```sh
 pnpm install --frozen-lockfile
 ./scripts/build-spring.sh
-TTYROOM_STATE_PATH=.ttyroom/rooms.sqlite ./scripts/run-spring.sh
+TTYROOM_STATE_PATH=.ttyroom/v8-rooms.sqlite ./scripts/run-spring.sh
 ```
 
 빌드 스크립트는 protocol·Connector·React를 빌드하고 Gradle의 Java 테스트와
@@ -77,10 +77,12 @@ TTYROOM_STATE_PATH=.ttyroom/rooms.sqlite ./scripts/run-spring.sh
 소스를 수정했다면 다시 빌드합니다. API-only `bootJar`로 덮어쓴 경우에도 웹 포함 빌드를 다시 합니다.
 
 브라우저에서 `http://127.0.0.1:3000`을 열어 방을 만듭니다.
-다른 터미널에서 자신의 초대 주소를 사용해 Connector를 연결합니다.
+방을 만든 탭에서 **Add Host → Generate host credential**을 선택합니다.
+다른 터미널에서 비밀값 없는 방 주소로 Connector를 실행하고, `Host credential:` 프롬프트에
+복사한 Host credential을 붙여 넣습니다. 입력은 화면에 표시되지 않습니다.
 
 ```sh
-node connector/dist/index.js join "http://localhost:3000/r/ROOM_ID#TOKEN" --name "내 컴퓨터"
+node connector/dist/index.js join "http://localhost:3000/r/ROOM_ID" --name "내 컴퓨터"
 ```
 
 실행 스크립트의 작업 디렉터리는 저장소 루트이므로 상대 설정·SQLite 경로도 루트 기준입니다.
@@ -89,6 +91,10 @@ node connector/dist/index.js join "http://localhost:3000/r/ROOM_ID#TOKEN" --name
 
 Connector 터미널에서 `k`는 원격 입력 차단을 전환하고 `Ctrl+C`는 Connector와 로컬 셸을 종료합니다.
 CLI는 저장소 설치 기준이며 npm 공개 배포를 의미하지 않습니다.
+참가자에게는 **Invite**로 복사한 초대 링크만 전달합니다. 관리 credential은 방 생성 탭의
+sessionStorage에, 참가자 credential은 각 탭에, Host credential은 Connector 프로세스 메모리에 보관합니다.
+기존 v7 저장 파일이 있다면 서버를 종료하고 원본 파일을 유지한 채 위의 새 경로·새 방으로 시작합니다.
+[전환 및 복구 한계](docs/DEVELOPMENT.md#v8-기본-실행과-기존-저장-파일)도 확인하세요.
 
 ## 설계와 테스트를 읽는 순서
 

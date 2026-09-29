@@ -196,6 +196,7 @@ test("an empty workspace guides the first terminal", async ({ alice }) => {
 
 test("the host drawer shows the connection command and confirms its copy", async ({ alice }) => {
   await alice.joinRoom();
+  await alice.context.grantPermissions(["clipboard-read", "clipboard-write"]);
 
   await alice.page.getByRole("button", { name: "Open room menu" }).click();
   await alice.page.getByRole("menuitem", { name: "Add host" }).click();
@@ -203,8 +204,13 @@ test("the host drawer shows the connection command and confirms its copy", async
   await drawer.getByRole("button", { name: "Copy command" }).click();
 
   await expect(drawer.getByText("Run the host command")).toBeVisible();
-  await expect(drawer.getByLabel("Host connection command")).toContainText("npx ttyroom join");
+  await expect(drawer.getByLabel("Host connection command")).toContainText(
+    "node connector/dist/index.js join",
+  );
   await expect(drawer.getByRole("button", { name: "Copied" })).toBeVisible();
+  expect(await alice.page.evaluate(() => navigator.clipboard.readText())).toBe(
+    await drawer.getByLabel("Host connection command").innerText(),
+  );
 });
 
 test("canvas zoom and pan preserve terminal interaction coordinates", async ({ alice }) => {

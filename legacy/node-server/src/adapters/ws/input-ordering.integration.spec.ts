@@ -3,7 +3,7 @@ import { createServer } from "node:http";
 import {
   encodeDataFrame,
   parseServerMessage,
-  PROTOCOL_VERSION,
+  LEGACY_PROTOCOL_VERSION,
   serializeClientMessage,
   type ClientMessage,
   type ServerMessage,
@@ -107,7 +107,7 @@ async function inputEnabledRoom() {
 
     send({
       type: "hello",
-      protocolVersion: PROTOCOL_VERSION,
+      protocolVersion: LEGACY_PROTOCOL_VERSION,
       ...room,
       clientId: "alice",
       name: "Alice",

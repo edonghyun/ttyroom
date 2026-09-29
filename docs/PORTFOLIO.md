@@ -246,11 +246,12 @@ TTYROOM_STATE_PATH=.ttyroom/portfolio-demo.sqlite ./scripts/run-spring.sh
 
 브라우저에서 `http://127.0.0.1:3000`을 열어 새 방을 만든다. 두 번째 참여자는
 별도 브라우저 프로필 또는 시크릿 창으로 같은 초대 주소에 입장시켜 Alice/Bob으로 구분한다.
-다음 명령의 주소는 실제 초대 주소로 바꾼다.
+방 생성 탭의 Add Host에서 Host credential을 발급한다. 다음 명령에는 fragment 없는 방 주소를 넣고
+Host credential은 Connector의 숨김 프롬프트에 붙여 넣는다.
 
 ```sh
 # 터미널 B: 이 프로세스가 로컬 셸을 소유하므로 복구 시연 중 계속 켜 둔다.
-node connector/dist/index.js join "http://127.0.0.1:3000/r/ROOM_ID#TOKEN" --name "Demo computer"
+node connector/dist/index.js join "http://127.0.0.1:3000/r/ROOM_ID" --name "Demo computer"
 ```
 
 ### 화면에서 보여줄 행동과 설명

@@ -6,6 +6,25 @@ import { describe, expect, it, vi } from "vitest";
 import { AddHostDrawer } from "./AddHostDrawer.js";
 
 describe("AddHostDrawer", () => {
+  it("reports clipboard denial without claiming that the command was copied", async () => {
+    render(
+      <AddHostDrawer
+        open
+        command="node connector/dist/index.js join room"
+        state={{ kind: "waiting" }}
+        copy={async () => {
+          throw new Error("permission denied");
+        }}
+        close={() => undefined}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Copy command" }));
+
+    expect(screen.queryByRole("button", { name: "Copied" })).not.toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("Copy failed");
+  });
+
   it("keeps command, waiting, success, and failure in one accessible drawer", async () => {
     const copy = vi.fn();
     const close = vi.fn();

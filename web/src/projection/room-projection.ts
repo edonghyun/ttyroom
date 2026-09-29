@@ -10,7 +10,7 @@ import type {
 } from "@ttyroom/protocol";
 
 export type RoomConnectionState =
-  "joining" | "live" | "reconnecting" | "restoring" | "gone" | "incompatible";
+  "joining" | "live" | "reconnecting" | "restoring" | "gone" | "incompatible" | "unauthorized";
 
 export interface RoomProjectionView {
   readonly connection: RoomConnectionState;

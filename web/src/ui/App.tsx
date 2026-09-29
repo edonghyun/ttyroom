@@ -4,7 +4,15 @@ import type { RoomRoute } from "../app/room-route.js";
 import { CreateRoomEntry, JoinRoomEntry } from "./room/RoomEntry.js";
 import { RoomGone } from "./room/RoomGone.js";
 
-export type AppState = "nickname" | "joining" | "restoring" | "live" | "gone" | "incompatible";
+export type AppState =
+  | "nickname"
+  | "joining"
+  | "restoring"
+  | "live"
+  | "gone"
+  | "incompatible"
+  | "unauthorized"
+  | "registration-failed";
 
 export function App({
   route,
@@ -24,6 +32,18 @@ export function App({
   readonly children?: ReactNode;
 }) {
   if (state === "gone") return <RoomGone createNew={() => navigate("/")} />;
+  if (state === "unauthorized")
+    return (
+      <main className="entry-screen">
+        <section className="entry-sheet">
+          <h1>Access unavailable</h1>
+          <p>
+            This room credential is no longer accepted. Ask the room owner for a new invitation.
+          </p>
+          <button onClick={() => navigate("/")}>Create a new room</button>
+        </section>
+      </main>
+    );
   if (state === "incompatible") {
     return (
       <main className="entry-screen">
@@ -35,11 +55,16 @@ export function App({
     );
   }
   if (route.kind === "entry") return <CreateRoomEntry createRoom={createRoom} />;
-  if (state === "nickname") {
+  if (state === "nickname" || state === "registration-failed") {
     return (
       <JoinRoomEntry
         roomName={roomName}
         initialName=""
+        error={
+          state === "registration-failed"
+            ? "Could not join. Check the invitation and try again."
+            : undefined
+        }
         join={(nickname) => join(route.roomId, nickname)}
       />
     );

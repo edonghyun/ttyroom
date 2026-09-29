@@ -2,7 +2,7 @@ import { PROTOCOL_VERSION } from "@ttyroom/protocol";
 
 import type {
   ClientMessage,
-  HelloMessage,
+  CredentialHelloMessage,
   InputFrame,
   OutputFrame,
   ServerMessage,
@@ -29,7 +29,7 @@ export interface SessionTransport {
 }
 
 export interface SessionTransportFactory {
-  create(hello: HelloMessage): SessionTransport;
+  create(hello: CredentialHelloMessage): SessionTransport;
 }
 
 export interface SessionClock {
@@ -86,7 +86,7 @@ export class RoomSession {
       clock: SessionClock;
     },
     private readonly options: {
-      identity: { roomId: string; token: string; clientId: string; name: string };
+      identity: { roomId: string; credential: string; name: string };
       reconnectDelaysMs: readonly number[];
     },
   ) {}
@@ -228,7 +228,6 @@ export class RoomSession {
       type: "hello",
       protocolVersion: PROTOCOL_VERSION,
       ...this.options.identity,
-      role: "participant",
     });
     this.transport = transport;
     this.unsubscribeTransport = transport.subscribe((event) => this.handleTransport(event));
@@ -244,6 +243,10 @@ export class RoomSession {
           clientId: message.clientId,
           position: message.position,
         });
+        return;
+      }
+      if (message.type === "error" && message.code === "invalid-credential") {
+        this.finish("unauthorized");
         return;
       }
       if (message.type === "error" && message.code === "room-not-found") {
@@ -351,7 +354,7 @@ export class RoomSession {
     });
   }
 
-  private finish(connection: "gone" | "incompatible"): void {
+  private finish(connection: "gone" | "incompatible" | "unauthorized"): void {
     this.started = false;
     this.cancelReconnect?.();
     this.cancelReconnect = null;

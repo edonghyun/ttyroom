@@ -6,6 +6,7 @@ export function CreateRoomEntry({
   readonly createRoom: (name: string) => Promise<void> | void;
 }) {
   const [name, setName] = useState("Quick Room");
+  const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -13,8 +14,11 @@ export function CreateRoomEntry({
     const normalized = name.trim();
     if (!normalized || creating) return;
     setCreating(true);
+    setError(null);
     try {
       await createRoom(normalized);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Could not create room. Try again.");
     } finally {
       setCreating(false);
     }
@@ -23,6 +27,7 @@ export function CreateRoomEntry({
   return (
     <EntryShell heading="Start a Quick Room">
       <form onSubmit={submit}>
+        {error && <p role="alert">{error}</p>}
         <label>
           Room name
           <input value={name} onChange={(event) => setName(event.target.value)} autoFocus />
@@ -38,10 +43,12 @@ export function CreateRoomEntry({
 export function JoinRoomEntry({
   roomName,
   initialName,
+  error,
   join,
 }: {
   readonly roomName: string;
   readonly initialName: string;
+  readonly error?: string;
   readonly join: (name: string) => void;
 }) {
   const [name, setName] = useState(initialName);
@@ -55,6 +62,7 @@ export function JoinRoomEntry({
   return (
     <EntryShell heading={roomName}>
       <form onSubmit={submit}>
+        {error && <p role="alert">{error}</p>}
         <label>
           Nickname
           <input
@@ -86,7 +94,7 @@ function EntryShell({
         <h1 id="entry-heading">{heading}</h1>
         {children}
         <p className="entry-note">
-          Quick Rooms are temporary and disappear when the server restarts.
+          Keep this tab to manage your room. Share only the invitation link.
         </p>
       </section>
     </main>

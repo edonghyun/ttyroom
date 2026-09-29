@@ -226,6 +226,34 @@ credential 전용 HTTP·브라우저 인증을 검증한 것은 아니다. 현�
 T9.4에서 클라이언트와 기본값을 함께 바꾼다. 공개 취소·활성 연결 정리까지 완료한 인증으로 주장하지 않는다.
 최종 실행 범위는 [검증 기록](VERIFICATION.md#2026-09-30-v8-입장-t93)을 따른다.
 
+## React·Connector credential 입장
+
+T9.4는 기본 실행을 Spring v8과 맞췄다. React는 HTTP 등록 결과를 탭에 보관하고,
+새로고침·재접속 때 재사용한다. 복제된 탭은 로컬 탭 ID 충돌 감지 뒤 credential을 폐기하고
+독립 참가자로 등록한다. 로컬 탭 ID는 layout과 탭 구분용이며 WS hello에 보내지 않는다.
+방 생성자의 관리 credential은 별도 sessionStorage 키에 두고 Add Host의 등록 헤더에만 사용한다.
+초대 링크·명령줄에는 관리·주체 credential을 넣지 않는다.
+
+Connector는 fragment 없는 방 URL과 숨김 stdin에서 받은 Host credential로 접속한다.
+프로세스 수명 동안 같은 credential을 사용한다. v7 비교 실행은 E2E 전용 bootstrap으로
+기존 Connector 실행 코어를 재사용한다. 제품 CLI에는 연결별 fallback이 없다.
+CI의 실제 React·Connector 브라우저 검증은 Spring v8을 대상으로 한다. v7 Node/Spring 공통
+프로세스 테스트와 고정 wire fixture는 별도로 유지한다.
+
+### 실패 테스트와 리뷰
+
+- 먼저 기본 버전·v8 hello 파싱 2개, 비밀값 없는 CLI 계약 4개, 서버 기본 설정 1개의 행동 실패를 확인했다.
+- 참가자 등록 5개는 새 API 부재로 실패했으며, 세션의 hello 계약 1개도 실패했다. 이를 모두 행동 RED라고 합산하지 않는다.
+- 등록 재사용·동시 요청 합치기·실패 후 명시적 재시도·복제 탭 폐기를 구현한 뒤 GREEN을 확인했다.
+- stdin 입력·관리 credential 분리·등록 완료 전 dispose·재접속 중단은 구현 후 추가한 회귀 검증이다.
+- 브라우저 최초 실행은 40개 통과·1개 실패였다. 기존 명령 문자열 기대값과 별개로 클립보드 거절을
+  무시하고 Copied를 표시하던 결함을 발견했다. 별도 실패 테스트 후 성공 시에만 Copied를 표시하도록 수정했다.
+- 입장 상태를 여러 boolean에서 `idle/registering/registered/failed`로 정리하고 같은 런타임 테스트를 재실행했다.
+- Node 공통 fixture가 명시한 버전 7을 기존 설정 파서가 거절해 준비 실패가 발생했다. 버전 7만 허용하고 8은 거절하는 테스트 후 참조 서버 설정 경계를 맞췄다.
+- 날짜별 문서를 추가하지 않고 현재 계약·실행 안내를 갱신했다. 기존 v7 저장 파일은 보존하고 새 경로·새 방으로 시작한다.
+
+HTTP 취소·활성 연결 정리는 T9.5에 남긴다. 실행 결과는 [검증 기록](VERIFICATION.md)에 구분한다.
+
 ## 초기 백엔드 기록
 
 백엔드 README와 아키텍처에 누적했던 단계별 기록도 이 문서에 통합했다.

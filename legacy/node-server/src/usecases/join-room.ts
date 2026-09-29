@@ -1,4 +1,4 @@
-import { PROTOCOL_VERSION, type HelloMessage } from "@ttyroom/protocol";
+import { LEGACY_PROTOCOL_VERSION, type HelloMessage } from "@ttyroom/protocol";
 import type { RoomRegistry } from "./room-registry.js";
 import type { Identity } from "../ports/identity.js";
 import type { Connection } from "../ports/transport.js";
@@ -30,11 +30,11 @@ export class JoinRoom {
   }
 
   async execute(conn: Connection, hello: HelloMessage): Promise<void> {
-    if (hello.protocolVersion !== PROTOCOL_VERSION) {
+    if (hello.protocolVersion !== LEGACY_PROTOCOL_VERSION || "credential" in hello) {
       conn.send({
         type: "error",
         code: "unsupported-protocol-version",
-        message: `server=${PROTOCOL_VERSION}`,
+        message: `server=${LEGACY_PROTOCOL_VERSION}`,
       });
       conn.close();
       return;

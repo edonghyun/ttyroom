@@ -1,5 +1,46 @@
 # 검증 기록
 
+## 2026-09-30 클라이언트 credential 연동 T9.4
+
+Java 21·macOS에서 검증했다. 기준 커밋은 `604117b`이며 로그는 로컬 `artifacts/t9-4/`에 보관한다.
+
+- Java 전체 **436개 통과**, 실패·오류·skip 0. 서버 기본 버전 8의 실패 테스트 후 구현했다.
+- TS 단위 **571개 통과**: protocol 101, Connector 65, React 187, Node 비교 서버 218.
+- 네이티브/어댑터 통합 **37개 통과**: Connector 16, Node 21.
+- Node v7 공통 프로세스도 수정 후 **213개 통과**했다.
+- Spring v7 공통 프로세스 **213개 통과**: 기존 205개와 정적 웹 8개.
+- Spring v8 인증 **13개**, HTTP 등록 **4개 통과**.
+- Spring v8 Chromium 브라우저 **41개 통과**. 실제 등록·숨김 stdin·Connector·PTY 조합을 사용한다.
+  입장 상태 리팩터링 뒤에는 등록·복구 **8개**와 런타임 단위를 다시 검증했다.
+- 전체 타입·Prettier·의존성 경계 검사 통과. Java AOSP 포맷 적용.
+
+최초 브라우저 실행은 40개 통과·1개 실패였다. 예전 명령 문자열 기대값을 교정하고, 별도로 드러난
+클립보드 권한 거절의 허위 Copied 표시를 RED → 수정 → GREEN으로 해결했다.
+Node 공통 프로세스 최초 실행은 fixture의 명시적 버전 설정을 기존 파서가 거절하여
+33개 통과·180개 준비 실패였다. v7 설정 허용·v8 거절을 고정한 테스트 후 설정 경계를 수정했다.
+새 API 부재로 실패한 테스트와 실제 행동 실패는 [작업 이력](WORK_LOG.md#reactconnector-credential-입장)에 구분했다.
+
+제품 브라우저 CI는 Spring v8을 검증한다. Node v7은 공통 프로세스·단위·통합과 고정 wire fixture로 검증한다.
+현재 React·Connector를 v7 서버에 연결하는 브라우저 조합은 지원하지 않는다.
+HTTP 취소·활성 연결 종료·최종 취소 경합은 T9.5 범위이며 공개 운영 인증 완료로 주장하지 않는다.
+
+재현 순서는 다음과 같다. Java 21의 JAVA_HOME을 지정하고 의존성 설치를 먼저 완료한다.
+
+```sh
+./scripts/build-spring.sh
+pnpm typecheck
+pnpm test
+pnpm test:integration
+./scripts/test-spring.sh protocol
+./scripts/test-spring.sh registration
+./scripts/test-spring.sh authentication
+./scripts/test-spring.sh browser
+pnpm --filter @ttyroom/server build
+pnpm test:e2e
+pnpm format
+pnpm depcruise
+```
+
 ## 2026-09-30 v8 입장 T9.3
 
 최초 인증 커밋 `8e1daf4`를 Java 21·macOS에서 검증했다. 원본 로그와

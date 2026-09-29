@@ -12,6 +12,7 @@ describe("RoomApi — Quick Room HTTP boundary", () => {
             name: "Payment Debug",
             token: "secret-token",
             joinUrl: "https://ttyroom.test/r/room-1#secret-token",
+            managerCredential: "m".repeat(32),
           }),
           { status: 201, headers: { "content-type": "application/json" } },
         ),
@@ -23,6 +24,7 @@ describe("RoomApi — Quick Room HTTP boundary", () => {
       name: "Payment Debug",
       token: "secret-token",
       joinUrl: "https://ttyroom.test/r/room-1#secret-token",
+      managerCredential: "m".repeat(32),
     });
 
     const invalidApi = new RoomApi({

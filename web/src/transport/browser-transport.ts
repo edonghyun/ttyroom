@@ -7,7 +7,7 @@ import {
 
 import type {
   ClientMessage,
-  HelloMessage,
+  CredentialHelloMessage,
   InputFrame,
   OutputFrame,
   ServerMessage,
@@ -39,7 +39,7 @@ export class BrowserTransport {
 
   constructor(
     private readonly deps: BrowserTransportDeps,
-    private readonly options: { hello: HelloMessage },
+    private readonly options: { hello: CredentialHelloMessage },
   ) {}
 
   start(): void {

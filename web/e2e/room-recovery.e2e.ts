@@ -65,7 +65,7 @@ test("a reported output gap enters restoring and replays real server scrollback"
   expectOutputOnce(replayedOutput, marker);
 });
 
-test("reconnecting to a restarted server replaces the workspace with Room Gone", async ({
+test("reconnecting after room removal stops admission and clears the local layout", async ({
   alice,
   testSystem,
 }) => {
@@ -75,9 +75,7 @@ test("reconnecting to a restarted server replaces the workspace with Room Gone",
 
   await testSystem.restartWithoutRooms();
 
-  await expect(
-    alice.page.getByRole("heading", { name: "This Quick Room no longer exists" }),
-  ).toBeVisible();
+  await expect(alice.page.getByRole("heading", { name: "Access unavailable" })).toBeVisible();
   expect(await alice.roomPage.roomLayoutKeys()).toEqual([]);
 });
 

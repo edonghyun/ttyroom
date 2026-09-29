@@ -1,4 +1,4 @@
-import type { HelloMessage } from "@ttyroom/protocol";
+import type { LegacyHelloMessage } from "@ttyroom/protocol";
 import type { Room } from "../domain/room.js";
 
 export type AuthResult =
@@ -8,5 +8,5 @@ export type AuthResult =
 // 연결 → (안정적 clientId, 표시 이름) 매핑. MVP 어댑터는 Room 토큰 + 닉네임,
 // Tailscale identity·SSO 어댑터로 교체·병행 가능해야 한다.
 export interface Identity {
-  authenticate(hello: HelloMessage, room: Room | undefined): AuthResult;
+  authenticate(hello: LegacyHelloMessage, room: Room | undefined): AuthResult;
 }

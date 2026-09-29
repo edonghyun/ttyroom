@@ -3,6 +3,16 @@ import { DEFAULT_POLICY } from "./ports/policy.js";
 import { loadConfig, printConfig } from "./config.js";
 
 describe("loadConfig — 역할: 설정의 검증과 출처 추적", () => {
+  it("accepts explicit v7 selection for shared process fixtures", () => {
+    const config = loadConfig({ file: { protocolVersion: 7 } });
+
+    expect(config.protocolVersion).toBe(7);
+  });
+
+  it("rejects a credential protocol the reference server does not implement", () => {
+    expect(() => loadConfig({ file: { protocolVersion: 8 } })).toThrow();
+  });
+
   it("빈 입력이면 기본값으로 채운다", () => {
     expect(loadConfig({})).toEqual({
       port: 0,

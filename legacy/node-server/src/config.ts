@@ -32,6 +32,7 @@ const policySchema = z
 export const configSchema = z
   .object({
     port: z.number().int().min(0).max(65535).default(0),
+    protocolVersion: z.literal(7).optional(),
     statePath: z.string().trim().min(1).default(".ttyroom/ttyroom.sqlite"),
     policy: policySchema,
   })

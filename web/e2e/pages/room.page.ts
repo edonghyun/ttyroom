@@ -7,9 +7,12 @@ export class RoomPage {
     return this.page.evaluate(() => {
       const roomId = decodeURIComponent(location.pathname.split("/").at(-1)!);
       const raw = sessionStorage.getItem(`ttyroom:identity:v1:${encodeURIComponent(roomId)}`);
-      const parsed = raw ? (JSON.parse(raw) as { clientId?: unknown }) : null;
-      if (!parsed || typeof parsed.clientId !== "string") throw new Error("clientId not persisted");
-      return parsed.clientId;
+      const parsed = raw
+        ? (JSON.parse(raw) as { registration?: { participantId?: unknown } })
+        : null;
+      if (!parsed || typeof parsed.registration?.participantId !== "string")
+        throw new Error("clientId not persisted");
+      return parsed.registration.participantId;
     });
   }
 

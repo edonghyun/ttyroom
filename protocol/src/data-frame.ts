@@ -1,4 +1,5 @@
-export const PROTOCOL_VERSION = 7;
+export const PROTOCOL_VERSION = 8;
+export const LEGACY_PROTOCOL_VERSION = 7;
 export const FRAME_OUTPUT = 0x01;
 export const FRAME_INPUT = 0x02;
 

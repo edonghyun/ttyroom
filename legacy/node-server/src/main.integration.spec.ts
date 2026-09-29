@@ -1,4 +1,8 @@
-import { PROTOCOL_VERSION, parseServerMessage, serializeClientMessage } from "@ttyroom/protocol";
+import {
+  LEGACY_PROTOCOL_VERSION,
+  parseServerMessage,
+  serializeClientMessage,
+} from "@ttyroom/protocol";
 import WebSocket from "ws";
 import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -56,7 +60,7 @@ describe("startServer — 역할: 조립과 HTTP 경계", () => {
       socket.send(
         serializeClientMessage({
           type: "hello",
-          protocolVersion: PROTOCOL_VERSION,
+          protocolVersion: LEGACY_PROTOCOL_VERSION,
           roomId: room.roomId,
           token: room.token,
           clientId: "alice-named",
@@ -127,7 +131,7 @@ describe("startServer — 역할: 조립과 HTTP 경계", () => {
       socket.send(
         serializeClientMessage({
           type: "hello",
-          protocolVersion: PROTOCOL_VERSION,
+          protocolVersion: LEGACY_PROTOCOL_VERSION,
           roomId: room.roomId,
           token: room.token,
           clientId: "alice-1",
@@ -209,7 +213,7 @@ describe("startServer — 역할: 조립과 HTTP 경계", () => {
       socket.send(
         serializeClientMessage({
           type: "hello",
-          protocolVersion: PROTOCOL_VERSION,
+          protocolVersion: LEGACY_PROTOCOL_VERSION,
           roomId: room.roomId,
           token: room.token,
           clientId: "alice-after-restart",

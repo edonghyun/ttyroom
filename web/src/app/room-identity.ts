@@ -1,8 +1,15 @@
 import { z } from "zod";
+import type { RoomApi, ParticipantRegistration } from "./room-api.js";
 
 const identitySchema = z.object({
   clientId: z.string().min(1),
   nickname: z.string().min(1).optional(),
+  registration: z
+    .object({
+      participantId: z.string().min(1),
+      credential: z.string().regex(/^[A-Za-z0-9_-]{32}$/),
+    })
+    .optional(),
 });
 
 type IdentityRecord = z.infer<typeof identitySchema>;
@@ -21,6 +28,8 @@ export interface RoomIdentityDeps {
 export class RoomIdentity {
   private readonly identities = new Map<string, IdentityRecord>();
 
+  private readonly registering = new Map<string, Promise<ParticipantRegistration>>();
+
   constructor(
     private readonly deps: RoomIdentityDeps = {
       storage: globalThis.sessionStorage,
@@ -28,6 +37,7 @@ export class RoomIdentity {
     },
   ) {}
 
+  // Local tab/layout key only; it is never sent as an authenticated subject ID.
   clientId(roomId: string): string {
     return this.identity(roomId).clientId;
   }
@@ -42,8 +52,31 @@ export class RoomIdentity {
     this.persist(roomId, identity);
   }
 
+  async register(roomId: string, token: string, api: RoomApi): Promise<ParticipantRegistration> {
+    const record = this.identity(roomId);
+    if (record.registration) return { kind: "registered", ...record.registration };
+    const pending = this.registering.get(roomId);
+    if (pending) return pending;
+    const request = api
+      .registerParticipant(roomId, token)
+      .then((result) => {
+        if (result.kind === "registered" && this.identity(roomId).clientId === record.clientId) {
+          const identity = {
+            ...this.identity(roomId),
+            registration: { participantId: result.participantId, credential: result.credential },
+          };
+          this.identities.set(roomId, identity);
+          this.persist(roomId, identity);
+        }
+        return result;
+      })
+      .finally(() => this.registering.delete(roomId));
+    this.registering.set(roomId, request);
+    return request;
+  }
+
   renewClientId(roomId: string): string {
-    const identity = { ...this.identity(roomId), clientId: this.deps.createId() };
+    const identity = { clientId: this.deps.createId(), nickname: this.identity(roomId).nickname };
     this.identities.set(roomId, identity);
     this.persist(roomId, identity);
     return identity.clientId;

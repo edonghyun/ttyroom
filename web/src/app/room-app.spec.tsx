@@ -18,7 +18,63 @@ vi.mock("@xterm/xterm", () => ({ Terminal: class {} }));
 vi.mock("@xterm/addon-fit", () => ({ FitAddon: class {} }));
 
 describe("RoomApp production composition", () => {
-  it("does not start a session when a delayed join reaches a disposed runtime", () => {
+  it("waits for registration, ignores repeated joins, and does not connect after disposal", async () => {
+    const projection = new RoomProjection();
+    const deps = runtimeDeps(
+      projection,
+      new WindowManager({ viewport: { width: 1200, height: 700 } }),
+    );
+    let complete!: (result: Awaited<ReturnType<typeof deps.registerParticipant>>) => void;
+    const registerParticipant = vi.fn(
+      () =>
+        new Promise<Awaited<ReturnType<typeof deps.registerParticipant>>>((resolve) => {
+          complete = resolve;
+        }),
+    );
+    const createSession = vi.fn(() => makeSession());
+    const runtime = new RoomAppRuntime({ ...deps, registerParticipant, createSession });
+
+    const pending = runtime.join("room-1", "Alice");
+    await runtime.join("room-1", "Alice");
+    runtime.dispose();
+    complete({ kind: "registered", participantId: "participant", credential: "p".repeat(32) });
+    await pending;
+
+    expect(registerParticipant).toHaveBeenCalledOnce();
+    expect(createSession).not.toHaveBeenCalled();
+  });
+
+  it("shows registration failure and allows an explicit retry", async () => {
+    const projection = new RoomProjection();
+    const deps = runtimeDeps(
+      projection,
+      new WindowManager({ viewport: { width: 1200, height: 700 } }),
+    );
+    const registerParticipant = vi
+      .fn<import("./room-app.js").RoomAppRuntimeDeps["registerParticipant"]>()
+      .mockResolvedValueOnce({ kind: "failed", reason: "network-error" })
+      .mockResolvedValueOnce({
+        kind: "registered",
+        participantId: "participant",
+        credential: "p".repeat(32),
+      });
+    const createSession = vi.fn(() => makeSession());
+    const runtime = new RoomAppRuntime({ ...deps, registerParticipant, createSession });
+
+    await runtime.join("room-1", "Alice");
+    const failedState = runtime.view().state;
+    await runtime.join("room-1", "Alice");
+
+    expect(failedState).toBe("registration-failed");
+    expect(createSession).toHaveBeenCalledExactlyOnceWith({
+      roomId: "room-1",
+      credential: "p".repeat(32),
+      name: "Alice",
+    });
+    runtime.dispose();
+  });
+
+  it("does not start a session when a delayed join reaches a disposed runtime", async () => {
     const projection = new RoomProjection();
     const deps = runtimeDeps(
       projection,
@@ -28,14 +84,14 @@ describe("RoomApp production composition", () => {
     const runtime = new RoomAppRuntime({ ...deps, createSession });
 
     runtime.dispose();
-    runtime.join("room-1", "Alice");
+    await runtime.join("room-1", "Alice");
 
     expect(createSession).not.toHaveBeenCalled();
     expect(deps.identity.saveNickname).not.toHaveBeenCalled();
     expect(runtime.view().state).toBe("nickname");
   });
 
-  it("detaches projection and window subscriptions and stops the session only once", () => {
+  it("detaches projection and window subscriptions and stops the session only once", async () => {
     const projection = new RoomProjection();
     const windows = new WindowManager({ viewport: { width: 1200, height: 700 } });
     const unsubscribe = vi.fn();
@@ -47,7 +103,7 @@ describe("RoomApp production composition", () => {
       createSession: () => session,
       createController,
     });
-    runtime.join("room-1", "Alice");
+    await runtime.join("room-1", "Alice");
     projection.applyServerMessage({
       type: "welcome",
       selfClientId: "client-1",
@@ -74,7 +130,7 @@ describe("RoomApp production composition", () => {
     expect(session.focusTerminal).toHaveBeenCalledTimes(focusCalls);
   });
 
-  it("automatically rejoins a room when the browser has a saved nickname", () => {
+  it("automatically rejoins a room when the browser has a saved nickname", async () => {
     const projection = new RoomProjection();
     const start = vi.fn();
 
@@ -89,7 +145,7 @@ describe("RoomApp production composition", () => {
     });
 
     expect(runtime.view().state).toBe("joining");
-    expect(start).toHaveBeenCalledOnce();
+    await vi.waitFor(() => expect(start).toHaveBeenCalledOnce());
 
     runtime.dispose();
   });
@@ -125,6 +181,12 @@ describe("RoomApp production composition", () => {
         controllers.set(terminalId, controller);
         return controller;
       },
+      registerParticipant: async () => ({
+        kind: "registered" as const,
+        participantId: "client-1",
+        credential: "p".repeat(32),
+      }),
+      registerHost: async () => ({ kind: "unavailable" as const }),
       createRoom: vi.fn(),
       navigate: vi.fn(),
       copyInvite: vi.fn(),
@@ -208,7 +270,7 @@ describe("RoomApp production composition", () => {
       ...runtimeDeps(projection, new WindowManager({ viewport: { width: 1200, height: 700 } })),
       createSession: () => makeSession({ renameTerminal }),
     });
-    runtime.join("room-1", "Donghyeon");
+    await runtime.join("room-1", "Donghyeon");
     projection.applyServerMessage({
       type: "welcome",
       selfClientId: "client-1",
@@ -228,14 +290,14 @@ describe("RoomApp production composition", () => {
     runtime.dispose();
   });
 
-  it("reports activated terminal focus and maps focused participants into each title bar", () => {
+  it("reports activated terminal focus and maps focused participants into each title bar", async () => {
     const projection = new RoomProjection();
     const focusTerminal = vi.fn();
     const runtime = new RoomAppRuntime({
       ...runtimeDeps(projection, new WindowManager({ viewport: { width: 1200, height: 700 } })),
       createSession: () => makeSession({ focusTerminal }),
     });
-    runtime.join("room-1", "Donghyeon");
+    await runtime.join("room-1", "Donghyeon");
     projection.applyServerMessage({
       type: "welcome",
       selfClientId: "client-1",
@@ -262,7 +324,7 @@ describe("RoomApp production composition", () => {
     runtime.dispose();
   });
 
-  it("routes remote cursors outside the RoomApp render stream and ignores the local cursor", () => {
+  it("routes remote cursors outside the RoomApp render stream and ignores the local cursor", async () => {
     const projection = new RoomProjection();
     let sessionEvent: Parameters<RoomAppSession["subscribe"]>[0] | undefined;
     const cursorMotion = makeCursorMotion();
@@ -277,7 +339,7 @@ describe("RoomApp production composition", () => {
           },
         }),
     });
-    runtime.join("room-1", "Donghyeon");
+    await runtime.join("room-1", "Donghyeon");
     projection.applyServerMessage({
       type: "welcome",
       selfClientId: "client-1",
@@ -315,7 +377,7 @@ describe("RoomApp production composition", () => {
     expect(cursorMotion.dispose).toHaveBeenCalledOnce();
   });
 
-  it("projects welcome and room-event geometry into the visible terminal window", () => {
+  it("projects welcome and room-event geometry into the visible terminal window", async () => {
     const projection = new RoomProjection();
     const windowManager = new WindowManager({ viewport: { width: 1200, height: 700 } });
     const runtime = new RoomAppRuntime(runtimeDeps(projection, windowManager));
@@ -335,14 +397,14 @@ describe("RoomApp production composition", () => {
     runtime.dispose();
   });
 
-  it("publishes the committed full geometry after local move and resize", () => {
+  it("publishes the committed full geometry after local move and resize", async () => {
     const projection = new RoomProjection();
     const updateGeometry = vi.fn();
     const runtime = new RoomAppRuntime({
       ...runtimeDeps(projection, new WindowManager({ viewport: { width: 1200, height: 700 } })),
       createSession: () => makeSession({ updateGeometry }),
     });
-    runtime.join("room-1", "Donghyeon");
+    await runtime.join("room-1", "Donghyeon");
     projection.applyServerMessage({
       type: "welcome",
       selfClientId: "client-1",
@@ -367,7 +429,7 @@ describe("RoomApp production composition", () => {
     runtime.dispose();
   });
 
-  it("does not roll back a local geometry commit on unrelated terminal output", () => {
+  it("does not roll back a local geometry commit on unrelated terminal output", async () => {
     const projection = new RoomProjection();
     const runtime = new RoomAppRuntime(
       runtimeDeps(projection, new WindowManager({ viewport: { width: 1200, height: 700 } })),
@@ -391,14 +453,14 @@ describe("RoomApp production composition", () => {
     runtime.dispose();
   });
 
-  it("publishes every visible terminal geometry after Arrange", () => {
+  it("publishes every visible terminal geometry after Arrange", async () => {
     const projection = new RoomProjection();
     const updateGeometry = vi.fn();
     const runtime = new RoomAppRuntime({
       ...runtimeDeps(projection, new WindowManager({ viewport: { width: 1200, height: 700 } })),
       createSession: () => makeSession({ updateGeometry }),
     });
-    runtime.join("room-1", "Donghyeon");
+    await runtime.join("room-1", "Donghyeon");
     projection.applyServerMessage({
       type: "welcome",
       selfClientId: "client-1",
@@ -423,7 +485,7 @@ describe("RoomApp production composition", () => {
     runtime.dispose();
   });
 
-  it("preserves canvas geometry and updates the desktop input guard when the viewport changes", () => {
+  it("preserves canvas geometry and updates the desktop input guard when the viewport changes", async () => {
     const projection = new RoomProjection();
     const windowManager = new WindowManager({ viewport: { width: 1200, height: 700 } });
     const runtime = runtimeForViewport({ projection, windowManager });
@@ -440,7 +502,7 @@ describe("RoomApp production composition", () => {
     runtime.dispose();
   });
 
-  it("expires transient toast feedback instead of retaining an append-only history", () => {
+  it("expires transient toast feedback instead of retaining an append-only history", async () => {
     vi.useFakeTimers();
     const projection = new RoomProjection();
     const sessionEvents: { current?: Parameters<RoomAppSession["subscribe"]>[0] } = {};
@@ -448,7 +510,7 @@ describe("RoomApp production composition", () => {
       sessionEvents.current = subscriber;
       return () => undefined;
     });
-    runtime.join("room-1", "Donghyeon");
+    await runtime.join("room-1", "Donghyeon");
     projection.applyServerMessage({
       type: "welcome",
       selfClientId: "client-1",
@@ -494,6 +556,12 @@ function runtimeDeps(projection: RoomProjection, windowManager: WindowManager) {
     cursorMotion: makeCursorMotion(),
     createSession: () => makeSession(),
     createController: () => makeController(),
+    registerParticipant: async () => ({
+      kind: "registered" as const,
+      participantId: "client-1",
+      credential: "p".repeat(32),
+    }),
+    registerHost: async () => ({ kind: "unavailable" as const }),
     createRoom: vi.fn(),
     navigate: vi.fn(),
     copyInvite: vi.fn(),

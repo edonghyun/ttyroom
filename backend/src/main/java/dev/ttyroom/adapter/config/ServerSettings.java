@@ -53,7 +53,7 @@ public record ServerSettings(
                     "outputRateLimitBytesPerSec override is not supported");
         return new ServerSettings(
                 root.port(),
-                (int) root.number("protocolVersion", "TTYROOM_PROTOCOL_VERSION", 7, 7, 8),
+                (int) root.number("protocolVersion", "TTYROOM_PROTOCOL_VERSION", 8, 7, 8),
                 root.statePath(),
                 policyValues.nonNegative(
                         "participantGraceMs", "TTYROOM_PARTICIPANT_GRACE_MS", 15000),

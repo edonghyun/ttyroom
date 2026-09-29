@@ -13,10 +13,8 @@ const HELLO: HelloMessage = {
   type: "hello",
   protocolVersion: PROTOCOL_VERSION,
   roomId: "room-1",
-  token: "token-1",
-  clientId: "client-1",
+  credential: "h".repeat(32),
   name: "host-1",
-  role: "host",
 };
 
 function makeSession() {
@@ -58,6 +56,25 @@ describe("ConnectorSession — 역할: 서버 연결 수명주기", () => {
     await startSession(session, transport);
 
     expect(transport.lastConnection().sent).toMatchObject([{ type: "hello" }]);
+  });
+
+  it("reconnects with exactly the same host credential and no caller-selected identity", async () => {
+    const { transport, clock, session, disconnect } = makeSession();
+    await startSession(session, transport);
+    const firstHello = transport.lastConnection().sent[0];
+
+    disconnect();
+    await advanceSession(clock, transport, 500);
+    const reconnectedHello = transport.lastConnection().sent[0];
+
+    expect(firstHello).toEqual({
+      type: "hello",
+      protocolVersion: 8,
+      roomId: "room-1",
+      credential: "h".repeat(32),
+      name: "host-1",
+    });
+    expect(reconnectedHello).toEqual(firstHello);
   });
 
   it("연결이 성립하면 connected 이벤트를 방출한다", async () => {

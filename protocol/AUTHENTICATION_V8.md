@@ -1,9 +1,9 @@
 # v8 입장 인증 계약
 
-T9.3의 서버 입장 계약이다. React·Connector는 아직 v7이며, 기본 실행은 T9.4까지 v7을 유지한다.
-이 문서의 서버 모드는 `TTYROOM_PROTOCOL_VERSION=8` 또는 설정 파일의 `protocolVersion: 8`로 선택한다.
+Spring·React·Connector의 기본 입장 계약이다. 서버 기본값은 8이며,
+`TTYROOM_PROTOCOL_VERSION=8` 또는 설정 파일의 `protocolVersion: 8`로 명시할 수도 있다.
 프로세스 하나는 한 버전만 허용한다. v8 프로세스에서 v7 fallback이나 별도 v7 입장 경로는 없다.
-잘못된 설정은 시작을 실패시킨다. T9.4에서 클라이언트와 기본 실행을 함께 전환한다.
+잘못된 설정은 시작을 실패시킨다. v7은 명시적 비교 테스트용 모드이며 제품 클라이언트가 연결하지 않는다.
 
 ## Hello
 
@@ -36,7 +36,7 @@ participant는 참가자 연결로, host는 Connector 연결로 입장한다. MA
 
 credential은 welcome·snapshot·방 이벤트·오류·문자열 진단에 포함하지 않는다.
 서버 메시지와 binary frame의 나머지 형식은 [v7 명세](PROTOCOL.md)와 같다.
-공통 TypeScript 패키지의 기본 hello·PROTOCOL_VERSION은 아직 v7이며 새 클라이언트 API는 T9.4 범위다.
+공통 TypeScript 패키지는 v8 credential hello와 v7 비교용 hello를 구분한다. 제품 클라이언트는 v8만 전송한다.
 
 credential 검증, host 신원 저장, 연결 교체는 동일한 방별 명령 순서에서 실행한다.
 검증 실패는 presence·기존 연결·lease·PTY 상태를 바꾸지 않는다. 검증된 subject만 같은 subject의
@@ -47,5 +47,6 @@ host의 welcome은 inventory 확인 전 복구 상태(offline·입력 차단)다
 
 v8 검증은 별도 포트와 새 SQLite 파일을 사용한다. v1 파일의 기존 host/client ID에 관리·주체
 credential을 자동으로 붙이지 않는다. 여러 서버가 같은 SQLite 파일을 함께 쓰는 배포는 지원하지 않는다.
-v8를 선택하지 않은 기본 v7 서버에는 기존 사칭 문제가 남아 있다. HTTP 취소·활성 연결 종료·클라이언트
-보관/전달과 최종 취소 경합 E2E는 T9.4–T9.5에서 마무리한다.
+명시적으로 v7을 선택하면 기존 사칭 문제가 남는다. HTTP 취소·활성 연결 종료와 최종 취소 경합 E2E는 T9.5 범위다.
+React의 최초 등록·탭별 credential 보관과 Connector의 숨김 stdin 입력은 구현했다. 등록 실패는 사용자에게
+표시하며 자동 재등록하지 않는다. invalid-credential 응답 뒤에는 재접속을 중단한다.

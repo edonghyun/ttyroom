@@ -64,7 +64,7 @@
 - RED/GREEN·보강 테스트와 실행 중 JAR 교체로 인한 재실행은 [작업 이력](../../docs/WORK_LOG.md#등록-api-권한-경계)·[검증 기록](../../docs/VERIFICATION.md#2026-09-30-등록-api-권한-t92)에 구분했다.
 - HTTP 등록과 실제 v7 WS 입장 정책은 아직 분리돼 있다. 브라우저·Connector 관리 흐름과 취소 API는 후속 범위다.
 
-## 마지막 완료 — T9.3
+## 이전 완료 — T9.3
 
 [T9.3 — v8 입장과 동일 주체 연결 교체](https://github.com/edonghyun/ttyroom/issues/7)
 
@@ -76,10 +76,20 @@
   [실행 범위](../../docs/VERIFICATION.md#2026-09-30-v8-입장-t93)를 연결했다.
 - 서버 설정으로 버전을 고르며 프로세스 하나는 한 버전만 받는다. **기본값과 React·Connector는 아직 v7**이다.
 
-## 다음 작업
+## 현재 작업 — T9.4
 
 [T9.4 — React·Connector의 주체 credential 입장](https://github.com/edonghyun/ttyroom/issues/8).
-HTTP 등록·클라이언트 보관/전달·재접속과 서버 기본값을 함께 전환한다. 아직 착수하지 않았다.
-인증 완성은 T9.5의 공개 취소·활성 연결 정리·최종 경합 E2E까지 마친 뒤 판단한다.
+
+- React 최초 등록·탭 복제 시 새 주체·reload/reconnect 재사용을 구현했다.
+- 관리 credential은 별도 sessionStorage에 보관하고 Host 등록에만 사용한다.
+- Connector는 비밀값 없는 URL과 숨김 stdin의 Host credential로 접속한다. 기본 실행은 v8이다.
+- Java 436, TS 단위 571, 통합 37, Spring v7 프로세스 213, v8 인증 13·등록 4, 브라우저 41개 통과.
+- 입장 상태 리팩터링 후 등록·복구 브라우저 8개 재검증. 원본과 실패 원인은 [검증 기록](../../docs/VERIFICATION.md#2026-09-30-클라이언트-credential-연동-t94)에 구분했다.
+- Node v7 공통 프로세스 재검증 213개도 통과했다. 커밋·공개 CI를 마친 뒤 issue를 완료 처리한다.
+
+## 다음 작업
+
+[T9.5 — credential 취소와 입장 경합 E2E](https://github.com/edonghyun/ttyroom/issues/9).
+공개 취소 API, 활성 연결 종료, 최종 경합 E2E를 구현한다. 아직 착수하지 않았다.
 
 [T8.4 — 라이선스](https://github.com/edonghyun/ttyroom/issues/4)는 소유자 선택을 기다리는 별도 백로그로 유지한다.

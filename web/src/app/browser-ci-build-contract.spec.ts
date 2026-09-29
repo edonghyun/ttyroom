@@ -10,8 +10,8 @@ describe("browser acceptance CI build contract", () => {
     const browserJob = workflow.match(/\n  browser:\n([\s\S]*?)\n  full:/)?.[1] ?? "";
 
     expect(browserJob).toContain("pnpm --filter @ttyroom/web... build");
-    expect(browserJob).toContain("pnpm --filter @ttyroom/server build");
+    expect(browserJob).toContain("bootJar -PwebDist=../web/dist");
     expect(browserJob).toContain("pnpm --filter @ttyroom/connector build");
-    expect(browserJob).toContain("pnpm test:browser");
+    expect(browserJob).toContain("./scripts/test-spring.sh browser");
   });
 });

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
+import type { HostRegistration } from "../../app/room-api.js";
 import { Check, CheckCircle, Copy, Terminal, X, XCircle } from "react-feather";
 
 export type AddHostState =
@@ -11,21 +12,62 @@ export function AddHostDrawer({
   command,
   state,
   copy,
+  register,
   close,
   opener,
 }: {
   readonly open: boolean;
   readonly command: string;
   readonly state: AddHostState;
-  readonly copy: (command: string) => void;
+  readonly register?: () => Promise<HostRegistration | { kind: "unavailable" }>;
+  readonly copy: (command: string) => Promise<void> | void;
   readonly close: () => void;
   readonly opener?: RefObject<HTMLElement | null>;
 }) {
   const drawer = useRef<HTMLElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
+  const [copyError, setCopyError] = useState<string | null>(null);
+  const [credentialCopied, setCredentialCopied] = useState(false);
+  async function copyValue(text: string, kind: "command" | "credential") {
+    setCopyError(null);
+    try {
+      await copy(text);
+      if (kind === "command") setCopied(true);
+      else setCredentialCopied(true);
+    } catch {
+      setCopyError("Copy failed. Allow clipboard access and try again.");
+    }
+  }
+  const [credential, setCredential] = useState<string | null>(null);
+  const [issuing, setIssuing] = useState(false);
+  const [registrationError, setRegistrationError] = useState<string | null>(null);
+  async function issueCredential() {
+    if (!register || issuing) return;
+    setIssuing(true);
+    setRegistrationError(null);
+    try {
+      const result = await register();
+      if (result.kind === "registered") {
+        setCredential(result.credential);
+        setCredentialCopied(false);
+      } else
+        setRegistrationError(
+          result.kind === "unavailable"
+            ? "Only the room creator can register a host. Open the tab that created this room."
+            : "Could not register host. Try again.",
+        );
+    } catch {
+      setRegistrationError("Could not register host. Try again.");
+    } finally {
+      setIssuing(false);
+    }
+  }
   const [copied, setCopied] = useState(false);
   useEffect(() => {
-    if (open) setCopied(false);
+    if (open) {
+      setCopied(false);
+      setCopyError(null);
+    }
   }, [command, open]);
   useEffect(() => {
     if (!open) return;
@@ -81,6 +123,34 @@ export function AddHostDrawer({
         <p className="drawer-intro">
           TTYRoom Connector connects your computer's terminal to this room.
         </p>
+        {register && (
+          <div className="drawer-step">
+            <div className="drawer-step-content">
+              <h3>Host credential</h3>
+              <p>
+                Generate a credential, run the command below from your checkout, then paste the
+                credential at the hidden prompt. Use one credential per Connector process.
+              </p>
+              <button type="button" disabled={issuing} onClick={() => void issueCredential()}>
+                {issuing
+                  ? "Registering…"
+                  : credential
+                    ? "Generate another host credential"
+                    : "Generate host credential"}
+              </button>
+              {credential && (
+                <button type="button" onClick={() => void copyValue(credential, "credential")}>
+                  {credentialCopied ? "Credential copied" : "Copy host credential"}
+                </button>
+              )}
+              {credential && (
+                <p role="status">Host credential ready. Paste it only at the Connector prompt.</p>
+              )}
+              {registrationError && <p role="alert">{registrationError}</p>}
+            </div>
+          </div>
+        )}
+        {copyError && <p role="alert">{copyError}</p>}
         <div className="drawer-step">
           <span className="drawer-step-number" aria-hidden="true">
             1
@@ -95,10 +165,7 @@ export function AddHostDrawer({
               <button
                 type="button"
                 className={copied ? "is-copied" : undefined}
-                onClick={() => {
-                  copy(command);
-                  setCopied(true);
-                }}
+                onClick={() => void copyValue(command, "command")}
               >
                 {copied ? (
                   <Check size={16} strokeWidth={1.8} aria-hidden="true" />

@@ -56,11 +56,14 @@ pnpm --filter @ttyroom/server build
 TTYROOM_PORT=3001 pnpm --filter @ttyroom/server exec node dist/index.js
 ```
 
-브라우저와 Connector의 초대 주소는 Node 서버의 포트에 맞춥니다.
+Node 서버는 v7 프로토콜 회귀 비교 전용입니다. 현재 React·Connector는 Spring v8을 사용합니다.
+공통 E2E는 `e2e/fixtures/legacy-connector.mjs`의 명시적 v7 bootstrap으로 같은 Connector 실행 코어를 검증합니다.
+제품 CLI는 v7 fallback을 제공하지 않습니다.
 
 CLI 실행 파일 이름은 `ttyroom`, 명령은 `join`으로 유지합니다. 소스 체크아웃의 빠른 시작에서는 `node connector/dist/index.js join`을 사용합니다. npm 공개 배포 완료를 의미하지 않으며 외부 사용자용 설치 안내는 공개 배포 시 별도로 확정합니다.
 
-Connector 실행 터미널에서 `k`는 원격 입력 차단을 전환하고 `Ctrl+C`는 Connector와 로컬 셸을 종료합니다. Connector의 clientId는 프로세스마다 생성되며 네트워크 재접속 동안 유지됩니다. 파일에 영구 저장되는 식별자가 아닙니다.
+Connector 실행 터미널에서 `k`는 원격 입력 차단을 전환하고 `Ctrl+C`는 Connector와 로컬 셸을 종료합니다. Connector는 서버가 발급한 Host credential을 stdin에서 한 번 읽어 네트워크 재접속 동안 재사용합니다.
+프로세스를 다시 실행할 때는 새 Host credential을 발급합니다. 파일·환경변수·명령 인자에는 저장하지 않습니다.
 
 ## 검증 순서와 테스트 역할
 
@@ -126,7 +129,7 @@ TTYROOM_CONFIG_PATH=/absolute/path/ttyroom.config.json \
 | JSON 항목                              | 환경변수                                     | 기본값·허용 범위                                           |
 | -------------------------------------- | -------------------------------------------- | ---------------------------------------------------------- |
 | port                                   | TTYROOM_PORT                                 | 3000, 정수 0..65535. 0은 임의 포트                         |
-| protocolVersion                        | TTYROOM_PROTOCOL_VERSION                     | 7. 정수 7 또는 8, Spring 전용                              |
+| protocolVersion                        | TTYROOM_PROTOCOL_VERSION                     | 8. 정수 7 또는 8, Spring 전용                              |
 | statePath                              | TTYROOM_STATE_PATH                           | 미설정은 메모리. 환경변수의 빈 문자열도 명시적 메모리 선택 |
 | policy.participantGraceMs              | TTYROOM_PARTICIPANT_GRACE_MS                 | 15000, 0 이상 정수                                         |
 | policy.hostGraceMs                     | TTYROOM_HOST_GRACE_MS                        | 30000, 0 이상 정수                                         |
@@ -161,16 +164,19 @@ SocketSender의 별도 큐·replay 안전 상한이 없어지는 것은 아니�
 [통신 규약](../protocol/PROTOCOL.md)을 따른다. 날짜별 변경·검증과 이전 구현의 비교는
 [개발 이력 안내](README.md#개발-이력)에서 확인한다.
 
-## v8 서버 입장 검증
+## v8 기본 실행과 기존 저장 파일
 
-기본 서버와 현재 React·Connector는 v7이다. v8는 서버 계약 검증용으로 별도 포트·새 DB를 사용한다.
-다른 서버와 같은 SQLite 파일을 동시에 열지 않는다. 클라이언트와 기본값 전환은 T9.4 범위다.
+Spring·React·Connector의 기본 버전은 8이다. 이전 서버를 종료하고 기존 SQLite 파일을 보존한 뒤,
+아직 사용하지 않은 새 경로와 새 방으로 시작한다. 기존 host/client ID에 credential을 자동 발급하지 않는다.
+서버 여러 개가 같은 SQLite 파일을 동시에 열지 않는다. 기존 v7 방은 제품 클라이언트로 재접속할 수 없다.
 
 ```sh
 TTYROOM_PROTOCOL_VERSION=8 TTYROOM_PORT=3001 TTYROOM_STATE_PATH=.ttyroom/v8-rooms.sqlite \
   ./scripts/run-spring.sh
 ```
 
-이 프로세스는 v7 hello를 거절한다. [HTTP 등록](../protocol/HTTP.md#spring-등록-api) 후
+이 프로세스는 v7 hello를 거절한다. 방을 새로 만들고 생성 탭의 Add Host에서 Host credential을 발급한다.
+Connector 명령에는 fragment 없는 방 주소만 넣고, 표시되지 않는 stdin 프롬프트에 credential을 붙여 넣는다.
+관리 권한은 방 생성 탭의 sessionStorage에 보관되며, 이를 잃으면 기존 방의 관리 권한을 복구하는 API는 없다. [HTTP 등록](../protocol/HTTP.md#spring-등록-api) 후
 [v8 hello](../protocol/AUTHENTICATION_V8.md)로 연결한다. 자동 검증은 서버를 직접 띄울 필요 없이
 `./scripts/test-spring.sh authentication`으로 실행한다. 의존성·JAR 빌드를 먼저 마치고 테스트 중 재빌드하지 않는다.

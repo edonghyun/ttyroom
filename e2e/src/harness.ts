@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import {
-  PROTOCOL_VERSION,
+  LEGACY_PROTOCOL_VERSION,
   decodeDataFrame,
   encodeDataFrame,
   parseServerMessage,
@@ -120,7 +120,7 @@ class E2eServer implements TestServer {
       const observer = await this.participant(room, `observer-${name}`);
       const before = observer.lastMessages().length;
       const child = new TestProcess(
-        [process.execPath, "connector/dist/index.js", "join", room.joinUrl, "--name", name],
+        [process.execPath, "e2e/fixtures/legacy-connector.mjs", room.joinUrl, name],
         WORKSPACE_ROOT,
         // Product shell compatibility is separate; acceptance probes use a stable POSIX shell.
         { ...process.env, SHELL: "/bin/sh", ENV: "", BASH_ENV: "" },
@@ -444,7 +444,7 @@ class WsParticipant implements ParticipantClient {
     const before = this.messages.length;
     this.send({
       type: "hello",
-      protocolVersion: PROTOCOL_VERSION,
+      protocolVersion: LEGACY_PROTOCOL_VERSION,
       roomId: this.room.roomId,
       token: this.room.token,
       clientId: this.clientId,
@@ -506,7 +506,7 @@ class WsParticipant implements ParticipantClient {
 
 export const given: Given = {
   async server(policy = {}): Promise<E2eServer> {
-    const running = await ServerProcess.start(policy);
+    const running = await ServerProcess.start(policy, { protocolVersion: 7 });
     const server = new E2eServer(running);
     serversByBaseUrl.set(running.baseUrl, server);
     return server;

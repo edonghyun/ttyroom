@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { parseCli } from "./cli.js";
 
 describe("parseCli — 역할: join 명령의 해석", () => {
-  it("joinUrl에서 roomId·token·wsUrl을 뽑아낸다", () => {
-    const cmd = parseCli(["join", "http://localhost:8080/r/lively-fox#tok123"], {
+  it("비밀값 없는 방 URL에서 roomId·wsUrl을 뽑아낸다", () => {
+    const cmd = parseCli(["join", "http://localhost:8080/r/lively-fox"], {
       hostname: "mac",
     });
 
@@ -11,25 +11,23 @@ describe("parseCli — 역할: join 명령의 해석", () => {
       kind: "join",
       httpUrl: "http://localhost:8080",
       roomId: "lively-fox",
-      token: "tok123",
       wsUrl: "ws://localhost:8080/ws",
       name: "mac",
     });
   });
 
   it("--name이 hostname을 덮는다", () => {
-    const cmd = parseCli(
-      ["join", "http://localhost:8080/r/lively-fox#tok123", "--name", "데브서버"],
-      {
-        hostname: "mac",
-      },
-    );
+    const cmd = parseCli(["join", "http://localhost:8080/r/lively-fox", "--name", "데브서버"], {
+      hostname: "mac",
+    });
 
     expect(cmd).toMatchObject({ kind: "join", name: "데브서버" });
   });
 
-  it("토큰 없는 URL은 invalid다", () => {
-    const cmd = parseCli(["join", "http://localhost:8080/r/lively-fox"], { hostname: "mac" });
+  it("URL에 비밀값이 있으면 인자로 받지 않는다", () => {
+    const cmd = parseCli(["join", "http://localhost:8080/r/lively-fox#secret"], {
+      hostname: "mac",
+    });
 
     expect(cmd).toMatchObject({ kind: "invalid" });
   });
@@ -41,13 +39,13 @@ describe("parseCli — 역할: join 명령의 해석", () => {
   });
 
   it("https joinUrl은 wss로 매핑된다", () => {
-    const cmd = parseCli(["join", "https://ttyroom.example.com/r/foo#tok"], { hostname: "mac" });
+    const cmd = parseCli(["join", "https://ttyroom.example.com/r/foo"], { hostname: "mac" });
 
     expect(cmd).toMatchObject({ kind: "join", wsUrl: "wss://ttyroom.example.com/ws" });
   });
 
   it("http(s)가 아닌 joinUrl은 연결 명령으로 만들지 않는다", () => {
-    const cmd = parseCli(["join", "ftp://ttyroom.example.com/r/foo#tok"], {
+    const cmd = parseCli(["join", "ftp://ttyroom.example.com/r/foo"], {
       hostname: "mac",
     });
 
@@ -67,7 +65,7 @@ describe("parseCli — 역할: join 명령의 해석", () => {
       kind: "invalid",
     });
     expect(
-      parseCli(["join", "http://localhost:8080/rooms/foo#tok"], { hostname: "mac" }),
+      parseCli(["join", "http://localhost:8080/rooms/foo"], { hostname: "mac" }),
     ).toMatchObject({ kind: "invalid" });
   });
 });

@@ -13,6 +13,7 @@ export interface TestRoom {
   readonly name: string;
   readonly token: string;
   readonly joinUrl: string;
+  readonly managerCredential: string;
 }
 
 export interface ConnectorHandle {
@@ -76,13 +77,27 @@ export class TestSystem {
   }
 
   private async spawnConnector(name: string): Promise<ConnectorHandle> {
+    const registration = await fetch(
+      `${this.running.baseUrl}/api/rooms/${this.room.roomId}/hosts`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${this.room.managerCredential}`,
+          "content-type": "application/json",
+        },
+        body: "{}",
+      },
+    );
+    if (registration.status !== 201)
+      throw new Error(`Host registration failed: HTTP ${registration.status}`);
+    const { credential } = (await registration.json()) as { credential: string };
     let output = "";
     const terminalProcess = pty.spawn(
       process.execPath,
       [
         resolve(WORKSPACE_ROOT, "connector/dist/index.js"),
         "join",
-        this.room.joinUrl,
+        this.room.joinUrl.split("#")[0]!,
         "--name",
         name,
       ],
@@ -111,6 +126,8 @@ export class TestSystem {
     };
     this.connectors.add(handle);
     try {
+      await expect.poll(() => output).toContain("Host credential: ");
+      terminalProcess.write(`${credential}\r`);
       await expect
         .poll(() => handle.diagnostics(), {
           message: `connector did not connect\n${handle.diagnostics()}`,

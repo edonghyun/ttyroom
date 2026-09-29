@@ -113,7 +113,9 @@ export class ControlPlane {
         ? parsed.message.roomId
         : session?.roomId;
     const role =
-      parsed.kind === "ok" && parsed.message.type === "hello" ? parsed.message.role : session?.role;
+      parsed.kind === "ok" && parsed.message.type === "hello" && "role" in parsed.message
+        ? parsed.message.role
+        : session?.role;
 
     await this.deps.diagnostics.controlCommand(
       {

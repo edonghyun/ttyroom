@@ -19,7 +19,7 @@ class ServerSettingsTests {
     @TempDir Path directory;
 
     @Test
-    void protocolSelectionUsesEnvironmentThenFileThenTheTemporaryLegacyDefault() throws Exception {
+    void protocolSelectionUsesEnvironmentThenFileThenTheCredentialDefault() throws Exception {
         var fromFile = configuredFile("{\"protocolVersion\":8}");
         var overridden =
                 configuredFile("{\"protocolVersion\":7}")
@@ -32,7 +32,7 @@ class ServerSettingsTests {
 
         assertThat(fileVersion).isEqualTo(8);
         assertThat(environmentVersion).isEqualTo(8);
-        assertThat(defaultVersion).isEqualTo(7);
+        assertThat(defaultVersion).isEqualTo(8);
     }
 
     @Test

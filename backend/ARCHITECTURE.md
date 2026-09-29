@@ -42,7 +42,7 @@ credential 발급·취소도 같은 방별 명령 순서에서 독립 draft → 
 HTTP 등록과 v8 WebSocket 입장은 이 모델을 사용한다. RoomSessions는 credential의 digest를 알지 않고
 RoomDirectory가 반환한 Subject로 역할·ID를 결정한다. 검증·presence 생성·host 저장·연결 교체를
 취소와 같은 명령 순서 안에서 처리한다. 미인증 요청은 presence를 만들지 않는다.
-기본값과 기존 클라이언트는 아직 v7이며, v8 프로세스에는 v7 fallback이 없다.
+기본값과 제품 클라이언트는 v8이며, v8 프로세스에는 v7 fallback이 없다.
 
 ## 업무 판단과 전달 효과
 

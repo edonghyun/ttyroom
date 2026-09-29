@@ -107,6 +107,12 @@ const runtime = new RoomAppRuntime({
       },
       { terminalId, sendInput: () => undefined, resize: () => undefined },
     ),
+  registerParticipant: async () => ({
+    kind: "registered",
+    participantId: "visual",
+    credential: "p".repeat(32),
+  }),
+  registerHost: async () => ({ kind: "unavailable" }),
   createRoom: () => undefined,
   navigate: () => undefined,
   copyInvite: () => undefined,

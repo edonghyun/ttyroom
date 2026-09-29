@@ -23,10 +23,8 @@ describe("BrowserTransport — browser protocol boundary", () => {
           type: "hello",
           protocolVersion: PROTOCOL_VERSION,
           roomId: "room-1",
-          token: "secret-token",
-          clientId: "alice-id",
+          credential: "p".repeat(32),
           name: "Alice",
-          role: "participant",
         },
       },
     );
@@ -41,10 +39,8 @@ describe("BrowserTransport — browser protocol boundary", () => {
         type: "hello",
         protocolVersion: PROTOCOL_VERSION,
         roomId: "room-1",
-        token: "secret-token",
-        clientId: "alice-id",
+        credential: "p".repeat(32),
         name: "Alice",
-        role: "participant",
       }),
     ]);
   });
@@ -177,10 +173,8 @@ function createTransport(socket: FakeBrowserSocket): BrowserTransport {
         type: "hello",
         protocolVersion: PROTOCOL_VERSION,
         roomId: "room-1",
-        token: "secret-token",
-        clientId: "alice-id",
+        credential: "p".repeat(32),
         name: "Alice",
-        role: "participant",
       },
     },
   );

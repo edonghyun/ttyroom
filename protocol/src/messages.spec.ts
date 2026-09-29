@@ -10,9 +10,41 @@ import {
 } from "./messages.js";
 
 describe("제어 메시지 스키마 — 역할: JSON 제어 프레임의 검증과 유선 형태 고정", () => {
-  it("recovery handshake와 participant cursor는 protocol version 7에서 협상한다", () => {
-    expect(PROTOCOL_VERSION).toBe(7);
+  it("현재 클라이언트 기본 입장 버전은 8이다", () => {
+    expect(PROTOCOL_VERSION).toBe(8);
   });
+
+  it("v8 hello carries only a server-issued credential and display name", () => {
+    const hello = {
+      type: "hello",
+      protocolVersion: 8,
+      roomId: "room",
+      credential: "c".repeat(32),
+      name: "Alice",
+    };
+
+    const result = parseClientMessage(JSON.stringify(hello));
+
+    expect(result).toEqual({ kind: "ok", message: hello });
+  });
+
+  it.each(["token", "role", "clientId", "participantId", "hostId"])(
+    "v8 rejects caller-supplied %s",
+    (field) => {
+      const hello = {
+        type: "hello",
+        protocolVersion: 8,
+        roomId: "room",
+        credential: "c".repeat(32),
+        name: "Alice",
+        [field]: "injected",
+      };
+
+      const result = parseClientMessage(JSON.stringify(hello));
+
+      expect(result.kind).toBe("bad-message");
+    },
+  );
 
   it("Host inventory·ready·replay 완료와 runtimeId가 라운드트립한다", () => {
     const inventory: ClientMessage = {
