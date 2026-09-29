@@ -14,11 +14,23 @@ export const test = base.extend<ActorFixtures>({
     await use(system);
     await system.dispose();
   },
-  alice: async ({ browser, testSystem }, use) => {
-    await use(await testSystem.participant(browser, "Alice"));
+  alice: async ({ browser, testSystem }, use, info) => {
+    const actor = await testSystem.participant(browser, "Alice");
+    await use(actor);
+    if (info.status !== info.expectedStatus)
+      await info.attach("alice-wire-order", {
+        body: actor.wireDiagnostics(),
+        contentType: "application/json",
+      });
   },
-  bob: async ({ browser, testSystem }, use) => {
-    await use(await testSystem.participant(browser, "Bob"));
+  bob: async ({ browser, testSystem }, use, info) => {
+    const actor = await testSystem.participant(browser, "Bob");
+    await use(actor);
+    if (info.status !== info.expectedStatus)
+      await info.attach("bob-wire-order", {
+        body: actor.wireDiagnostics(),
+        contentType: "application/json",
+      });
   },
 });
 

@@ -7,6 +7,7 @@ export class BrowserParticipantActor {
   private readonly errors: Error[] = [];
   private readonly expectedConsoleErrors: RegExp[] = [];
   private disposed = false;
+  private readonly wireEvents: object[] = [];
 
   private constructor(
     readonly nickname: string,
@@ -15,6 +16,26 @@ export class BrowserParticipantActor {
     private readonly room: TestRoom,
   ) {
     this.roomPage = new RoomPage(page);
+    // Keep protocol ordering, never credentials or terminal contents, in failure evidence.
+    page.on("websocket", (socket) => {
+      for (const direction of ["framesent", "framereceived"] as const) {
+        socket.on(direction, ({ payload }) => {
+          let summary: object;
+          if (typeof payload === "string") {
+            try {
+              const message = JSON.parse(payload);
+              summary = { type: message.type, event: message.event?.kind, code: message.code };
+            } catch {
+              summary = { type: "unparsed-control", bytes: payload.length };
+            }
+          } else {
+            summary = { bytes: payload.length, header: payload.subarray(0, 9).toString("hex") };
+          }
+          this.wireEvents.push({ direction, ...summary });
+          if (this.wireEvents.length > 1024) this.wireEvents.shift();
+        });
+      }
+    });
     page.on("pageerror", (error) => this.errors.push(error));
     page.on("console", (message) => {
       if (
@@ -35,6 +56,10 @@ export class BrowserParticipantActor {
     const context = await browser.newContext();
     const page = await context.newPage();
     return new BrowserParticipantActor(nickname, context, page, room);
+  }
+
+  wireDiagnostics(): string {
+    return JSON.stringify(this.wireEvents, null, 2);
   }
 
   async joinRoom(): Promise<void> {
