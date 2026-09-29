@@ -9,7 +9,7 @@ describe("browser acceptance CI build contract", () => {
     const workflow = await readFile(resolve(WORKSPACE_ROOT, ".github/workflows/ci.yml"), "utf8");
     const browserJob = workflow.match(/\n  browser:\n([\s\S]*?)\n  full:/)?.[1] ?? "";
 
-    expect(browserJob).toContain("pnpm --filter @ttyroom/web build");
+    expect(browserJob).toContain("pnpm --filter @ttyroom/web... build");
     expect(browserJob).toContain("pnpm --filter @ttyroom/server build");
     expect(browserJob).toContain("pnpm --filter @ttyroom/connector build");
     expect(browserJob).toContain("pnpm test:browser");
