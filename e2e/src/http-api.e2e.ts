@@ -29,7 +29,8 @@ describe("방 생성 HTTP 계약 — Node/Spring 공통", () => {
 
     expect(response.status).toBe(201);
     expect(response.headers.get("content-type")).toContain("application/json");
-    expect(room).toEqual({
+    // Shared fields; Spring's additive manager credential is checked in registration.spring.ts.
+    expect(room).toMatchObject({
       roomId: expect.any(String),
       name,
       token: expect.any(String),

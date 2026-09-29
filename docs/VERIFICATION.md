@@ -1,5 +1,39 @@
 # 검증 기록
 
+## 2026-09-30 등록 API 권한 T9.2
+
+[HTTP 계약](../protocol/HTTP.md#spring-등록-api)의 관리 credential과 참가자·host 등록을 검증했다.
+macOS·Java 21에서 API-only JAR를 빌드했다. 원본 로그는 로컬 `artifacts/t9-2/`에 둔다.
+
+- Java 전체 **406개 통과**, 실패·오류·skip 0. HTTP 어댑터 21개·등록 저장 3개를 추가하고
+  기존 credential 모델·파일 복원 테스트에 MANAGER 역할 사례가 각각 1개 늘었다.
+- Spring v7 공통 프로세스 **205개·17개 파일 통과**. API-only JAR이므로 정적 웹 8개는 실행 대상에서 제외했다.
+- Spring 등록 프로세스 **4개 통과**: 실제 JAR의 HTTP 응답·권한·재등록·새 PID의 관리 권한 복원.
+- Node 공통 HTTP **23개 통과**: 공통 필드·오류·본문 제한을 유지한다. Node에는 등록 API를 추가하지 않았다.
+- E2E 타입 검사·포맷·의존성 경계 검사 통과. Java는 AOSP 포맷으로 정리했다.
+
+새 방 생성의 no-store 계약 1개와 후속 등록 테스트 12개의 실패를 구현 전에 확인했다.
+후속 실패에는 미구현 경로의 상태 assertion, 등록 fixture 준비, 저장 예외가 포함된다.
+JDK 경로 오류는 도구 설정 실패로 구분했다. 이후 추가한 본문 제한·복원 검증은 처음부터
+통과한 보강 테스트이며 RED로 집계하지 않는다. [작업 이력](WORK_LOG.md#등록-api-권한-경계) 참조.
+
+첫 전체 Spring 프로세스 실행 중 빌드가 같은 JAR를 교체해 일부 시작이 실패했다.
+완료된 JAR를 고정 경로에 복사해 전체 205개를 재실행해 통과했다. 실행 중 해당 파일은 변경하지 않았다.
+검증 JAR의 SHA-256은 `627de9bae23b83c96ebfd6a38b360d330cfa810848a0d0a2b43ca0deaa78ba5e`다.
+
+Java 21의 JAVA_HOME을 설정한 저장소 루트에서 순서대로 실행한다. E2E 종료 전 JAR를 재빌드하지 않는다.
+
+```sh
+backend/gradlew -p backend test bootJar
+./scripts/test-spring.sh registration
+./scripts/test-spring.sh protocol --exclude src/static-web.e2e.ts
+pnpm --filter @ttyroom/e2e test:e2e src/http-api.e2e.ts
+```
+
+프로세스 E2E에는 빌드된 protocol·Connector가 필요하다. 최초 설치는 [개발 안내](DEVELOPMENT.md)를 따른다.
+이번 로컬 검증에 브라우저·패키징된 정적 웹·v8 입장·취소 경합·운영 배포는 포함하지 않았다.
+기존 v7 hello는 유지하며 이 결과를 사칭 차단 완료로 해석하지 않는다.
+
 ## 2026-09-29 credential 저장 T9.1
 
 내부 발급·취소를 방별 명령 순서와 SQLite 저장에 연결했다. 변경 내용과 저장 버전은

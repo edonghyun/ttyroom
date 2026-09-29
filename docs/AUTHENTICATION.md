@@ -1,7 +1,7 @@
 # 인증 경계 보강안: 초대·주체·재접속 증명 분리
 
-상태: 내부 credential 발급·취소 모델과 원자적 저장·복원을 구현했다(T9.1).
-HTTP 등록·취소, 관리 credential과 WebSocket 입장은 후속 설계다. wire는 현재 v7 그대로다.
+상태: credential 원자적 저장·복원(T9.1), 관리 credential과 participant/host HTTP 등록(T9.2)을 구현했다.
+HTTP 취소·WebSocket 입장·클라이언트 연동은 후속 설계다. wire는 현재 v7 그대로다.
 목표는 계정 서비스를 만드는 것이 아니라, 같은 초대 링크를 가진 클라이언트가
 다른 participant나 host의 식별자를 임의로 사용하는 문제를 막는 것이다.
 
@@ -27,13 +27,15 @@ JWT는 이번 범위에 필요하지 않다. 서버가 어차피 방별 등록·
 
 ## 제안 흐름
 
-아래 HTTP 경로와 payload는 구현할 계약의 초안이며 현재 API가 아니다.
+1–3의 방 생성·등록은 구현했으며 정확한 payload와 오류는 [HTTP 계약](../protocol/HTTP.md)을 따른다.
+4–6의 클라이언트 전달·연결 인증은 후속 설계다.
 관리 credential은 URL이 아닌 Authorization 헤더로 전달한다.
 
 1. `POST /api/rooms`: 기존 방 초대 정보에 더해 관리 credential을 생성자에게만 반환한다.
    브라우저는 관리 credential을 일반 초대 링크에 포함하지 않는다.
-2. `POST /api/rooms/{roomId}/participants`: 초대 토큰과 표시 이름을 받아 새 participantId와
+2. `POST /api/rooms/{roomId}/participants`: 초대 토큰을 받아 새 participantId와
    participant credential을 발급한다. 요청자가 기존 participantId를 선택하는 필드는 제공하지 않는다.
+   표시 이름은 credential에 결합하지 않는 연결 메타데이터로 두며 등록 본문에서는 받지 않는다.
 3. `POST /api/rooms/{roomId}/hosts`: 관리 credential을 확인한 뒤 새 hostId와 host credential을 발급한다.
    브라우저의 Add Host 흐름은 이 권한이 있을 때만 등록 명령을 제공한다.
 4. Connector에는 host credential만 전달한다. 참여 초대 링크만으로 host에 가입할 수 없게 한다.
@@ -114,7 +116,7 @@ RoomSessions는 검증된 결과만 받아 연결을 조정하며 credential dig
 | Connector CLI·Session      | host credential 입력, 프로세스 내 보관과 재접속                               |
 | protocol·공통 E2E          | 새 hello·등록 계약, 거절·교체·취소 경합 검증                                  |
 
-## 이행과 첫 TDD 단계
+## 입장 인증의 호환성 경계
 
 v7의 `token + role + clientId` hello를 그대로 허용하면 보호를 우회할 수 있다.
 따라서 새 인증은 protocol major 변경(후보 v8)과 저장 형식 이행을 함께 다룬다.
@@ -123,20 +125,16 @@ v7의 `token + role + clientId` hello를 그대로 허용하면 보호를 우회
 토이 프로젝트의 첫 전환은 새 저장 파일·새 방을 사용하고 기존 파일은 유지한다.
 Node 비교 구현은 v7 회귀 기준으로 남기며 v8 테스트와 v7 테스트를 구분한다.
 
-첫 구현은 UI나 wire 변경 전에 **credential 검증 경계**를 독립적으로 검증하는 작은 단계다.
-
-1. RED: 다른 방, 다른 역할, 다른 주체, 취소된 credential이 인증되지 않는 테스트.
-2. GREEN: 무작위 credential 발급·digest 저장·검증·취소의 최소 모델.
-3. RED: 저장 실패 시 발급·취소가 메모리에만 반영되지 않는 테스트.
-4. GREEN: 기존 save-before-commit 경계에 연결.
-5. 다음 단계에서 HTTP 등록과 v8 입장을 연결한다. 연결 전 단계는 “현재 사칭 문제 해결”로 보고하지 않는다.
+credential 발급·취소·저장·HTTP 등록의 검증은 [작업 이력](WORK_LOG.md#credential-저장)에 기록했다.
+다음 T9.3에서는 hello의 인증 계약을 먼저 테스트하고 v8 입장을 연결한다. 현재 등록 성공을
+“사칭 문제 해결”로 보고하지 않는다.
 
 완료 조건은 유효한 주체만 자신의 연결을 교체할 수 있고, 초대 토큰만으로 host 접속이나
 기존 participant 교체를 할 수 없으며, 취소 후 재접속이 거절되는 것이다.
 host inventory·PTY 복구와 participant lease 재접속 계약도 새 인증에서 다시 검증해야 한다.
 
 [현재 보안 모델](SECURITY_MODEL.md)과 [현재 wire v7](../protocol/PROTOCOL.md)은
-구현된 동작의 기준으로 유지한다. 아래 내부 모델·저장 외의 연동 항목은 아직 구현되지 않았다.
+구현된 동작의 기준으로 유지한다. HTTP 생성·등록과 아래 저장 계약 외의 입장·취소 연동은 아직 구현되지 않았다.
 
 ## 발급·취소의 저장과 복원
 
@@ -157,6 +155,7 @@ host inventory·PTY 복구와 participant lease 재접속 계약도 새 인증�
 ### 저장 표현
 
 - credential이 없으면 기존 `schemaVersion: 1` 표현을 유지하고, v1 읽기는 빈 목록으로 복원한다.
+- 새 방에는 `manager` 역할 credential이 포함된다. 관리 권한도 digest로 저장하고 v1 방에 자동 발급하지 않는다.
 - 하나 이상이면 `schemaVersion: 2`와 `credentials: [{subject: {role, id}, digest}]`를 기록한다.
 - 마지막 credential 취소 후에는 빈 목록을 나타내는 v1으로 저장할 수 있다. 취소된 비밀값이 다시 인증되는 것은 아니다.
 - 역할·UUID·digest 형식, 중복 주체/digest, 누락·알 수 없는 필드를 검사한다. 오류 응답에 원본 레코드나 파서 cause를 넣지 않는다.
@@ -168,5 +167,5 @@ host inventory·PTY 복구와 participant lease 재접속 계약도 새 인증�
 [작업 이력](WORK_LOG.md#credential-저장)에 RED/GREEN·리뷰 과정을,
 [검증 기록](VERIFICATION.md)에 실행 범위를 정리했다.
 
-**v7의 사칭 문제는 아직 해결되지 않았다.** 실제 HTTP·WS 요청은 이 내부 credential을 사용하지 않는다.
-다음은 T9.2에서 관리 credential과 participant/host 등록 API의 권한·비밀 응답 계약을 구현하는 단계다.
+**v7의 사칭 문제는 아직 해결되지 않았다.** HTTP 등록은 credential을 사용하지만 WS와 클라이언트는
+아직 연결하지 않았다. 다음 T9.3은 v8 입장·동일 주체 교체와 관리자 credential의 WS 사용 거절이다.

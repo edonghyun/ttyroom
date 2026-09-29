@@ -30,6 +30,7 @@ class RoomCredentialStorageTests {
             assertThat(authenticated).contains(issued.subject());
             assertThat(storedJson).contains(issued.subject().id()).doesNotContain(issued.secret());
             assertThat(fixture.snapshot().credentials())
+                    .filteredOn(stored -> stored.subject().equals(issued.subject()))
                     .singleElement()
                     .satisfies(
                             stored -> {
@@ -78,6 +79,7 @@ class RoomCredentialStorageTests {
     @Test
     void revokingTheLastCredentialLeavesNoAuthenticationAfterReopening() {
         try (var fixture = new PersistentRoom(directory.resolve("empty.sqlite"))) {
+            fixture.removeInitialManager();
             var issued = fixture.issue(RoomCredentials.Role.HOST);
 
             fixture.revoke(issued);
@@ -106,6 +108,17 @@ class RoomCredentialStorageTests {
                 rooms.close();
                 throw failure;
             }
+        }
+
+        void removeInitialManager() {
+            var manager =
+                    snapshot().credentials().stream()
+                            .filter(
+                                    record ->
+                                            record.subject().role() == RoomCredentials.Role.MANAGER)
+                            .findFirst()
+                            .orElseThrow();
+            rooms.revokeCredential(room, manager.subject().id());
         }
 
         RoomCredentials.Issued issue(RoomCredentials.Role role) {

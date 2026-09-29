@@ -1,6 +1,6 @@
 # HTTP API 계약
 
-현재 Node/Spring 공통 동작과 Spring 어댑터를 기준으로 정리한다.
+방 생성의 공통 필드와 Spring 전용 등록 API를 구분해 정리한다.
 실시간 협업은 [WebSocket/binary 명세](PROTOCOL.md)를 사용한다.
 기본 로컬 주소는 `http://127.0.0.1:3000`이다.
 
@@ -54,7 +54,65 @@ roomId는 UUID v4, token은 URL-safe 32자 문자열이다. joinUrl의 fragment�
 Spring controller에는 Host 누락 시 400 text/plain `host header required`를 반환하는
 분기가 있다. HTTP 컨테이너가 그 전에 잘못된 요청을 거절할 수도 있으므로 이 응답은
 Node/Spring 공통 wire 계약으로 검증한 항목과 구분한다.
-저장소 장애 등 예기치 않은 5xx의 공통 JSON 오류 형식은 아직 정의하지 않았다.
+Node/Spring 공통 5xx 형식은 정의하지 않았다. Spring의 저장·종료 상태 오류는 아래 503 계약을 따른다.
+
+## Spring 등록 API
+
+T9.2에서 구현한 HTTP 확장이다. Node v7 참조 구현에는 없으며 현재 WebSocket은 여전히 v7이다.
+등록 성공만으로 연결 인증이 완료되지 않는다. React·Connector는 아직 이 API를 호출하지 않는다.
+
+### 방 생성의 관리 credential
+
+Spring의 `POST /api/rooms`는 공통 응답에 `managerCredential`을 추가한다. 32자 URL-safe 무작위
+비밀값이며 초대 token과 별개다. 관리 digest와 방을 한 번에 저장한 뒤 응답한다. 응답은
+`Cache-Control: no-store`이며 `joinUrl`에는 관리 credential을 넣지 않는다.
+관리 비밀값은 생성자에게 한 번 반환하고 조회·계정 복구 API는 제공하지 않는다.
+
+### POST /api/rooms/{roomId}/participants
+
+본문은 `{"token":"<초대 토큰>"}`만 허용한다. 성공은 201이다.
+
+```json
+{
+  "participantId": "b3bb1eca-9e65-4b54-87ad-d491f16c9f09",
+  "credential": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+}
+```
+
+서버가 새 participantId와 credential을 발급한다. role·clientId·participantId 등 추가 필드는
+거절하며 기존 주체를 선택할 수 없다. 반복 등록은 각각 독립된 주체를 만든다. 표시 이름은
+변경 가능한 연결 메타데이터이므로 등록 입력·저장 레코드에 포함하지 않는다.
+
+### POST /api/rooms/{roomId}/hosts
+
+`Authorization: Bearer <관리 credential>` 헤더 하나와 빈 본문 또는 `{}`를 받는다.
+성공은 201, `{"hostId":"<서버 발급 UUID>","credential":"<32자 비밀값>"}`이다.
+초대 token, participant/host credential, 다른 방의 관리 credential로는 등록할 수 없다.
+본문·쿼리의 관리 비밀값으로 헤더를 대신할 수 없다. 기존 hostId를 지정하는 필드도 허용하지 않는다.
+Bearer scheme의 대소문자는 구분하지 않으며 중복 헤더와 잘못된 credential 형식은 거절한다.
+
+### 저장·응답·오류
+
+- 두 등록 API는 해당 방의 명령 순서 안에서 권한을 확인하고 credential draft를 저장한 뒤 확정한다.
+  저장 실패 시 새 credential과 성공 응답을 노출하지 않는다.
+- 새 방은 관리 credential을 포함하므로 SQLite v2로 저장한다. v1 파일을 읽을 수는 있지만
+  관리자 credential을 자동 생성하지 않는다. Node 참조 서버는 v2 파일을 읽을 수 없다.
+- 발급 성공과 오류 JSON 모두 `Cache-Control: no-store`다. 오류는 아래 고정된 문구만 반환한다.
+  입력 원문·토큰·digest·저장소 예외를 응답에 복사하지 않는다.
+- 저장 성공 후 응답 유실은 자동 재시도 시 중복 등록을 만들 수 있다. idempotency key·취소 HTTP API는
+  아직 없으며, 재등록은 기존 credential을 회수하지 않는다.
+
+| 상태 | JSON error 값                  | 조건                                                       |
+| ---- | ------------------------------ | ---------------------------------------------------------- |
+| 400  | `request body too large`       | 본문 16,384 bytes 초과                                     |
+| 400  | `invalid json`                 | JSON 파싱 실패·공백만 있는 본문·trailing JSON              |
+| 400  | `invalid registration request` | 잘못된 구조·타입·추가 필드                                 |
+| 403  | `registration forbidden`       | 없는 방·잘못된 초대·부족한 관리 권한·누락/잘못된 인증 헤더 |
+| 503  | `registration unavailable`     | 일시적 저장 실패·서버 종료 상태. 생성에도 적용             |
+
+공개 오류에서 없는 방과 잘못된 권한을 구분하지 않는다. 본문 형식 검사는 권한 검사에 앞선다.
+현재 v7 hello에 초대 토큰과 임의 role/clientId를 보내는 경로는 그대로 남아 있다.
+**이 API만으로 host 접속과 기존 참가자 사칭이 차단됐다고 주장하지 않는다.**
 
 ## 정적 웹과 WebSocket
 
@@ -66,6 +124,8 @@ Node/Spring 공통 wire 계약으로 검증한 항목과 구분한다.
 
 - [RoomController](../backend/src/main/java/dev/ttyroom/adapter/http/RoomController.java)
 - [HTTP 공통 E2E](../e2e/src/http-api.e2e.ts): 기본값, trim, UTF-16 경계, 본문 bytes, 오류, 토큰과 URL.
+- [등록 HTTP 테스트](../backend/src/test/java/dev/ttyroom/adapter/http/RoomRegistrationTests.java): 권한·저장 실패·오류 응답.
+- [Spring 등록 프로세스 E2E](../e2e/src/registration.spring.ts): 실제 JAR·HTTP·새 PID의 관리 권한 복원.
 - [정적 웹 E2E](../e2e/src/static-web.e2e.ts)
 
 현재 문서는 수동 명세다. OpenAPI 파일·Swagger UI 및 HTTP 명세 자동 드리프트 검사는

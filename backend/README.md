@@ -26,7 +26,9 @@ Java 21 JDK가 필요하다. `JAVA_HOME`을 해당 JDK 경로로 지정한다. �
 - 잘못된 포트 설정은 Spring 시작 오류로 처리한다.
 - Spring 종료 유예는 5초다. 기존 E2E 실행기는 250ms 후 강제 종료할 수 있으므로 프로세스 smoke는 graceful drain 보장이 아니다.
 
-`POST /api/rooms`는 이름을 검증하고 방과 초대 URL을 생성한다. 응답 형식은 [HTTP 계약](../protocol/HTTP.md)을 따른다. 방과 토큰 SHA-256 해시는 메모리 또는 설정한 SQLite 파일에 보관한다. 토큰 원문은 초대 응답에만 사용하며 인증 비교는 고정 길이 digest의 constant-time 비교를 사용한다.
+`POST /api/rooms`는 이름을 검증하고 방·초대 URL·생성자용 관리 credential을 생성한다.
+HTTP 참가자 등록은 초대 토큰을, host 등록은 해당 방의 관리 credential을 확인한다. WS는 아직 v7 초대 토큰 방식이다. 응답 형식은 [HTTP 계약](../protocol/HTTP.md)을 따른다. 방과 토큰·credential의 SHA-256 digest는 메모리 또는 설정한 SQLite 파일에 보관한다.
+새 방은 관리 credential을 포함한 v2 저장 형식을 사용하므로 Node 참조 서버와 파일을 공유하지 않는다. 토큰 원문은 초대 응답에만 사용하며 인증 비교는 고정 길이 digest의 constant-time 비교를 사용한다.
 
 `TTYROOM_STATE_PATH`가 없거나 빈 문자열이면 메모리 모드다. 경로를 지정하면 부모 디렉터리를
 생성하고 SQLite 파일에서 모든 방을 복원한 뒤 readiness를 알린다. 상대 경로는 실행 디렉터리 기준이다.

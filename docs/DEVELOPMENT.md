@@ -91,6 +91,7 @@ E2E 실행기는 서버·Connector 프로세스를 직접 시작하고 정리합
 켜 둘 필요는 없습니다. 스크립트는 Java/JAR 경로를 JSON argv로 전달하며 자동 빌드하지 않습니다.
 Node 비교 구현을 빌드한 후에는 `pnpm test:e2e`, `pnpm test:browser`로
 같은 테스트를 실행합니다. 이 pnpm 명령들은 Java 단위 테스트를 포함하지 않습니다.
+Spring 전용 등록 API는 `./scripts/test-spring.sh registration`으로 별도 검증합니다.
 포맷 검사는 `pnpm format`입니다. 자세한 작성 기준은 [E2E 안내](../e2e/README.md)를 참고합니다.
 
 ## 서버 설정

@@ -217,7 +217,7 @@ Room bootstrap HTTP 계약:
 - `POST /api/rooms`는 JSON body `{"name":"Payment Debug"}`를 선택적으로 받는다.
   body 또는 `name`을 생략하면 `"Quick Room"`을 사용한다. 이름은 JavaScript trim 기준으로
   정리한 뒤 UTF-16 code unit 기준 1..80이다. 상세 오류·본문 한도는 [HTTP 명세](HTTP.md)를 따른다.
-- 성공 응답은 HTTP 201과 `{"roomId", "name", "token", "joinUrl"}`이다. `name`은 이후
+- 공통 성공 필드는 HTTP 201과 `{"roomId", "name", "token", "joinUrl"}`이며, Spring은 별도 `managerCredential`을 추가한다. `name`은 이후
   `welcome.snapshot.name`과 동일하다.
 
 - `close-terminal-request`는 열린 터미널의 owning online host에만 `close-terminal`로 전달한다.

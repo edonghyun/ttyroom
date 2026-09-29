@@ -47,6 +47,8 @@ jobs:
       - run: pnpm --filter @ttyroom/connector... build
       - name: All process contracts except packaged web
         run: ./scripts/test-spring.sh protocol --exclude src/static-web.e2e.ts
+      - name: Spring registration contracts
+        run: ./scripts/test-spring.sh registration
 
   check:
     runs-on: ubuntu-latest

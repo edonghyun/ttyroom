@@ -82,15 +82,57 @@ public final class RoomDirectory implements AutoCloseable {
                         digest(token),
                         new RoomControl(),
                         new RoomCredentials());
+        var manager = room.credentials.issue(RoomCredentials.Role.MANAGER);
         store.save(room.durableState());
         rooms.put(room.id, room);
-        return new Invitation(room.id, room.name, token);
+        return new Invitation(room.id, room.name, token, manager.secret());
     }
 
     public boolean acceptsToken(String roomId, String candidate) {
         if (roomId == null || candidate == null) return false;
         var room = rooms.get(roomId);
         return room != null && MessageDigest.isEqual(room.tokenHash, digest(candidate));
+    }
+
+    public RoomCredentials.Issued registerParticipant(String roomId, String invitationToken) {
+        var room = registrationRoom(roomId);
+        return execute(
+                room,
+                operation ->
+                        operation.changeCredentials(
+                                draft -> {
+                                    if (!acceptsToken(roomId, invitationToken))
+                                        throw new RegistrationRejected();
+                                    return draft.issue(RoomCredentials.Role.PARTICIPANT);
+                                }));
+    }
+
+    public RoomCredentials.Issued registerHost(String roomId, String managerCredential) {
+        var room = registrationRoom(roomId);
+        return execute(
+                room,
+                operation ->
+                        operation.changeCredentials(
+                                draft -> {
+                                    var manager = draft.authenticate(managerCredential);
+                                    if (manager.isEmpty()
+                                            || manager.get().role() != RoomCredentials.Role.MANAGER)
+                                        throw new RegistrationRejected();
+                                    return draft.issue(RoomCredentials.Role.HOST);
+                                }));
+    }
+
+    private Room registrationRoom(String roomId) {
+        var room = roomId == null ? null : rooms.get(roomId);
+        if (room == null) throw new RegistrationRejected();
+        return room;
+    }
+
+    /** Missing rooms and invalid authority share one public rejection. */
+    public static final class RegistrationRejected extends IllegalStateException {
+        private RegistrationRejected() {
+            super("Registration forbidden");
+        }
     }
 
     /**
@@ -209,8 +251,7 @@ public final class RoomDirectory implements AutoCloseable {
             StoredRoom record;
             T result;
             synchronized (room) {
-                if (rooms.get(room.id) != room)
-                    throw new IllegalStateException("Room is no longer registered");
+                if (rooms.get(room.id) != room) throw new RegistrationRejected();
                 var before = room.credentials.durableState();
                 draft = RoomCredentials.restore(before);
                 result = update.apply(draft);
@@ -332,7 +373,7 @@ public final class RoomDirectory implements AutoCloseable {
         }
     }
 
-    public record Invitation(String roomId, String name, String token) {
+    public record Invitation(String roomId, String name, String token, String managerCredential) {
         @Override
         public String toString() {
             return "Invitation[roomId=" + roomId + ", token=<redacted>]";

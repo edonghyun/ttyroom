@@ -42,7 +42,7 @@
 - 첫 공개 CI가 로컬 산출물 의존과 개인 셸 설정 의존을 드러냈다. 새 환경 검증과 테스트 실행 환경의 소유권을 유지한다.
 - 문서는 현재 구현과 계속 대조한다. 출력 중복 제거를 입력 실행 보장으로 확대하지 않는다.
 
-## 마지막 완료 — T9.1
+## 완료 — T9.1
 
 [T9.1 — credential 원자적 저장](https://github.com/edonghyun/ttyroom/issues/5)
 
@@ -53,10 +53,21 @@
 - Java 전체 380개 통과. 프로세스 검증과 실행 범위는 [검증 기록](../../docs/VERIFICATION.md)을 따른다.
 - v7 입장 정책·관리 권한·현재 연결 종료는 변경하지 않았다. 인증 보완 전체의 완료는 아니다.
 
+## 마지막 완료 — T9.2
+
+[T9.2 — 등록 API 권한 경계](https://github.com/edonghyun/ttyroom/issues/6)
+
+- 방 생성 시 관리 credential을 한 번의 저장에 포함한다. 초대 토큰은 참가자 등록에, 관리 credential은 host 등록에 사용한다.
+- 요청자가 역할·기존 ID를 고를 수 없고 다른 방·다른 역할의 credential을 거절한다. 저장 실패 시 비밀값과 성공 응답을 반환하지 않는다.
+- HTTP 응답은 no-store이며 고정 오류만 반환한다. 새 방은 SQLite v2로 저장하고 v1 방에 관리자를 자동 발급하지 않는다.
+- Java 406개, Spring v7 공통 프로세스 205개, Spring 등록 프로세스 4개, Node 공통 HTTP 23개 통과.
+- RED/GREEN·보강 테스트와 실행 중 JAR 교체로 인한 재실행은 [작업 이력](../../docs/WORK_LOG.md#등록-api-권한-경계)·[검증 기록](../../docs/VERIFICATION.md#2026-09-30-등록-api-권한-t92)에 구분했다.
+- HTTP 등록과 실제 v7 WS 입장 정책은 아직 분리돼 있다. 브라우저·Connector 관리 흐름과 취소 API는 후속 범위다.
+
 ## 다음 작업
 
-[T9.2 — 등록 API 권한 경계](https://github.com/edonghyun/ttyroom/issues/6).
-관리 credential의 발급·저장·검증과 참가자/host 등록을 구현한다. 아직 착수하지 않았다.
-인증 완성은 T9.5까지 서버·클라이언트·취소 경합 검증을 마친 뒤 판단한다.
+[T9.3 — v8 입장과 동일 주체 연결 교체](https://github.com/edonghyun/ttyroom/issues/7).
+credential에서 역할·주체를 결정하고 관리자 credential의 WS 사용과 v7 우회를 거절하는 계약을 먼저 작성한다.
+아직 착수하지 않았다. 인증 완성은 T9.5까지 서버·클라이언트·취소 경합 검증을 마친 뒤 판단한다.
 
 [T8.4 — 라이선스](https://github.com/edonghyun/ttyroom/issues/4)는 소유자 선택을 기다리는 별도 백로그로 유지한다.

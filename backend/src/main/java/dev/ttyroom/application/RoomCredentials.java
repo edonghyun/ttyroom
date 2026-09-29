@@ -23,7 +23,8 @@ public final class RoomCredentials {
 
     public enum Role {
         PARTICIPANT,
-        HOST
+        HOST,
+        MANAGER
     }
 
     public record Subject(Role role, String id) {
@@ -72,7 +73,7 @@ public final class RoomCredentials {
                 .toList();
     }
 
-    record Issued(Subject subject, String secret) {
+    public record Issued(Subject subject, String secret) {
         @Override
         public String toString() {
             return "Issued[subject=" + subject + ", secret=<redacted>]";

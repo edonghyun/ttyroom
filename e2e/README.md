@@ -171,3 +171,10 @@ cursor의 발신자 제외·반복/null 전달·비저장·방 격리를 검사�
 
 브라우저 UI 검증은 [web/e2e와 Spring 실행 안내](../docs/WORK_LOG.md#실제-프로세스와-브라우저-검증)를 따른다.
 Browser TestSystem도 같은 ServerProcess 실행 경계를 사용한다.
+
+## Spring 등록 계약
+
+`./scripts/test-spring.sh registration`은 실제 JAR의 관리·참가자·host 등록과 재시작 후 관리 권한을
+검증한다. 먼저 JAR를 빌드하며 Java 21의 `JAVA_HOME`을 사용한다. 이 Spring 전용 계약은
+`vitest.registration.config.ts`로 실행하고 v7 Node/Spring 공통 E2E에 섞지 않는다.
+CI의 `spring-contract` 작업에서도 실행한다. WebSocket v8 인증을 검증하는 테스트는 아니다.
