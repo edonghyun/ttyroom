@@ -2,7 +2,8 @@
 
 ## 2026-09-30 클라이언트 credential 연동 T9.4
 
-Java 21·macOS에서 검증했다. 기준 커밋은 `604117b`이며 로그는 로컬 `artifacts/t9-4/`에 보관한다.
+Java 21·macOS에서 검증했다. 기준 커밋은 `604117b`, 구현 커밋은 [`9b752b6`](https://github.com/edonghyun/ttyroom/commit/9b752b67d56a4697b1007967720d5da1c5c56975)이다.
+로그와 변경 파일 SHA-256 목록은 로컬 `artifacts/t9-4/`에 보관한다. 공개 CI의 최종 실행은 [T9.4 issue](https://github.com/edonghyun/ttyroom/issues/8)에 연결한다.
 
 - Java 전체 **436개 통과**, 실패·오류·skip 0. 서버 기본 버전 8의 실패 테스트 후 구현했다.
 - TS 단위 **571개 통과**: protocol 101, Connector 65, React 187, Node 비교 서버 218.
