@@ -164,6 +164,9 @@
 v7 서버의 `error.code`는 `room-not-found` · `invalid-token` · `unsupported-protocol-version` · `bad-message`.
 공통 TS 디코더는 v8 서버의 `invalid-credential`도 해석한다.
 
+host는 `terminal-opened` 확인을 출력보다 먼저 보낸다. Spring은 이 확인을 비동기로 처리하더라도
+뒤따르는 초기 출력이 참가자에게 생성 알림보다 먼저 전달되지 않도록 순서를 보존한다.
+
 ### 서버 → 호스트
 
 | type             | 예시                                                                      |

@@ -61,6 +61,11 @@ FIFO와 deadline을 소유한다. 수신자별 `PeerUnavailable`은 해당 연�
 진행한다. 예상 밖 구현 예외는 전파한다. 어느 실패도 저장된 결정을 되돌리지 않는다.
 commit과 전송은 원자적이지 않으며 outbox나 지속적 메시지 전달은 구현하지 않았다.
 
+`RoomSocketHandler`는 host의 `terminal-opened` 뒤에 받은 초기 출력이 생성 알림을 앞지르지 않도록
+해당 터미널의 확인 작업과 대기 출력을 기존 ControlInbox에 순서대로 넣는다. 마지막 대기 출력까지
+전달한 뒤 직접 출력 경로로 돌아온다. 큐의 byte·개수 상한과 종료 정리를 공유하며, 다른 터미널의
+출력과 입력을 이 생성 확인에 묶지 않는다.
+
 ## 재접속·출력·수명주기
 
 Connector가 실제 PTY와 runtimeId를 소유한다. 서버는 inventory를 저장된 workspace와 대조한다.

@@ -21,7 +21,9 @@ import tools.jackson.databind.json.JsonMapper;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -74,6 +76,9 @@ public final class RoomSocketHandler extends TextWebSocketHandler implements Aut
         final SocketSender sender;
         final ControlInbox controls;
         private RoomSessions.Session session;
+        // Counts the announcement plus output waiting for it. A late frame cannot overtake
+        // earlier deferred output when the announcement itself finishes.
+        private final Map<Long, Integer> openingDeliveries = new HashMap<>();
         private boolean admissionStarted;
         private boolean closed;
 
@@ -123,6 +128,7 @@ public final class RoomSocketHandler extends TextWebSocketHandler implements Aut
                 if (closed) return;
                 closed = true;
                 controls.close();
+                openingDeliveries.clear();
                 callback = session;
                 session = null;
             }
@@ -155,7 +161,56 @@ public final class RoomSocketHandler extends TextWebSocketHandler implements Aut
             else admitted.handle(command);
         }
 
+        void enqueue(HostCommand command, int bytes) {
+            Long opening = null;
+            synchronized (this) {
+                if (session != null && command instanceof HostCommand.TerminalOpened opened) {
+                    opening = opened.terminalId();
+                    openingDeliveries.merge(opening, 1, Integer::sum);
+                }
+            }
+            var terminalId = opening;
+            enqueue(
+                    () -> {
+                        try {
+                            handle(command);
+                        } finally {
+                            if (terminalId != null) completeOpeningDelivery(terminalId);
+                        }
+                    },
+                    bytes);
+        }
+
+        private synchronized void completeOpeningDelivery(long terminalId) {
+            openingDeliveries.computeIfPresent(
+                    terminalId, (ignored, count) -> count == 1 ? null : count - 1);
+        }
+
         void output(OutputFrame frame) {
+            boolean deferred;
+            synchronized (this) {
+                if (closed) return;
+                deferred = openingDeliveries.containsKey(frame.terminalId());
+                if (deferred) openingDeliveries.merge(frame.terminalId(), 1, Integer::sum);
+            }
+            if (!deferred) {
+                deliverOutput(frame);
+                return;
+            }
+            // Reuse the bounded control inbox only during this terminal's announcement.
+            // Other terminals, input, and established output keep their direct path.
+            enqueue(
+                    () -> {
+                        try {
+                            deliverOutput(frame);
+                        } finally {
+                            completeOpeningDelivery(frame.terminalId());
+                        }
+                    },
+                    frame.size() + 9);
+        }
+
+        private void deliverOutput(OutputFrame frame) {
             RoomSessions.Session admitted;
             synchronized (this) {
                 if (closed) return;
@@ -295,15 +350,15 @@ public final class RoomSocketHandler extends TextWebSocketHandler implements Aut
         }
         var command = RoomProtocol.hostCommand(node);
         if (command == null) bad(connection, "expected a supported control message");
-        else connection.enqueue(() -> connection.handle(command), messageBytes);
+        else connection.enqueue(command, messageBytes);
     }
 
     @Override
     protected void handleBinaryMessage(WebSocketSession socket, BinaryMessage message) {
         var connection = connections.get(socket.getId());
         if (stopped || connection == null) return;
-        // Binary callbacks execute directly, without Node's pending-data queue. Bound each
-        // admitted frame including its header while preserving the realtime path.
+        // Bound each frame including its header. Established streams remain direct; output
+        // following terminal-opened waits for that announcement through the bounded inbox.
         if (message.getPayloadLength() > limits.maxReceivedBinaryBytes()) {
             connection.close(CloseStatus.POLICY_VIOLATION);
             return;

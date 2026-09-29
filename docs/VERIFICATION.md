@@ -2,7 +2,7 @@
 
 ## 2026-09-30 v8 입장 T9.3
 
-Java 21·macOS에서 서버의 credential 입장·동일 주체 교체를 검증했다. 원본 로그와
+최초 인증 커밋 `8e1daf4`를 Java 21·macOS에서 검증했다. 원본 로그와
 변경 파일 SHA-256 목록은 로컬 `artifacts/t9-3/`에 둔다. 기준 커밋은 `11235ac`이다.
 
 - Java 전체 **432개 통과**, 실패·오류·skip 0. 파서 8개·입장 11개·설정 7개가 추가됐다.
@@ -33,9 +33,36 @@ pnpm format
 pnpm depcruise
 ```
 
-로컬에서는 브라우저·패키징된 정적 웹을 재실행하지 않았다. 기본 v7의 해당 검증은 CI의
-Node/Spring 브라우저 작업에서 수행한다. 현재 React·Connector의 v8 연동, 공개 취소 API,
-운영 배포는 이번 완료 범위가 아니다. 취소 경합은 내부 Java command queue를 제어한 검증이다.
+위 API-only 검증은 브라우저를 제외했다. 이후 공개 CI에서 기존 출력 순서 경합을 확인해 아래 검증을 추가했다.
+현재 React·Connector의 v8 연동, 공개 취소 API, 운영 배포는 이번 완료 범위가 아니다.
+취소 경합은 내부 Java command queue를 제어한 검증이다.
+
+### CI에서 드러난 초기 출력 순서 경합
+
+[최초 CI](https://github.com/edonghyun/ttyroom/actions/runs/36595733437)는 Spring 브라우저 4개,
+같은 커밋 재실행에서는 3개가 빈 출력으로 실패했다. 로컬 38개·추가 반복 20회는 통과했다.
+진단 fixture를 추가한 [CI](https://github.com/edonghyun/ttyroom/actions/runs/36597749150)의
+2개 실패에서는 출력 seq 1·2가 terminal-opened보다 먼저 도착했다. 진단 추가 중 발견한
+Playwright callback overload 타입 오류는 `0d74f22`에서 수정했다. 재실행 성공으로 원인 해결을 대신하지 않았다.
+
+해당 터미널의 생성 확인과 초기 출력만 기존 bounded inbox에서 순서를 보존하도록 수정했다.
+수정 후 웹 포함 JAR로 실행한 로컬 결과는 다음과 같다.
+
+- Java 전체 **436개 통과**. 순서 RED 2개와 종료·큐 상한 보강 2개가 추가됐다.
+- Chromium 브라우저 **38개 통과**. 실제 Connector·PTY, 초기 출력·탭 복제·재접속·서버 재시작 포함.
+- Spring 생성·입장 프로세스 **33개**, inventory·replay 복구 **10개**, v8 입장 **13개 통과**.
+- Java 포맷, TypeScript 타입·전체 포맷 검사 통과. TS 제품 코드는 변경하지 않았다.
+
+```sh
+./scripts/build-spring.sh
+./scripts/test-spring.sh browser
+./scripts/test-spring.sh protocol src/terminal-creation.e2e.ts src/admission.e2e.ts src/terminal-recovery.e2e.ts
+./scripts/test-spring.sh authentication
+```
+
+후속 검증 JAR SHA-256: `e5e42aecd7a6cc945d3c3321c3496fba1b905c059d2a00722e034bf444e36f5e`.
+변경 파일 해시와 로그는 `artifacts/t9-3/announcement-*`에 둔다. 공개 CI 전체의 최종 상태는
+[완료 이슈](https://github.com/edonghyun/ttyroom/issues/7)의 검증 커밋·실행 링크로 확인한다.
 
 ## 2026-09-30 등록 API 권한 T9.2
 

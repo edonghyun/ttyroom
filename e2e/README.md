@@ -189,3 +189,7 @@ HTTP 등록 fixture가 서버·소켓·임시 SQLite 수명을 소유하며 서�
 
 protocol·Connector와 JAR를 먼저 빌드하고, 테스트가 끝날 때까지 산출물을 다시 쓰지 않는다.
 이 검사는 현재 v7 React·Connector의 v8 연동이나 공개 취소 API를 검증하지 않는다.
+
+브라우저 실패 보고서에는 참여자별 `alice-wire-order`·`bob-wire-order`를 첨부한다.
+최근 1,024개 메시지의 송수신 방향·종류와 binary header만 보관하며 credential·터미널 payload는 기록하지 않는다.
+연결 성공과 실제 출력 전달을 구분하고, 초기 출력이 생성 알림을 앞지르는 경합을 진단하는 용도다.
