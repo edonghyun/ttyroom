@@ -24,7 +24,7 @@ artifacts/             로컬 검증 증거
 
 `backend/`는 독립 Gradle 프로젝트이고 `web`, `connector`, `protocol`, `e2e`, `legacy/node-server`는 pnpm workspace에 속합니다. 루트 `package.json`은 TypeScript 패키지와 E2E 도구를 관리합니다. Spring 빌드·실행을 pnpm으로 감싸지 않습니다.
 
-Spring은 HTTP 방 생성·입장 인증, 터미널 inventory·생성·종료·resize·메타데이터·제목·창 배치, exclusive/shared 입력, 참여자 focus/cursor를 지원합니다. `TTYROOM_STATE_PATH`를 지정하면 SQLite에 방을 저장하고 새 서버 프로세스에서도 복원합니다. 실제 Connector의 PTY 유지·재접속 replay도 검증합니다. `TTYROOM_CONFIG_PATH`의 설정과 환경변수 우선순위·정책 적용도 지원합니다. React 빌드 결과를 JAR에 포함해 서버에서 화면을 제공합니다. 기본 실행 안내는 Spring을 기준으로 합니다. 프로토콜 회귀 비교용 Node 서버도 보관합니다. `pnpm test:e2e`와 `pnpm test:browser`의 기본 대상은 Node이므로 Spring 검증에는 아래 스크립트를 사용합니다.
+Spring은 HTTP 방 생성·입장 인증, 터미널 inventory·생성·종료·resize·메타데이터·제목·창 배치, exclusive/shared 입력, 참여자 focus/cursor를 지원합니다. `TTYROOM_STATE_PATH`를 지정하면 SQLite에 방을 저장하고 새 서버 프로세스에서도 복원합니다. 실제 Connector의 PTY 유지·재접속 replay도 검증합니다. `TTYROOM_CONFIG_PATH`의 설정과 환경변수 우선순위·정책 적용도 지원합니다. React 빌드 결과를 JAR에 포함해 서버에서 화면을 제공합니다. 기본 실행 안내는 Spring을 기준으로 합니다. 프로토콜 회귀 비교용 Node 서버도 보관합니다. `pnpm test:e2e`는 Node 비교 서버, `pnpm test:browser`는 Spring v8을 대상으로 합니다. Spring 프로세스 검증에는 아래 스크립트를 사용합니다.
 
 **Connector**는 사용자 PC의 로컬 셸을 연결하는 프로그램입니다. 자신의 컴퓨터에서 셸을 공유하는 사람이 실행하며, 다른 참여자는 브라우저만으로 관찰하거나 입력 권한을 받아 조작할 수 있습니다. **Host**는 Connector가 연결한 컴퓨터를 뜻합니다.
 
@@ -92,10 +92,11 @@ pnpm --filter @ttyroom/web exec playwright install chromium
 
 E2E 실행기는 서버·Connector 프로세스를 직접 시작하고 정리합니다. 서버를 수동으로
 켜 둘 필요는 없습니다. 스크립트는 Java/JAR 경로를 JSON argv로 전달하며 자동 빌드하지 않습니다.
-Node 비교 구현을 빌드한 후에는 `pnpm test:e2e`, `pnpm test:browser`로
-같은 테스트를 실행합니다. 이 pnpm 명령들은 Java 단위 테스트를 포함하지 않습니다.
-Spring 전용 등록 API는 `./scripts/test-spring.sh registration`,
-v8 입장·재접속은 `./scripts/test-spring.sh authentication`으로 별도 검증합니다.
+Node 비교 구현을 빌드한 후에는 `pnpm test:e2e`로 공통 프로세스 테스트를 실행합니다.
+제품 React·Connector는 v8 전용이므로 Node v7 브라우저 조합은 지원하지 않습니다. 이 pnpm 명령들은 Java 단위 테스트를 포함하지 않습니다.
+Spring HTTP 명세·등록 API는 `./scripts/test-spring.sh registration`,
+v8 입장·재접속·취소는 `./scripts/test-spring.sh authentication`으로 별도 검증합니다.
+OpenAPI 구조·예시 검증은 `pnpm --filter @ttyroom/e2e test`이며 `pnpm test`에도 포함됩니다.
 포맷 검사는 `pnpm format`입니다. 자세한 작성 기준은 [E2E 안내](../e2e/README.md)를 참고합니다.
 
 ## 서버 설정

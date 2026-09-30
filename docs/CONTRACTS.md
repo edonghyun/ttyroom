@@ -29,3 +29,13 @@ RED → GREEN 사례로 설명하지 않는다.
 
 [작성 가이드](CODE_STYLE.md), [검증 명령](DEVELOPMENT.md),
 [실제 오류 수정 사례](WORK_LOG.md#자원-수명과-실패-처리)를 함께 참고한다.
+
+## API 명세를 구현에서 확인하는 경로
+
+[HTTP 설명](../protocol/HTTP.md) → [OpenAPI](../protocol/openapi.json) →
+[실제 응답 검증](../e2e/src/http-contract.spring.ts) 순서로 읽는다.
+명세 검증기의 누락 검출은 [HTTP guard 테스트](../e2e/src/http-contract.spec.ts),
+명시적 라우트 누락은 [실제 Spring 라우트 검사](../backend/src/test/java/dev/ttyroom/adapter/http/HttpRouteDocumentationTests.java),
+저장 실패 503은 [Java HTTP 테스트](../backend/src/test/java/dev/ttyroom/adapter/http/RoomRegistrationTests.java)에서 확인한다.
+v8 문서 예시는 [공유 fixture](../protocol/fixtures/wire-v8.json)로 TS·Java 코덱과 실제 소켓을 연결한다.
+스키마 검증은 저장·권한·재접속의 행동 테스트를 대신하지 않는다.

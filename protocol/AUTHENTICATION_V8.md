@@ -9,6 +9,8 @@ Spring·React·Connector의 기본 입장 계약이다. 서버 기본값은 8이
 
 HTTP로 [주체를 등록](HTTP.md#spring-등록-api)한 뒤 `/ws`에 아래 메시지를 보낸다.
 
+<!-- wire-example: credential-hello -->
+
 ```json
 {
   "type": "hello",
@@ -33,6 +35,18 @@ participant는 참가자 연결로, host는 Connector 연결로 입장한다. MA
 | 프로세스 버전과 다른 hello 또는 맞지 않는 인증 형식               | `unsupported-protocol-version`, message `server=7` 또는 `server=8`, 연결 종료 |
 | 필드 누락·추가·잘못된 타입                                        | `bad-message`, 입장하지 않음. 기존과 같이 연결에서 올바른 hello 재시도 가능   |
 | 이미 입장한 연결의 hello                                          | `bad-message`, 기존 주체 유지                                                 |
+
+취소 또는 잘못된 credential의 종료 응답:
+
+<!-- wire-example: invalid-credential -->
+
+```json
+{
+  "type": "error",
+  "code": "invalid-credential",
+  "message": "invalid-credential"
+}
+```
 
 credential은 welcome·snapshot·방 이벤트·오류·문자열 진단에 포함하지 않는다.
 서버 메시지와 binary frame의 나머지 형식은 [v7 명세](PROTOCOL.md)와 같다.

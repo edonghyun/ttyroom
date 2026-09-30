@@ -1,0 +1,729 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "TTYRoom Spring HTTP API",
+    "version": "8",
+    "description": "Default Spring v8 HTTP API. WebSocket and binary frames are specified separately. Authentication, storage ordering, JSON byte limits and UTF-16 trimming retain behavior tests; schema validation is not a complete behavioral proof."
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:3000"
+    }
+  ],
+  "paths": {
+    "/healthz": {
+      "get": {
+        "operationId": "health",
+        "summary": "Check HTTP request handling, not Connector or PTY health",
+        "responses": {
+          "200": {
+            "description": "Ready",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "const": "ok"
+                },
+                "examples": {
+                  "example": {
+                    "value": "ok"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rooms": {
+      "post": {
+        "operationId": "createRoom",
+        "summary": "Create a room and return its invitation and separate manager authority",
+        "responses": {
+          "201": {
+            "description": "Success",
+            "headers": {
+              "Cache-Control": {
+                "description": "Credential responses must not be cached.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoomCreated"
+                },
+                "examples": {
+                  "example": {
+                    "value": {
+                      "roomId": "b3bb1eca-9e65-4b54-87ad-d491f16c9f09",
+                      "name": "Pair debugging",
+                      "token": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+                      "managerCredential": "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM",
+                      "joinUrl": "http://127.0.0.1:3000/r/b3bb1eca-9e65-4b54-87ad-d491f16c9f09#AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Fixed public error; input and storage diagnostics are not echoed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["error"],
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "enum": ["invalid room name", "invalid json", "request body too large"]
+                    }
+                  }
+                },
+                "examples": {
+                  "example": {
+                    "value": {
+                      "error": "invalid room name"
+                    }
+                  }
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "const": "host header required"
+                },
+                "examples": {
+                  "example": {
+                    "value": "host header required"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "$ref": "#/components/responses/RegistrationUnavailable"
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "description": "Empty bodies are accepted where optional. JSON is parsed even without Content-Type; size limit is 16,384 bytes.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoomCreation"
+              },
+              "examples": {
+                "example": {
+                  "value": {
+                    "name": "Pair debugging"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rooms/{roomId}/participants": {
+      "post": {
+        "operationId": "registerParticipant",
+        "summary": "Register a new participant; repeated requests create distinct subjects",
+        "responses": {
+          "201": {
+            "description": "Success",
+            "headers": {
+              "Cache-Control": {
+                "description": "Credential responses must not be cached.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParticipantRegistered"
+                },
+                "examples": {
+                  "example": {
+                    "value": {
+                      "participantId": "b3bb1eca-9e65-4b54-87ad-d491f16c9f09",
+                      "credential": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/RegistrationInvalid"
+          },
+          "403": {
+            "$ref": "#/components/responses/RegistrationForbidden"
+          },
+          "503": {
+            "$ref": "#/components/responses/RegistrationUnavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "roomId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Empty bodies are accepted where optional. JSON is parsed even without Content-Type; size limit is 16,384 bytes.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ParticipantRegistration"
+              },
+              "examples": {
+                "example": {
+                  "value": {
+                    "token": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rooms/{roomId}/participants/{subjectId}": {
+      "delete": {
+        "operationId": "revokeParticipant",
+        "summary": "Revoke a subject and close its current connection after saving",
+        "responses": {
+          "204": {
+            "$ref": "#/components/responses/Revoked"
+          },
+          "400": {
+            "$ref": "#/components/responses/RevocationInvalid"
+          },
+          "403": {
+            "$ref": "#/components/responses/RevocationForbidden"
+          },
+          "503": {
+            "$ref": "#/components/responses/RevocationUnavailable"
+          }
+        },
+        "description": "Missing or wrong-role subjects return 204 for an authorized manager. A storage failure preserves the credential and live session. Revocation does not rotate the invitation or guarantee local PTY termination.",
+        "parameters": [
+          {
+            "name": "roomId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "subjectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$"
+            }
+          }
+        ],
+        "security": [
+          {
+            "managerCredential": []
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "description": "Empty bodies are accepted where optional. JSON is parsed even without Content-Type; size limit is 16,384 bytes.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmptyObject"
+              },
+              "examples": {
+                "example": {
+                  "value": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rooms/{roomId}/hosts": {
+      "post": {
+        "operationId": "registerHost",
+        "summary": "Register a new host; repeated requests create distinct subjects",
+        "responses": {
+          "201": {
+            "description": "Success",
+            "headers": {
+              "Cache-Control": {
+                "description": "Credential responses must not be cached.",
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "no-store"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HostRegistered"
+                },
+                "examples": {
+                  "example": {
+                    "value": {
+                      "hostId": "b3bb1eca-9e65-4b54-87ad-d491f16c9f09",
+                      "credential": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/RegistrationInvalid"
+          },
+          "403": {
+            "$ref": "#/components/responses/RegistrationForbidden"
+          },
+          "503": {
+            "$ref": "#/components/responses/RegistrationUnavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "roomId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "description": "Empty bodies are accepted where optional. JSON is parsed even without Content-Type; size limit is 16,384 bytes.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmptyObject"
+              },
+              "examples": {
+                "example": {
+                  "value": {}
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "managerCredential": []
+          }
+        ]
+      }
+    },
+    "/api/rooms/{roomId}/hosts/{subjectId}": {
+      "delete": {
+        "operationId": "revokeHost",
+        "summary": "Revoke a subject and close its current connection after saving",
+        "responses": {
+          "204": {
+            "$ref": "#/components/responses/Revoked"
+          },
+          "400": {
+            "$ref": "#/components/responses/RevocationInvalid"
+          },
+          "403": {
+            "$ref": "#/components/responses/RevocationForbidden"
+          },
+          "503": {
+            "$ref": "#/components/responses/RevocationUnavailable"
+          }
+        },
+        "description": "Missing or wrong-role subjects return 204 for an authorized manager. A storage failure preserves the credential and live session. Revocation does not rotate the invitation or guarantee local PTY termination.",
+        "parameters": [
+          {
+            "name": "roomId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "subjectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$"
+            }
+          }
+        ],
+        "security": [
+          {
+            "managerCredential": []
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "description": "Empty bodies are accepted where optional. JSON is parsed even without Content-Type; size limit is 16,384 bytes.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmptyObject"
+              },
+              "examples": {
+                "example": {
+                  "value": {}
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "managerCredential": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Opaque room manager credential (not JWT). Exactly one Authorization header. Case-insensitive Bearer scheme."
+      }
+    },
+    "schemas": {
+      "SubjectId": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$"
+      },
+      "Credential": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9_-]{32}$"
+      },
+      "RoomCreated": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["roomId", "name", "token", "managerCredential", "joinUrl"],
+        "properties": {
+          "roomId": {
+            "$ref": "#/components/schemas/SubjectId"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "token": {
+            "$ref": "#/components/schemas/Credential"
+          },
+          "managerCredential": {
+            "$ref": "#/components/schemas/Credential"
+          },
+          "joinUrl": {
+            "type": "string",
+            "pattern": "^http://[^/]+/r/[a-f0-9-]+#[A-Za-z0-9_-]{32}$"
+          }
+        }
+      },
+      "ParticipantRegistered": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["participantId", "credential"],
+        "properties": {
+          "participantId": {
+            "$ref": "#/components/schemas/SubjectId"
+          },
+          "credential": {
+            "$ref": "#/components/schemas/Credential"
+          }
+        }
+      },
+      "HostRegistered": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["hostId", "credential"],
+        "properties": {
+          "hostId": {
+            "$ref": "#/components/schemas/SubjectId"
+          },
+          "credential": {
+            "$ref": "#/components/schemas/Credential"
+          }
+        }
+      },
+      "ParticipantRegistration": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["token"],
+        "properties": {
+          "token": {
+            "type": "string"
+          }
+        }
+      },
+      "EmptyObject": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {}
+      },
+      "RoomCreation": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Trimmed with JavaScript String.trim semantics; then 1..80 UTF-16 code units. This transformation is tested in HTTP behavior tests, not JSON Schema."
+          }
+        }
+      }
+    },
+    "responses": {
+      "RegistrationUnavailable": {
+        "description": "Fixed public error; input and storage diagnostics are not echoed.",
+        "headers": {
+          "Cache-Control": {
+            "description": "Credential responses must not be cached.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "const": "no-store"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["error"],
+              "properties": {
+                "error": {
+                  "type": "string",
+                  "enum": ["registration unavailable"]
+                }
+              }
+            },
+            "examples": {
+              "example": {
+                "value": {
+                  "error": "registration unavailable"
+                }
+              }
+            }
+          }
+        }
+      },
+      "RegistrationInvalid": {
+        "description": "Fixed public error; input and storage diagnostics are not echoed.",
+        "headers": {
+          "Cache-Control": {
+            "description": "Credential responses must not be cached.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "const": "no-store"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["error"],
+              "properties": {
+                "error": {
+                  "type": "string",
+                  "enum": ["invalid registration request", "invalid json", "request body too large"]
+                }
+              }
+            },
+            "examples": {
+              "example": {
+                "value": {
+                  "error": "invalid registration request"
+                }
+              }
+            }
+          }
+        }
+      },
+      "RegistrationForbidden": {
+        "description": "Fixed public error; input and storage diagnostics are not echoed.",
+        "headers": {
+          "Cache-Control": {
+            "description": "Credential responses must not be cached.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "const": "no-store"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["error"],
+              "properties": {
+                "error": {
+                  "type": "string",
+                  "enum": ["registration forbidden"]
+                }
+              }
+            },
+            "examples": {
+              "example": {
+                "value": {
+                  "error": "registration forbidden"
+                }
+              }
+            }
+          }
+        }
+      },
+      "RevocationInvalid": {
+        "description": "Fixed public error; input and storage diagnostics are not echoed.",
+        "headers": {
+          "Cache-Control": {
+            "description": "Credential responses must not be cached.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "const": "no-store"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["error"],
+              "properties": {
+                "error": {
+                  "type": "string",
+                  "enum": ["invalid revocation request", "invalid json", "request body too large"]
+                }
+              }
+            },
+            "examples": {
+              "example": {
+                "value": {
+                  "error": "invalid revocation request"
+                }
+              }
+            }
+          }
+        }
+      },
+      "RevocationForbidden": {
+        "description": "Fixed public error; input and storage diagnostics are not echoed.",
+        "headers": {
+          "Cache-Control": {
+            "description": "Credential responses must not be cached.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "const": "no-store"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["error"],
+              "properties": {
+                "error": {
+                  "type": "string",
+                  "enum": ["revocation forbidden"]
+                }
+              }
+            },
+            "examples": {
+              "example": {
+                "value": {
+                  "error": "revocation forbidden"
+                }
+              }
+            }
+          }
+        }
+      },
+      "RevocationUnavailable": {
+        "description": "Fixed public error; input and storage diagnostics are not echoed.",
+        "headers": {
+          "Cache-Control": {
+            "description": "Credential responses must not be cached.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "const": "no-store"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["error"],
+              "properties": {
+                "error": {
+                  "type": "string",
+                  "enum": ["revocation unavailable"]
+                }
+              }
+            },
+            "examples": {
+              "example": {
+                "value": {
+                  "error": "revocation unavailable"
+                }
+              }
+            }
+          }
+        }
+      },
+      "Revoked": {
+        "description": "Revoked or already absent; empty response body",
+        "headers": {
+          "Cache-Control": {
+            "description": "Credential responses must not be cached.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "const": "no-store"
+            }
+          }
+        }
+      }
+    }
+  }
+}

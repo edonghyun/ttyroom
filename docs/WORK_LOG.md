@@ -338,3 +338,25 @@ credential 제거와 host identity·터미널 제거는 한 StoredRoom 저장으
 경합 테스트는 저장 gate와 실제 room command lock 대기를 관찰하며 sleep으로 순서를 추정하지 않는다.
 실제 JAR E2E에서 취소 후 재시작을, 브라우저에서는 Alice의 취소 뒤 Bob이 같은 PTY의
 제어권을 얻어 출력하는 흐름을 검증했다. 실행 수치와 환경은 [검증 기록](VERIFICATION.md)에 둔다.
+
+## HTTP 명세 자동 검증과 문서 UI 선택
+
+T11.1은 Spring HTTP 경로 6개의 OpenAPI 3.1 명세와 실제 응답을 연결했다.
+검증기가 필수 no-store 없는 204를 통과시키던 행동을 테스트로 먼저 고정했다.
+실제 assertion RED 뒤 헤더 검증을 구현했고, 누락 필드·추가 권한 필드·credential 형식·상태·빈 본문도 검사한다.
+기존 서버를 명세에 연결한 테스트는 특성화이며 제품 기능의 RED/GREEN으로 표현하지 않는다.
+
+Markdown의 표시된 응답 예시는 OpenAPI 예시와 같아야 한다. Java에서는 구체적 HTTP 라우트
+집합의 양방향 일치를 실제 Spring context에서 검사하고, 저장 실패를 주입해 다섯 작업의 503 응답을 명세와 비교한다.
+v8 hello·취소 오류 fixture는 Markdown, TS·Java 코덱, 실제 WebSocket 흐름에서 공유한다.
+실시간 권한·경합·재시작의 의미는 기존 행동 테스트가 계속 검증한다.
+
+리뷰 후 중복 오류 응답을 OpenAPI components로 모으고, Java 명세 조회를 자원을 소유하는
+테스트 fixture로 정리했다. TS 검증기는 상태·본문을 받아 위반 사항을 반환하며 실제 비밀값을 진단에 출력하지 않는다.
+Java test resource를 추가하는 최초 Gradle 설정은 다중 인자와 closure 오버로드 때문에 자기 의존으로 실패했다.
+파일 목록을 하나의 인자로 넘겨 수정했다. 이 준비 실패는 행동 RED와 구분한다.
+
+[HTTP 문서](../protocol/HTTP.md#openapi와-문서-ui-선택)에 Markdown 단독, OpenAPI 병행,
+annotation 생성, 문서 UI의 비용을 비교했다. OpenAPI는 채택하고 별도 사이트·Swagger UI는 보류한다.
+검토자는 기존 문서 안내에서 설계·실행·계약을 찾도록 하고, 외부 API 독자의 검색·샘플 실행 문제가
+반복되면 UI를 다시 검토한다. 제품 실행 코드는 바꾸지 않았고 추가 의존성은 E2E 개발 전용이다.

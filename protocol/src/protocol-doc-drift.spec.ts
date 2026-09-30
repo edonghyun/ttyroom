@@ -91,3 +91,23 @@ describe("PROTOCOL.md 드리프트 가드 — 역할: 문서 예시와 스키마
     );
   });
 });
+
+it("v8 Markdown examples match shared Java/TypeScript wire fixtures and parsers", () => {
+  const markdown = readFileSync(new URL("../AUTHENTICATION_V8.md", import.meta.url), "utf8");
+  const fixtures = JSON.parse(
+    readFileSync(new URL("../fixtures/wire-v8.json", import.meta.url), "utf8"),
+  ) as Record<string, { type: string }>;
+  const examples = [
+    ...markdown.matchAll(/<!-- wire-example: ([\w-]+) -->\s*```json\s*([\s\S]*?)```/g),
+  ];
+
+  const names = examples.map(([, name]) => name);
+
+  expect(names).toEqual(Object.keys(fixtures));
+  for (const [, name, raw] of examples) {
+    const expected = fixtures[name!];
+    const parsed = expected?.type === "hello" ? parseClientMessage(raw!) : parseServerMessage(raw!);
+    expect(JSON.parse(raw!)).toEqual(expected);
+    expect(parsed).toEqual({ kind: "ok", message: expected });
+  }
+});

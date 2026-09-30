@@ -25,6 +25,42 @@ import java.util.List;
 import java.util.stream.Stream;
 
 class RoomProtocolTests {
+    @Test
+    void credentialHelloMatchesTheSharedV8DocumentationExample() throws Exception {
+        var example = credentialWireExample("credential-hello");
+
+        var decoded = RoomProtocol.hello(example);
+
+        assertThat(decoded)
+                .isEqualTo(
+                        new dev.ttyroom.application.RoomSessions.CredentialHello(
+                                8,
+                                example.path("roomId").asString(),
+                                example.path("credential").asString(),
+                                example.path("name").asString()));
+    }
+
+    @Test
+    void credentialRejectionMatchesTheSharedV8DocumentationExample() throws Exception {
+        var example = credentialWireExample("invalid-credential");
+        var json = JsonMapper.builder().build();
+
+        var encoded =
+                json.readTree(
+                        json.writeValueAsString(
+                                RoomProtocol.encode(
+                                        new Rejected("invalid-credential", "invalid-credential"))));
+
+        assertThat(encoded).isEqualTo(example);
+    }
+
+    private static JsonNode credentialWireExample(String name) throws Exception {
+        try (var input = RoomProtocolTests.class.getResourceAsStream("/protocol/wire-v8.json")) {
+            if (input == null) throw new IllegalStateException("v8 wire fixture missing");
+            return JsonMapper.builder().build().readTree(input).path(name);
+        }
+    }
+
     @ParameterizedTest(name = "{0}")
     @MethodSource("notices")
     void matchesTheSharedProtocolV7Fixture(String fixtureName, RoomNotice notice) throws Exception {

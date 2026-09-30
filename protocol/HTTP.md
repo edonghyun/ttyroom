@@ -64,6 +64,18 @@ Connector는 발급된 Host credential을 stdin으로 받아 v8 hello로 접속�
 
 ### 방 생성의 관리 credential
 
+<!-- http-example: createRoom 201 -->
+
+```json
+{
+  "roomId": "b3bb1eca-9e65-4b54-87ad-d491f16c9f09",
+  "name": "Pair debugging",
+  "token": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+  "managerCredential": "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM",
+  "joinUrl": "http://127.0.0.1:3000/r/b3bb1eca-9e65-4b54-87ad-d491f16c9f09#AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+}
+```
+
 Spring의 `POST /api/rooms`는 공통 응답에 `managerCredential`을 추가한다. 32자 URL-safe 무작위
 비밀값이며 초대 token과 별개다. 관리 digest와 방을 한 번에 저장한 뒤 응답한다. 응답은
 `Cache-Control: no-store`이며 `joinUrl`에는 관리 credential을 넣지 않는다.
@@ -72,6 +84,8 @@ Spring의 `POST /api/rooms`는 공통 응답에 `managerCredential`을 추가한
 ### POST /api/rooms/{roomId}/participants
 
 본문은 `{"token":"<초대 토큰>"}`만 허용한다. 성공은 201이다.
+
+<!-- http-example: registerParticipant 201 -->
 
 ```json
 {
@@ -87,12 +101,30 @@ Spring의 `POST /api/rooms`는 공통 응답에 `managerCredential`을 추가한
 ### POST /api/rooms/{roomId}/hosts
 
 `Authorization: Bearer <관리 credential>` 헤더 하나와 빈 본문 또는 `{}`를 받는다.
-성공은 201, `{"hostId":"<서버 발급 UUID>","credential":"<32자 비밀값>"}`이다.
+성공은 201이다.
+
+<!-- http-example: registerHost 201 -->
+
+```json
+{
+  "hostId": "b3bb1eca-9e65-4b54-87ad-d491f16c9f09",
+  "credential": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+}
+```
+
 초대 token, participant/host credential, 다른 방의 관리 credential로는 등록할 수 없다.
 본문·쿼리의 관리 비밀값으로 헤더를 대신할 수 없다. 기존 hostId를 지정하는 필드도 허용하지 않는다.
 Bearer scheme의 대소문자는 구분하지 않으며 중복 헤더와 잘못된 credential 형식은 거절한다.
 
 ### 저장·응답·오류
+
+권한 거절 응답 예시:
+
+<!-- http-example: registerHost 403 -->
+
+```json
+{ "error": "registration forbidden" }
+```
 
 - 두 등록 API는 해당 방의 명령 순서 안에서 권한을 확인하고 credential draft를 저장한 뒤 확정한다.
   저장 실패 시 새 credential과 성공 응답을 노출하지 않는다.
@@ -140,6 +172,14 @@ subjectId는 소문자 canonical UUID다. 관리 credential·초대 토큰을 UR
 | 403  | `revocation forbidden`                    | 없는 방·잘못된/누락/중복 관리 헤더·다른 방 또는 다른 역할의 credential |
 | 503  | `revocation unavailable`                  | 저장 실패·서버 종료 상태                                               |
 
+권한 거절 응답 예시:
+
+<!-- http-example: revokeParticipant 403 -->
+
+```json
+{ "error": "revocation forbidden" }
+```
+
 오류 JSON도 no-store다. 본문·ID 검사를 권한 검사보다 먼저 수행한다.
 취소는 주체 credential의 무효화다. 초대 토큰 회전이나 사람 단위 차단은 아니며,
 이미 실행한 셸 명령을 되돌리거나 로컬 PTY 프로세스 종료를 보장하지 않는다.
@@ -160,5 +200,38 @@ subjectId는 소문자 canonical UUID다. 관리 credential·초대 토큰을 UR
 - [취소 프로세스 E2E](../e2e/src/revocation.spring.ts): 활성 연결 종료·재시작 후 취소 및 workspace 복원.
 - [정적 웹 E2E](../e2e/src/static-web.e2e.ts)
 
-현재 문서는 수동 명세다. OpenAPI 파일·Swagger UI 및 HTTP 명세 자동 드리프트 검사는
-아직 추가하지 않았다. 먼저 기존 구현의 비표준 호환 동작과 테스트 근거를 명시했다.
+[openapi.json](openapi.json)은 Spring의 명시적 HTTP 경로 6개에 대한 기계 판독 명세다.
+[OpenAPI 3.1](https://spec.openapis.org/oas/v3.1.0.html)의 경로·응답·헤더·JSON Schema 표현을 사용한다.
+Markdown은 저장·권한·재시도·호환성의 의미를 설명한다. 두 파일을 별도 수동 목록으로 방치하지 않는다.
+
+- `pnpm --filter @ttyroom/e2e test`: OpenAPI 구조·참조, 요청/응답 예시, 표시한 Markdown 예시의 일치,
+  검증기 자체의 헤더·본문·상태 오류 검출을 검사한다. `pnpm test`에도 포함된다.
+- `./scripts/test-spring.sh registration`: 실제 Spring 프로세스의 200/201/204/400/403 응답을 명세와 비교한다.
+  문서의 v8 hello와 취소 오류도 실제 소켓에 연결한다.
+- `./backend/gradlew -p backend test`: 명시적 Spring HTTP 라우트와 명세 경로 집합을 비교하고,
+  저장 실패를 주입한 다섯 작업의 503 본문·no-store를 같은 명세 예시와 비교한다.
+- `pnpm --filter @ttyroom/protocol test`: v7과 v8 문서의 wire 예시를 TS 파서로 검사한다.
+  Java 코덱도 같은 v8 fixture를 사용한다.
+
+검증 범위는 명시적 HTTP 경로와 표시된 JSON 예시다. 모든 설명 문장의 의미나 조합을 자동 증명하지 않는다.
+JSON 바이트 제한·UTF-16 trim·정확한 권한 판정·저장 순서·경합·재접속은 기존 행동 테스트가 맡는다.
+`/api/**`의 fallback 404, 정적 파일, `/ws` 업그레이드, binary frame은 OpenAPI 범위에서 제외한다.
+방 생성 400의 Host 누락 text/plain은 no-store가 없는 호환 분기이므로 이 상태의 공통 헤더를 필수로
+선언하지 않는다. JSON 400의 no-store는 실제 응답 테스트에서 별도로 검사한다.
+
+### OpenAPI와 문서 UI 선택
+
+현재 독자는 로컬 실행·API 연동을 확인하는 개발자와 설계·검증 근거를 읽는 포트폴리오 검토자를 기준으로 삼는다.
+첫 독자는 경로와 요청/응답을, 두 번째 독자는 저장·실패·복구의 이유와 테스트를 찾아야 한다.
+
+| 선택                             | 얻는 것                                                                  | 유지 비용과 결정                                                                                                                                         |
+| -------------------------------- | ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Markdown만 유지                  | 행동과 비표준 호환 규칙을 바로 설명                                      | 응답 필드·상태가 바뀌어도 수동 리뷰에 의존하므로 이것만으로는 부족                                                                                       |
+| OpenAPI + 기존 Markdown          | 표준 구조와 실제 응답의 차이를 CI에서 검출; 의미 설명은 기존 링크로 탐색 | 명세·설명 두 표현과 검증 의존성을 관리해야 함. 동일 예시 비교와 경로 집합 검사로 연결하므로 채택                                                         |
+| Spring annotation으로 명세 생성  | controller와 명세를 한 위치에서 편집 가능                                | 현재 raw JSON·엄격한 필드 검사·고정 오류를 별도 annotation으로 다시 설명해야 함. 같은 구현에서 생성한 명세만으로 독립 계약 검증을 대신하지 않으므로 보류 |
+| Swagger UI 또는 별도 문서 사이트 | 탐색·검색·대화형 요청 도구                                               | 현재 경로 6개는 이 문서와 [문서 안내](../docs/README.md)에서 찾을 수 있음. 사이트 빌드·배포·내비게이션 관리가 더 필요해 보류                             |
+
+OpenAPI 검증은 E2E 개발 의존성만 사용한다. 서버·클라이언트 런타임 의존성이나 `/swagger-ui` endpoint는 추가하지 않는다.
+Java 테스트는 정적 명세·fixture만 읽으며 Node/pnpm을 호출하지 않는다.
+외부 API 사용자가 늘어 endpoint 탐색·검색 또는 샘플 요청 실행 문제가 실제로 반복되면 UI를 다시 검토한다.
+검토 과정과 실행 근거는 [작업 이력](../docs/WORK_LOG.md)과 [검증 기록](../docs/VERIFICATION.md)에 둔다.

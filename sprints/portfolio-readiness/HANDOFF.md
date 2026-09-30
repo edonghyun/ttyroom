@@ -88,7 +88,7 @@
 - Node v7 공통 프로세스 재검증 213개도 통과했다.
 - 구현 커밋: [`9b752b6`](https://github.com/edonghyun/ttyroom/commit/9b752b67d56a4697b1007967720d5da1c5c56975). 공개 CI의 최종 실행 링크와 완료 상태는 [T9.4 issue](https://github.com/edonghyun/ttyroom/issues/8)에 기록한다.
 
-## 마지막 구현 — T9.5
+## 이전 완료 — T9.5
 
 [T9.5 — credential 취소와 입장 경합 E2E](https://github.com/edonghyun/ttyroom/issues/9).
 
@@ -98,10 +98,20 @@
 - [현재 인증 계약](../../docs/AUTHENTICATION.md)과 [실행 범위](../../docs/VERIFICATION.md#2026-09-30-credential-취소-t95)를 갱신했다.
 - 공개 CI의 최종 실행과 완료 상태는 위 issue를 기준으로 확인한다.
 
+## 마지막 구현 — T11.1
+
+[T11.1 — API 명세 자동 검증과 문서 UI 필요성 검토](https://github.com/edonghyun/ttyroom/issues/11).
+
+- Spring HTTP 경로 6개를 OpenAPI 3.1로 명시하고 실제 응답의 상태·헤더·본문과 연결했다.
+- Markdown 예시·Java 라우트·저장 실패 503·공유 v8 wire fixture를 테스트로 묶었다.
+- Java 463개, TS 단위 581개, 실제 Spring 명세·등록 13개 통과. 제품 실행 코드는 변경하지 않았다.
+- [검증 기록](../../docs/VERIFICATION.md#2026-09-30-http-명세-검증-t111)과
+  [OpenAPI·문서 UI 선택 근거](../../protocol/HTTP.md#openapi와-문서-ui-선택)를 정리했다.
+- 별도 사이트·Swagger UI는 보류한다. 공개 CI의 최종 실행과 완료 상태는 위 issue를 기준으로 확인한다.
+
 ## 다음 후보
 
-[T11.1 — API 명세 자동 검증](https://github.com/edonghyun/ttyroom/issues/11):
-수동 HTTP 명세와 구현의 차이를 자동으로 잡는 최소 검증부터 검토한다.
-문서 UI 도입 여부는 별도로 판단한다.
+[T10.1 — 재현 가능한 성능 측정](https://github.com/edonghyun/ttyroom/issues/10):
+단일 서버·Connector·브라우저 조건을 고정하고 지연·메모리 측정의 원시 결과부터 남긴다.
 
 [T8.4 — 라이선스](https://github.com/edonghyun/ttyroom/issues/4)는 소유자 선택을 기다리는 별도 백로그로 유지한다.

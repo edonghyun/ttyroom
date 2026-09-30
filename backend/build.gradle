@@ -36,7 +36,7 @@ tasks.named('bootJar') {
 
 // Shared protocol fixtures are test inputs, not a Node build/runtime dependency.
 tasks.named('processTestResources') {
-    from('../protocol/fixtures/wire-v7.json') {
+    from(['../protocol/fixtures/wire-v7.json', '../protocol/fixtures/wire-v8.json', '../protocol/openapi.json']) {
         into 'protocol'
     }
 }

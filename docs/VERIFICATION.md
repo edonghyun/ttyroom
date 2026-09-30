@@ -1,5 +1,26 @@
 # 검증 기록
 
+## 2026-09-30 HTTP 명세 검증 T11.1
+
+기준 커밋 `cc9e2c6`, Java 21·macOS에서 실행했다. 로그는 로컬 `artifacts/t11-1/`에 둔다.
+제품 실행 코드를 바꾸지 않아 실제 프로세스 검증은 T9.5에서 검증한 동일 JAR의 불변 복사본을 사용했다.
+
+- Java 전체 **463개 통과**, 실패·오류·skip 0. 명시적 라우트와 OpenAPI 경로의 일치,
+  저장 실패 503 다섯 작업, 공유 v8 코덱 예시를 포함한다.
+- TS 단위 **581개 통과**: protocol 102, HTTP 명세 guard 9, Connector 65, React 187, Node 비교 서버 218.
+- 실제 Spring HTTP·wire 명세 **9개**, 기존 등록 **4개**, 합계 **13개 통과**.
+  성공·거절 응답의 스키마·상태·Content-Type·no-store·빈 204와 문서 hello/취소 오류를 검증했다.
+- 타입·Prettier·의존성 경계 검사 통과. Java AOSP 포맷 적용.
+
+최초 guard 테스트는 필수 헤더가 없는 204를 잘못 통과시키는 assertion 실패였다.
+수정 후 GREEN을 확인했다. Java resource 설정의 자기 의존 실패는 준비 오류로 따로 보관했다.
+기존 서버의 응답을 새 명세와 비교한 성공은 특성화이며 새 제품 기능의 TDD로 주장하지 않는다.
+
+OpenAPI 구조·예시 검사는 pnpm test, 실제 HTTP 응답은 기존 registration CI 단계,
+Java 경로·503·wire fixture는 Java test에 연결했다.
+최종 커밋과 공개 CI는 [T11.1 issue](https://github.com/edonghyun/ttyroom/issues/11)에 기록한다.
+전체 설명 문장, 모든 요청 조합, 공개 운영 보안을 자동 증명하는 검증은 아니다.
+
 ## 2026-09-30 credential 취소 T9.5
 
 Java 21·macOS, 기준 커밋 `3240614`에서 검증했다. 원본 로그는 로컬 `artifacts/t9-5/`에 둔다.

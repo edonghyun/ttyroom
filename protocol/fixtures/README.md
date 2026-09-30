@@ -1,6 +1,6 @@
 # Cross-language wire fixtures
 
-`wire-v7.json` is a static compatibility baseline for TypeScript and the planned Java backend.
+`wire-v7.json` is a static compatibility baseline for TypeScript and the Java backend.
 
 - `messages`: direction is relative to the server; parse `raw` and compare its normalized JSON structure with `expected`. JSON object key order and whitespace are not significant. Cases come from PROTOCOL.md, with explicit normalization defaults and hello examples for both roles.
 - `invalidMessages`: must return a bad-message result; validator-specific error wording is not fixed.
@@ -11,3 +11,11 @@
 Run `pnpm --filter @ttyroom/protocol test` from the repository root. `src/wire-fixtures.spec.ts` checks all fixtures and coverage of every current message type and room event kind. This is representative contract coverage, not exhaustive field-boundary or authorization coverage; existing unit and E2E tests remain necessary.
 
 Do not regenerate expected data from a new implementation merely to make tests pass. A wire change requires explicit compatibility review and protocol-version policy.
+
+`wire-v8.json` contains the credential hello and fixed credential-rejection response.
+The marked examples in `AUTHENTICATION_V8.md`, TypeScript parsers, Java codec tests and the
+Spring HTTP specification process suite use these same values. Example credentials are synthetic.
+Changing a fixture and its Markdown together still requires the codec and real process tests to pass.
+
+HTTP paths, schemas and examples live in `../openapi.json`; they are checked by the E2E contract guard
+and copied as a Java test resource. See [HTTP verification and scope](../HTTP.md#검증과-명세-유지).

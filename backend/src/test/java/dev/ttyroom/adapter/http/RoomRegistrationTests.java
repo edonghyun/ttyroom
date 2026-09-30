@@ -359,6 +359,47 @@ class RoomRegistrationTests {
         }
     }
 
+    @ParameterizedTest
+    @ValueSource(
+            strings = {
+                "createRoom",
+                "registerParticipant",
+                "registerHost",
+                "revokeParticipant",
+                "revokeHost"
+            })
+    void storageFailureMatchesTheOpenApiErrorExample(String operation) throws Exception {
+        try (var server = new RegistrationServer()) {
+            var room = server.createRoom();
+            var participant =
+                    server.registerParticipant(room, room.token())
+                            .body()
+                            .path("participantId")
+                            .asString();
+            var host = server.registerHost(room, room.manager()).body().path("hostId").asString();
+            var expected = HttpSpecification.read().responseExample(operation, 503);
+            server.store.rejectWrites = true;
+
+            var response =
+                    switch (operation) {
+                        case "createRoom" -> server.post("/api/rooms", "{}", null);
+                        case "registerParticipant" ->
+                                server.registerParticipant(room, room.token());
+                        case "registerHost" -> server.registerHost(room, room.manager());
+                        case "revokeParticipant" ->
+                                server.revoke(
+                                        room, "participants", participant, room.manager(), "{}");
+                        case "revokeHost" ->
+                                server.revoke(room, "hosts", host, room.manager(), "{}");
+                        default -> throw new IllegalArgumentException("Unknown operation");
+                    };
+
+            assertThat(response.status()).isEqualTo(503);
+            assertThat(response.cacheControl()).isEqualTo(expected.cacheControl());
+            assertThat(response.body()).isEqualTo(expected.body());
+        }
+    }
+
     private static void assertIssued(Response response, String identityField) {
         assertThat(response.status()).isEqualTo(201);
         assertThat(response.cacheControl()).isEqualTo("no-store");

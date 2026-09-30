@@ -1,0 +1,14 @@
+{
+  "credential-hello": {
+    "type": "hello",
+    "protocolVersion": 8,
+    "roomId": "b3bb1eca-9e65-4b54-87ad-d491f16c9f09",
+    "credential": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+    "name": "Alice"
+  },
+  "invalid-credential": {
+    "type": "error",
+    "code": "invalid-credential",
+    "message": "invalid-credential"
+  }
+}
