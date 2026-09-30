@@ -10,6 +10,17 @@ describe("capacity evidence", () => {
     expect(observed).toMatchObject({ count: 2, p95UpperMs: null, over1000Ms: 1, maxMs: 1001 });
     expect(observed.buckets).toHaveLength(1002);
   });
+  it("keeps an observation stable when late samples arrive", () => {
+    const latency = new Latencies();
+    latency.add(1);
+
+    const observed = latency.summary();
+    latency.add(2);
+
+    expect(observed.count).toBe(1);
+    expect(observed.buckets[2]).toBe(0);
+  });
+
   it("never calls an empty run or a run with missing output successful", () => {
     const output = new Latencies();
     const control = new Latencies();

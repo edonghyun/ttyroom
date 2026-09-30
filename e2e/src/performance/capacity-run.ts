@@ -15,6 +15,7 @@ interface Scenario {
   kibPerSecondPerTerminal: number;
   seconds: number;
   recording: boolean;
+  compression?: boolean;
   slow?: boolean;
   reconnect?: boolean;
 }
@@ -23,11 +24,19 @@ const javaHome = process.env.JAVA_HOME;
 if (!root || !javaHome) throw new Error("Use scripts/measure-capacity.sh with Java 21");
 const directory = resolve(root);
 const profile = process.env.TTYROOM_CAPACITY_PROFILE ?? "full";
-if (!["smoke", "full"].includes(profile)) throw new Error("Unknown capacity profile");
+if (!["smoke", "full", "recovery"].includes(profile)) throw new Error("Unknown capacity profile");
 
 async function trial(scenario: Scenario) {
   const output = resolve(directory, scenario.name);
   await mkdir(output);
+  console.log(
+    JSON.stringify({
+      scenario: scenario.name,
+      status: "running",
+      seconds: scenario.seconds,
+      compression: scenario.compression ?? true,
+    }),
+  );
   const peers: CapacityPeer[] = [];
   let room: Awaited<ReturnType<typeof registeredRoom>> | undefined;
   let observation: JvmObservation | undefined;
@@ -42,6 +51,8 @@ async function trial(scenario: Scenario) {
         bytes: number;
         expectedBytes: number;
         closures: (number | null)[];
+        errors: string[];
+        restoredParticipants: number;
       }
     | undefined;
   let slow: { gaps: number; closeCode: number | null } | undefined;
@@ -74,6 +85,7 @@ async function trial(scenario: Scenario) {
       const peer = await CapacityPeer.connect(
         room.server.baseUrl,
         hello(credential.secret, `Synthetic-${index}`),
+        { compression: scenario.compression },
       );
       peers.push(peer);
       hosts.push({ id: credential.id, peer });
@@ -99,6 +111,7 @@ async function trial(scenario: Scenario) {
       const peer = await CapacityPeer.connect(
         room.server.baseUrl,
         hello(credential.secret, `Observer-${i}`),
+        { compression: scenario.compression },
       );
       peers.push(peer);
       observers.push(peer);
@@ -111,6 +124,7 @@ async function trial(scenario: Scenario) {
       slowPeer = await CapacityPeer.connect(
         room.server.baseUrl,
         hello(credential.secret, "Paused-consumer"),
+        { compression: scenario.compression },
       );
       peers.push(slowPeer);
       await slowPeer.wait(() => slowPeer!.syncs.size === scenario.terminals);
@@ -151,7 +165,7 @@ async function trial(scenario: Scenario) {
           const peer = await CapacityPeer.connect(
             room!.server.baseUrl,
             hello(credential, `Rejoined-${i}`),
-            "replay",
+            { mode: "replay", compression: scenario.compression },
           );
           peers.push(peer);
           await peer.wait(() => peer.syncs.size === scenario.terminals);
@@ -164,7 +178,19 @@ async function trial(scenario: Scenario) {
       const bytes = restored.reduce((sum, p) => sum + p.receivedBytes, 0);
       const expectedBytes = scenario.terminals * 1_048_576 * 5;
       recovery = {
-        completed: restored.length === 5 && bytes === expectedBytes,
+        completed:
+          restored.length === 5 &&
+          bytes === expectedBytes &&
+          restored.every(
+            (peer) =>
+              peer.sequenceErrors === 0 &&
+              peer.bytesByTerminal.size === scenario.terminals &&
+              [...peer.bytesByTerminal.values()].every((bytes) => bytes === 1_048_576),
+          ),
+        errors: joined.flatMap((result) =>
+          result.status === "rejected" ? [String(result.reason)] : [],
+        ),
+        restoredParticipants: restored.length,
         elapsedMs: performance.now() - started,
         bytes,
         expectedBytes,
@@ -220,6 +246,7 @@ async function trial(scenario: Scenario) {
     }
     const result = {
       scenario,
+      negotiatedExtensions: [...new Set(peers.map((peer) => peer.socket.extensions))],
       completed,
       failures,
       environment: {
@@ -371,6 +398,40 @@ if (profile === "smoke") {
       recording: true,
     }),
   );
+} else if (profile === "recovery") {
+  results.push(
+    await trial({
+      name: "slow-uncompressed",
+      terminals: 16,
+      hosts: 1,
+      kibPerSecondPerTerminal: 256,
+      seconds: 20,
+      recording: true,
+      compression: false,
+      slow: true,
+    }),
+  );
+  let stopped = false;
+  for (const terminals of [3, 4, 16]) {
+    if (stopped) break;
+    for (let repeat = 1; repeat <= 3; repeat++) {
+      const result = await trial({
+        name: `replay-${terminals}-${repeat}`,
+        terminals,
+        hosts: 1,
+        kibPerSecondPerTerminal: 256,
+        seconds: 20,
+        recording: true,
+        compression: false,
+        reconnect: true,
+      });
+      results.push(result);
+      if (!result.completed) {
+        stopped = true;
+        break;
+      }
+    }
+  }
 } else {
   const levels = [
     { terminals: 1, hosts: 1, kibPerSecondPerTerminal: 64 },
@@ -415,6 +476,7 @@ if (profile === "smoke") {
       await trial({
         ...sustained,
         name: "slow-consumer",
+        compression: false,
         seconds: 20,
         recording: true,
         slow: true,

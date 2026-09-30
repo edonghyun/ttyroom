@@ -13,6 +13,7 @@ export class CapacityPeer {
   output = new Latencies();
   control = new Latencies();
   readonly syncs = new Set<number>();
+  readonly bytesByTerminal = new Map<number, number>();
   readonly lastSequences = new Map<number, number>();
   readonly pendingControls = new Map<number, number>();
   readonly notices = new Map<string, { count: number; message: ServerMessage }>();
@@ -45,19 +46,25 @@ export class CapacityPeer {
         const frame = decoded.frame;
         this.receivedFrames++;
         this.receivedBytes += frame.payload.length;
+        const payload = Buffer.from(
+          frame.payload.buffer,
+          frame.payload.byteOffset,
+          frame.payload.byteLength,
+        );
+        if (payload.length !== 4096) {
+          this.error = "Unexpected payload size";
+          return;
+        }
+        const previous = this.lastSequences.get(frame.terminalId);
+        const expected =
+          previous === undefined ? (this.mode === "live" ? 1 : frame.seq) : previous + 1;
+        if (frame.seq !== expected || payload.readUInt32BE(8) !== expected) this.sequenceErrors++;
+        this.lastSequences.set(frame.terminalId, frame.seq);
+        this.bytesByTerminal.set(
+          frame.terminalId,
+          (this.bytesByTerminal.get(frame.terminalId) ?? 0) + payload.length,
+        );
         if (this.mode === "live") {
-          const payload = Buffer.from(
-            frame.payload.buffer,
-            frame.payload.byteOffset,
-            frame.payload.byteLength,
-          );
-          if (payload.length !== 4096) {
-            this.error = "Unexpected payload size";
-            return;
-          }
-          const expected = (this.lastSequences.get(frame.terminalId) ?? 0) + 1;
-          if (frame.seq !== expected || payload.readUInt32BE(8) !== expected) this.sequenceErrors++;
-          this.lastSequences.set(frame.terminalId, frame.seq);
           const latency = performance.now() - payload.readDoubleBE(0);
           if (!Number.isFinite(latency) || latency < 0) {
             this.error = "Invalid output timestamp";
@@ -65,6 +72,7 @@ export class CapacityPeer {
           }
           this.output.add(latency);
         }
+
         return;
       }
       const parsed = parseServerMessage(bytes.toString());
@@ -77,7 +85,16 @@ export class CapacityPeer {
         count: (this.notices.get(message.type)?.count ?? 0) + 1,
         message,
       });
-      if (message.type === "sync") this.syncs.add(message.terminalId);
+      if (message.type === "sync") {
+        if (
+          this.mode === "replay" &&
+          (this.syncs.has(message.terminalId) ||
+            (this.lastSequences.has(message.terminalId) &&
+              this.lastSequences.get(message.terminalId) !== message.seq))
+        )
+          this.sequenceErrors++;
+        this.syncs.add(message.terminalId);
+      }
       if (message.type === "output-gap") this.gaps++;
       if (message.type === "error") this.error = `Server error: ${message.code}`;
       if (message.type === "lease-invalid") {
@@ -89,11 +106,18 @@ export class CapacityPeer {
       }
     });
   }
-  static async connect(baseUrl: string, hello: object, mode: "idle" | "replay" = "idle") {
+  static async connect(
+    baseUrl: string,
+    hello: object,
+    options: { mode?: "idle" | "replay"; compression?: boolean } = {},
+  ) {
     const peer = new CapacityPeer(
-      new WebSocket(baseUrl.replace("http:", "ws:") + "/ws", { handshakeTimeout: 5000 }),
+      new WebSocket(baseUrl.replace("http:", "ws:") + "/ws", {
+        handshakeTimeout: 5000,
+        perMessageDeflate: options.compression ?? true,
+      }),
     );
-    peer.mode = mode;
+    peer.mode = options.mode ?? "idle";
     try {
       await peer.wait(() => peer.socket.readyState === WebSocket.OPEN);
       await peer.notice("welcome", () => peer.send(hello));
@@ -108,6 +132,7 @@ export class CapacityPeer {
     this.control = new Latencies();
     this.receivedFrames = 0;
     this.receivedBytes = 0;
+    this.bytesByTerminal.clear();
     this.gaps = 0;
     this.sequenceErrors = 0;
   }

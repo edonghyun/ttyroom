@@ -8,7 +8,7 @@ if [ "$#" -ne 1 ] || [ -z "${JAVA_HOME:-}" ]; then
   exit 2
 fi
 TTYROOM_CAPACITY_PROFILE=${TTYROOM_CAPACITY_PROFILE:-full}
-case "$TTYROOM_CAPACITY_PROFILE" in smoke|full) ;; *) echo 'Unknown capacity profile' >&2; exit 2 ;; esac
+case "$TTYROOM_CAPACITY_PROFILE" in smoke|full|recovery) ;; *) echo 'Unknown capacity profile' >&2; exit 2 ;; esac
 export TTYROOM_CAPACITY_PROFILE
 mkdir -p "$(dirname -- "$1")"
 mkdir "$1"

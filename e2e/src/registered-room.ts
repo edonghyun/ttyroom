@@ -20,6 +20,7 @@ export async function registeredRoom(
   async function post(path: string, body: unknown, bearer?: string) {
     const response = await fetch(`${server.baseUrl}${path}`, {
       method: "POST",
+      signal: AbortSignal.timeout(5_000),
       headers: {
         "Content-Type": "application/json",
         ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}),
@@ -42,6 +43,7 @@ export async function registeredRoom(
       async revoke(kind: "participants" | "hosts", id: string) {
         return fetch(`${server.baseUrl}${path}/${kind}/${id}`, {
           method: "DELETE",
+          signal: AbortSignal.timeout(5_000),
           headers: { Authorization: `Bearer ${invitation.managerCredential}` },
         });
       },

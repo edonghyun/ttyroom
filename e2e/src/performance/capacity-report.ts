@@ -26,7 +26,7 @@ export class Latencies {
       p95UpperMs,
       maxMs: this.maxMs,
       over1000Ms: this.buckets[1001]!,
-      buckets: this.buckets,
+      buckets: [...this.buckets],
     };
   }
 }

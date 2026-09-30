@@ -216,6 +216,9 @@ JFR에는 CPU load, GC pause·heap summary, control enqueue부터 worker 시작�
 버퍼 drop·거절만 활성화한다. 제품의 custom event는 기본 비활성이고 stack·ID·credential·내용을
 기록하지 않는다. 시작 시 event type 등록과 command당 event 참조 하나는 비활성일 때도 존재한다.
 계측 비용은 같은 1 terminal·256 KiB/s 조건에서 JFR ON/OFF 각각 3회로 비교한다.
+OFF에도 event type 등록·Command 참조가 있으므로 계측 코드 추가 전과의 전체 비용 비교는 아니다.
+QueueWait는 실제 실행을 시작한 명령만 기록한다. 폐기된 명령은 지연 분포에 없으며,
+같은 live frame에서 `rejected`와 `live-drop`이 모두 기록될 수 있어 두 카운터를 합산하지 않는다.
 RSS sampler는 1초마다 직렬로 실행하며 호출 시간·누락을 남긴다.
 
 강제 GC와 `GC.heap_info`는 빈 history, 적재 후, host 취소·5초 cooldown 뒤에만 호출하고
@@ -232,3 +235,26 @@ TTYROOM_CAPACITY_PROFILE=smoke ./scripts/measure-capacity.sh artifacts/capacity-
 Java 21의 `JAVA_HOME`, `jcmd`, `jfr`, `ps`가 필요하다. 새 출력 디렉터리만 사용한다.
 JAR·JFC·source hash를 고정하고 다른 빌드·테스트 없이 실행한다. 각 실행은 결과 JSON, JFR 원본,
 선택 event의 JSON, GC 진단 원문을 남긴다. 실패한 smoke는 환경·harness 진단이며 성능 표본과 섞지 않는다.
+
+### 측정 중 확인한 조건과 후속 계획
+
+첫 `full` 실행에서 느린 수신자 시험은 drop/close를 관측하지 못해 실패 처리했다.
+같은 JAR의 재현 handshake에서 `permessage-deflate` 협상을 확인했다. 반복적인 `x` payload를
+쓰는 최초 단계의 MiB/s는 압축 전 application payload이며 실제 TCP byte/s가 아니다.
+최초 실행은 연결별 협상 결과를 저장하지 않았으므로 별도 확인 결과와 구분한다.
+
+연속 출력은 성공했으나 16 terminal 동시 재접속에서 `replay:rejected` 이벤트 5개를 관찰했다.
+기존 결과는 보존하고 `recovery` profile에서 압축을 끈 느린 수신자와 3→4→16 terminal
+재접속을 각각 확인한다. 각 재접속 단계는 새 서버 3회이며 첫 실패 뒤 더 큰 workspace로
+진행하지 않는다. 새 실행은 협상 extension, 참가자별 실패 이유, terminal별 replay byte 수와
+sequence/sync 연속성을 확인한다. 이는 최초 실행의 재시도가 아닌 분리한 원인 확인 실험이다.
+
+```sh
+TTYROOM_CAPACITY_PROFILE=recovery ./scripts/measure-capacity.sh artifacts/capacity-recovery
+```
+
+관찰 도구 리뷰에서 늦은 샘플이 이전 histogram 관찰값을 변경하는 문제도 찾아
+snapshot 회귀 테스트의 실패를 확인한 뒤 복사하도록 수정했다. 최초 성공 부하 실행은
+모든 응답 drain 후 관찰했으며, 원본의 histogram 합계와 count를 별도로 대조한다.
+등록·취소 fixture의 HTTP 대기에도 5초 timeout을 추가했다. 성능 측정에는 사용한 소스
+snapshot commit과 hash를 각각 명시해 보완 전후 도구를 섞지 않는다.
