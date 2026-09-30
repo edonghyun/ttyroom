@@ -318,3 +318,23 @@ HTTP 취소·활성 연결 정리는 T9.5에 남긴다. 실행 결과는 [검증
 | 2026-09-29     | [포트폴리오 준비: 실행 재현·계약 추적·명세 점검](https://github.com/edonghyun/ttyroom/blob/61aa8b751ab636e1598abd6f8c3f6e211a009ac0/docs/2026-09-29-portfolio-readiness.md)              |
 | 초기 단계 모음 | [백엔드 설계 이력](https://github.com/edonghyun/ttyroom/blob/61aa8b751ab636e1598abd6f8c3f6e211a009ac0/backend/history/design-notes.md)                                                   |
 | 초기 단계 모음 | [백엔드 구현 이력](https://github.com/edonghyun/ttyroom/blob/61aa8b751ab636e1598abd6f8c3f6e211a009ac0/backend/history/implementation-notes.md)                                           |
+
+## credential 취소와 활성 연결 정리
+
+T9.5는 manager가 participant/host ID로 호출하는 DELETE API를 추가했다.
+첫 HTTP 테스트는 기존 라우팅의 404 때문에 204 기대값에서 실패했다. 컴파일 실패가 아닌
+실제 응답 RED를 확인하고 저장·세션 경계를 구현했다. 이후 저장 실패, 권한 거절,
+반복 취소, 늦은 콜백, 전송 실패, 입장·교체와 취소의 순서를 회귀 테스트로 보강했다.
+
+credential 제거와 host identity·터미널 제거는 한 StoredRoom 저장으로 확정한다.
+저장 후 state monitor 안에서 권한·workspace·presence를 정리하고 연결 종료를 요청한다.
+입장·취소는 기존 방별 명령 큐를 공유하고 저장 중 binary I/O는 확정 상태를 사용한다.
+저장 실패는 연결을 끊지 않으며 마지막 멤버 취소도 관리 가능한 방을 삭제하지 않는다.
+취소가 이미 실행한 셸 명령을 되돌리거나 로컬 PTY를 종료한다고 주장하지 않는다.
+
+리뷰에서는 역할이 다른 ID로 credential을 취소하지 못하는지, host 저장이 두 번으로
+나뉘지 않는지, close의 동기 disconnect가 grace를 다시 만들지 않는지 확인했다.
+공유 fixture는 CredentialRoom과 registeredRoom이 자원·입장 준비를 소유한다.
+경합 테스트는 저장 gate와 실제 room command lock 대기를 관찰하며 sleep으로 순서를 추정하지 않는다.
+실제 JAR E2E에서 취소 후 재시작을, 브라우저에서는 Alice의 취소 뒤 Bob이 같은 PTY의
+제어권을 얻어 출력하는 흐름을 검증했다. 실행 수치와 환경은 [검증 기록](VERIFICATION.md)에 둔다.

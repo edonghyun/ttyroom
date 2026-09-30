@@ -66,6 +66,15 @@ export class TestSystem {
     connector.toggleKillSwitch();
   }
 
+  async revokeParticipant(participantId: string): Promise<void> {
+    const response = await fetch(
+      `${this.running.baseUrl}/api/rooms/${this.room.roomId}/participants/${participantId}`,
+      { method: "DELETE", headers: { Authorization: `Bearer ${this.room.managerCredential}` } },
+    );
+    if (response.status !== 204)
+      throw new Error(`Participant revocation failed: HTTP ${response.status}`);
+  }
+
   async restartWithoutRooms(): Promise<void> {
     for (const actor of this.actors) actor.expectServerRestart();
     await this.running.restartWithoutRooms();

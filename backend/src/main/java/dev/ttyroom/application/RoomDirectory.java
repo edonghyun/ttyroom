@@ -16,6 +16,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -132,6 +133,12 @@ public final class RoomDirectory implements AutoCloseable {
     public static final class RegistrationRejected extends IllegalStateException {
         private RegistrationRejected() {
             super("Registration forbidden");
+        }
+    }
+
+    public static final class RevocationRejected extends IllegalStateException {
+        RevocationRejected() {
+            super("Revocation forbidden");
         }
     }
 
@@ -268,6 +275,43 @@ public final class RoomDirectory implements AutoCloseable {
             synchronized (room) {
                 room.credentials = draft;
                 return result;
+            }
+        }
+
+        /** Saves credential and host removal together before publishing any live effects. */
+        void revokeCredential(
+                String managerCredential,
+                RoomCredentials.Subject subject,
+                Consumer<List<Long>> deliver) {
+            RoomCredentials draft;
+            RoomControl.Change<List<Long>> controlChange;
+            StoredRoom record;
+            synchronized (room) {
+                var manager = room.credentials.authenticate(managerCredential);
+                if (rooms.get(room.id) != room
+                        || manager.isEmpty()
+                        || manager.get().role() != RoomCredentials.Role.MANAGER
+                        || subject.role() == RoomCredentials.Role.MANAGER)
+                    throw new RevocationRejected();
+                draft = RoomCredentials.restore(room.credentials.durableState());
+                if (!draft.revoke(subject)) return;
+                controlChange =
+                        room.control.stageChange(
+                                control ->
+                                        subject.role() == RoomCredentials.Role.HOST
+                                                ? control.removeHost(subject.id())
+                                                : List.<Long>of());
+                var controlState = controlChange.recordToSave();
+                record =
+                        room.durableState(
+                                controlState == null ? room.control.durableState() : controlState,
+                                draft.durableState());
+            }
+            store.save(record);
+            synchronized (room) {
+                room.credentials = draft;
+                controlChange.commit();
+                deliver.accept(controlChange.result());
             }
         }
 

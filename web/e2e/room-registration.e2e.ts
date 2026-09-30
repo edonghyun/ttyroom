@@ -1,4 +1,5 @@
 import { test, expect } from "./fixtures/actors.js";
+import { givenAliceControlledTerminal } from "./fixtures/workspace.js";
 import { RoomPage } from "./pages/room.page.js";
 
 async function openHostDrawer(page: import("@playwright/test").Page) {
@@ -74,4 +75,29 @@ test("an invalid saved participant credential stops admission without registerin
 
   await expect(alice.page.getByRole("heading", { name: "Access unavailable" })).toBeVisible();
   expect(registrations).toEqual([]);
+});
+
+test("revoking Alice ends access and releases her real PTY lease for Bob", async ({
+  alice,
+  bob,
+  testSystem,
+}) => {
+  await givenAliceControlledTerminal(alice, bob);
+  const aliceId = await alice.clientId();
+  const registrations: string[] = [];
+  alice.page.on("request", (request) => {
+    if (request.url().endsWith("/participants")) registrations.push(request.method());
+  });
+
+  await testSystem.revokeParticipant(aliceId);
+  await alice.page.getByRole("heading", { name: "Access unavailable" }).waitFor();
+  await bob.roomPage.waitForTerminalStatus("term-1", "Available");
+  await bob.roomPage.takeControl("term-1");
+  await bob.roomPage.printLine("term-1", "BOB_AFTER_REVOCATION");
+  const output = await bob.roomPage.outputContaining("term-1", "BOB_AFTER_REVOCATION");
+  await alice.page.reload();
+
+  await expect(alice.page.getByRole("heading", { name: "Access unavailable" })).toBeVisible();
+  expect(registrations).toEqual([]);
+  expect(output).toContain("BOB_AFTER_REVOCATION");
 });

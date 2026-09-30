@@ -47,6 +47,16 @@ host의 welcome은 inventory 확인 전 복구 상태(offline·입력 차단)다
 
 v8 검증은 별도 포트와 새 SQLite 파일을 사용한다. v1 파일의 기존 host/client ID에 관리·주체
 credential을 자동으로 붙이지 않는다. 여러 서버가 같은 SQLite 파일을 함께 쓰는 배포는 지원하지 않는다.
-명시적으로 v7을 선택하면 기존 사칭 문제가 남는다. HTTP 취소·활성 연결 종료와 최종 취소 경합 E2E는 T9.5 범위다.
+명시적으로 v7을 선택하면 기존 사칭 문제가 남는다.
 React의 최초 등록·탭별 credential 보관과 Connector의 숨김 stdin 입력은 구현했다. 등록 실패는 사용자에게
 표시하며 자동 재등록하지 않는다. invalid-credential 응답 뒤에는 재접속을 중단한다.
+
+## 취소와 입장 순서
+
+관리자의 [HTTP DELETE](HTTP.md#spring-취소-api)는 credential과 host workspace 제거를 원자적으로 저장한다.
+저장 실패 시 기존 인증·연결을 유지한다. 취소가 먼저 저장되면 뒤에 대기한 입장·교체를 거절한다.
+입장·교체가 먼저라면 취소가 그 현재 연결에 `invalid-credential`을 보내고 종료한다.
+멤버를 제거한 뒤 종료를 요청하므로 늦은 disconnect·expiry·입력·출력은 다른 멤버에게 적용되지 않는다.
+참가자의 lease를 해제하고 `participant-left`를, host 취소는 `host-removed`를 방송한다.
+저장 대기 중 binary I/O는 마지막 확정 상태를 사용하며, 확정 전에 큐에 넣은 데이터의 철회는 보장하지 않는다.
+취소는 로컬 PTY 종료나 이미 실행된 셸 명령의 취소를 의미하지 않는다.

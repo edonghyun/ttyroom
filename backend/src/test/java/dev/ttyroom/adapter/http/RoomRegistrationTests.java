@@ -3,6 +3,7 @@ package dev.ttyroom.adapter.http;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.ttyroom.application.RoomDirectory;
+import dev.ttyroom.application.RoomSessions;
 import dev.ttyroom.application.RoomStore;
 
 import org.junit.jupiter.api.Test;
@@ -243,6 +244,121 @@ class RoomRegistrationTests {
         }
     }
 
+    @Test
+    void theManagerCanRevokeARegisteredParticipant() throws Exception {
+        try (var server = new RegistrationServer()) {
+            var room = server.createRoom();
+            var participant = server.registerParticipant(room, room.token());
+            var subjectId = participant.body().path("participantId").asString();
+
+            var response = server.revoke(room, "participants", subjectId, room.manager(), "");
+
+            assertThat(response.status()).isEqualTo(204);
+            assertThat(response.cacheControl()).isEqualTo("no-store");
+            assertThat(server.store.records.get(room.id()).credentials())
+                    .noneMatch(record -> record.subject().id().equals(subjectId));
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"invitation", "participant", "host", "foreign", "missing"})
+    void revocationRequiresThisRoomsManager(String authority) throws Exception {
+        try (var server = new RegistrationServer()) {
+            var room = server.createRoom();
+            var participant = server.registerParticipant(room, room.token());
+            var subjectId = participant.body().path("participantId").asString();
+            var bearer =
+                    switch (authority) {
+                        case "invitation" -> room.token();
+                        case "participant" -> participant.body().path("credential").asString();
+                        case "host" -> server.givenHost(room);
+                        case "foreign" -> server.createRoom().manager();
+                        default -> null;
+                    };
+            var before = Map.copyOf(server.store.records);
+
+            var response = server.revoke(room, "participants", subjectId, bearer, "{}");
+
+            assertRejected(response, 403, "revocation forbidden");
+            assertThat(server.store.records).isEqualTo(before);
+        }
+    }
+
+    @Test
+    void missingRoomsAreForbiddenAndWrongRoleOrAbsentSubjectsAreIdempotent() throws Exception {
+        try (var server = new RegistrationServer()) {
+            var room = server.createRoom();
+            var participant = server.registerParticipant(room, room.token());
+            var id = participant.body().path("participantId").asString();
+            var managerId =
+                    server.store.records.get(room.id()).credentials().getFirst().subject().id();
+            var before = Map.copyOf(server.store.records);
+
+            var missingRoom =
+                    server.revoke(
+                            new Room("missing", room.token(), room.manager()),
+                            "participants",
+                            id,
+                            room.manager(),
+                            "{}");
+            var wrongRole = server.revoke(room, "hosts", id, room.manager(), "{}");
+            var absent =
+                    server.revoke(
+                            room,
+                            "participants",
+                            java.util.UUID.randomUUID().toString(),
+                            room.manager(),
+                            "{}");
+            var manager = server.revoke(room, "participants", managerId, room.manager(), "{}");
+
+            assertRejected(missingRoom, 403, "revocation forbidden");
+            assertThat(wrongRole.status()).isEqualTo(204);
+            assertThat(absent.status()).isEqualTo(204);
+            assertThat(manager.status()).isEqualTo(204);
+            assertThat(server.store.records).isEqualTo(before);
+        }
+    }
+
+    @Test
+    void failedRevocationReturnsASanitizedErrorAndCanBeRetried() throws Exception {
+        try (var server = new RegistrationServer()) {
+            var room = server.createRoom();
+            var host = server.registerHost(room, room.manager());
+            var id = host.body().path("hostId").asString();
+            var before = Map.copyOf(server.store.records);
+            server.store.rejectWrites = true;
+
+            var failed = server.revoke(room, "hosts", id, room.manager(), "{}");
+            var afterFailure = Map.copyOf(server.store.records);
+            server.store.rejectWrites = false;
+            var retried = server.revoke(room, "hosts", id, room.manager(), "{}");
+            var repeated = server.revoke(room, "hosts", id, room.manager(), "{}");
+
+            assertRejected(failed, 503, "revocation unavailable");
+            assertThat(afterFailure).isEqualTo(before);
+            assertThat(retried.status()).isEqualTo(204);
+            assertThat(repeated.status()).isEqualTo(204);
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"null", "[]", "{\"credential\":\"secret\"}"})
+    void revocationRejectsNonemptyOrNonobjectBodies(String body) throws Exception {
+        try (var server = new RegistrationServer()) {
+            var room = server.createRoom();
+            var id = java.util.UUID.randomUUID().toString();
+            var before = server.store.writes;
+
+            var response = server.revoke(room, "participants", id, room.manager(), body);
+            var malformedId =
+                    server.revoke(room, "participants", "1-1-1-1-1", room.manager(), "{}");
+
+            assertRejected(response, 400, "invalid revocation request");
+            assertRejected(malformedId, 400, "invalid revocation request");
+            assertThat(server.store.writes).isEqualTo(before);
+        }
+    }
+
     private static void assertIssued(Response response, String identityField) {
         assertThat(response.status()).isEqualTo(201);
         assertThat(response.cacheControl()).isEqualTo("no-store");
@@ -272,9 +388,10 @@ class RoomRegistrationTests {
     private static final class RegistrationServer implements AutoCloseable {
         final RecordingStore store = new RecordingStore();
         final RoomDirectory rooms = new RoomDirectory(store);
+        final RoomSessions sessions = new RoomSessions(rooms);
         final JsonMapper json = JsonMapper.builder().build();
         final MockMvc http =
-                MockMvcBuilders.standaloneSetup(new RoomController(rooms, json)).build();
+                MockMvcBuilders.standaloneSetup(new RoomController(rooms, sessions, json)).build();
 
         Response post(String path, String body, String bearer) throws Exception {
             var request =
@@ -288,6 +405,22 @@ class RoomRegistrationTests {
                     response.getStatus(),
                     response.getHeader("Cache-Control"),
                     json.readTree(response.getContentAsString()));
+        }
+
+        Response revoke(Room room, String kind, String id, String bearer, String body)
+                throws Exception {
+            var request =
+                    org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete(
+                                    "/api/rooms/" + room.id() + "/" + kind + "/" + id)
+                            .content(body);
+            if (bearer != null) request.header("Authorization", "Bearer " + bearer);
+            var response = http.perform(request).andReturn().getResponse();
+            return new Response(
+                    response.getStatus(),
+                    response.getHeader("Cache-Control"),
+                    response.getContentAsString().isEmpty()
+                            ? null
+                            : json.readTree(response.getContentAsString()));
         }
 
         Room createRoom() throws Exception {
@@ -325,7 +458,7 @@ class RoomRegistrationTests {
         }
 
         public void close() {
-            rooms.close();
+            sessions.close();
         }
     }
 

@@ -1,5 +1,23 @@
 # 검증 기록
 
+## 2026-09-30 credential 취소 T9.5
+
+Java 21·macOS, 기준 커밋 `3240614`에서 검증했다. 원본 로그는 로컬 `artifacts/t9-5/`에 둔다.
+API가 없던 최초 테스트는 HTTP 404/204 차이로 RED를 확인했다. 이 뒤 추가한 경합·저장 실패 테스트는
+회귀 검증이며 모두 RED부터 실행했다고 표현하지 않는다.
+
+- Java 전체 **455개 통과**, 실패·오류·skip 0. 입장/취소 공유 fixture 정리 후 전체 재검증.
+- Spring v8 프로세스 **15개 통과**: 입장 13개와 취소·재시작 2개.
+- Spring v8 Chromium **42개 통과**: 실제 Connector·PTY·두 브라우저 조합.
+  Alice 취소 후 권한 오류 표시·자동 재등록 없음·Bob의 lease 획득과 같은 PTY 출력 확인.
+- 기존 HTTP 등록 프로세스 **4개 통과**.
+- TypeScript 타입·의존성 경계 검사 통과. Java AOSP 포맷 적용.
+
+E2E는 복사한 불변 JAR를 사용했다. 취소/교체의 양쪽 순서는 Java application 테스트에서
+저장 gate와 실제 명령 lock queue로 통제했다. 프로세스·브라우저 검증과 이 경합 검증을 구분한다.
+원격 CI 결과와 최종 커밋은 [T9.5 issue](https://github.com/edonghyun/ttyroom/issues/9)에 연결한다.
+이 검증은 로컬 협업의 credential 취소 계약이며 공개 운영 보안 검증이 아니다.
+
 ## 2026-09-30 클라이언트 credential 연동 T9.4
 
 Java 21·macOS에서 검증했다. 기준 커밋은 `604117b`, 구현 커밋은 [`9b752b6`](https://github.com/edonghyun/ttyroom/commit/9b752b67d56a4697b1007967720d5da1c5c56975)이다.

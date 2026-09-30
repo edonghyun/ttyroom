@@ -101,6 +101,13 @@ public final class RoomCredentials {
                 .findFirst();
     }
 
+    synchronized boolean revoke(Subject subject) {
+        var entry = subjects.get(subject.id());
+        if (entry == null || !entry.subject.equals(subject)) return false;
+        subjects.remove(subject.id());
+        return true;
+    }
+
     synchronized void revoke(String subjectId) {
         subjects.remove(subjectId);
     }

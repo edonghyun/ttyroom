@@ -2,10 +2,12 @@ package dev.ttyroom.adapter.http;
 
 import dev.ttyroom.application.RoomCredentials;
 import dev.ttyroom.application.RoomDirectory;
+import dev.ttyroom.application.RoomSessions;
 
 import jakarta.servlet.http.HttpServletRequest;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -33,9 +35,11 @@ public final class RoomController {
                     "^[\\x09-\\x0D\\x20\\xA0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000\\uFEFF]+|[\\x09-\\x0D\\x20\\xA0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000\\uFEFF]+$");
     private final RoomDirectory rooms;
     private final JsonMapper json;
+    private final RoomSessions sessions;
 
-    public RoomController(RoomDirectory rooms, JsonMapper json) {
+    public RoomController(RoomDirectory rooms, RoomSessions sessions, JsonMapper json) {
         this.rooms = rooms;
+        this.sessions = sessions;
         this.json = json;
     }
 
@@ -96,11 +100,48 @@ public final class RoomController {
             throws IOException {
         var body = readBody(request);
         if (!body.isObject() || !body.isEmpty()) return error(400, "invalid registration request");
-        var headers = Collections.list(request.getHeaders("Authorization"));
-        if (headers.size() != 1 || !headers.getFirst().matches("(?i:Bearer) [A-Za-z0-9_-]{32}"))
-            return error(403, "registration forbidden");
-        var issued = rooms.registerHost(roomId, headers.getFirst().substring(7));
+        var manager = bearer(request);
+        if (manager == null) return error(403, "registration forbidden");
+        var issued = rooms.registerHost(roomId, manager);
         return issued("hostId", issued);
+    }
+
+    @DeleteMapping("/api/rooms/{roomId}/participants/{subjectId}")
+    public ResponseEntity<?> revokeParticipant(
+            @PathVariable String roomId, @PathVariable String subjectId, HttpServletRequest request)
+            throws IOException {
+        return revoke(roomId, subjectId, RoomCredentials.Role.PARTICIPANT, request);
+    }
+
+    @DeleteMapping("/api/rooms/{roomId}/hosts/{subjectId}")
+    public ResponseEntity<?> revokeHost(
+            @PathVariable String roomId, @PathVariable String subjectId, HttpServletRequest request)
+            throws IOException {
+        return revoke(roomId, subjectId, RoomCredentials.Role.HOST, request);
+    }
+
+    private ResponseEntity<?> revoke(
+            String roomId, String subjectId, RoomCredentials.Role role, HttpServletRequest request)
+            throws IOException {
+        var body = readBody(request);
+        if (!body.isObject() || !body.isEmpty()) return error(400, "invalid revocation request");
+        RoomCredentials.Subject subject;
+        try {
+            subject = new RoomCredentials.Subject(role, subjectId);
+        } catch (IllegalArgumentException invalid) {
+            return error(400, "invalid revocation request");
+        }
+        var manager = bearer(request);
+        if (manager == null) return error(403, "revocation forbidden");
+        sessions.revokeCredential(roomId, manager, subject);
+        return ResponseEntity.noContent().header("Cache-Control", "no-store").build();
+    }
+
+    private String bearer(HttpServletRequest request) {
+        var headers = Collections.list(request.getHeaders("Authorization"));
+        return headers.size() == 1 && headers.getFirst().matches("(?i:Bearer) [A-Za-z0-9_-]{32}")
+                ? headers.getFirst().substring(7)
+                : null;
     }
 
     private ResponseEntity<?> issued(String idField, RoomCredentials.Issued issued) {
@@ -145,9 +186,18 @@ public final class RoomController {
         return error(403, "registration forbidden");
     }
 
+    @ExceptionHandler(RoomDirectory.RevocationRejected.class)
+    ResponseEntity<?> revocationForbidden() {
+        return error(403, "revocation forbidden");
+    }
+
     @ExceptionHandler(IllegalStateException.class)
-    ResponseEntity<?> unavailable() {
-        return error(503, "registration unavailable");
+    ResponseEntity<?> unavailable(HttpServletRequest request) {
+        return error(
+                503,
+                request.getMethod().equals("DELETE")
+                        ? "revocation unavailable"
+                        : "registration unavailable");
     }
 
     @RequestMapping({"/api", "/api/**"})

@@ -858,6 +858,37 @@ public final class RoomSessions implements AutoCloseable {
         }
     }
 
+    /** Revocation shares admission order; a failed save leaves authority and sessions intact. */
+    public void revokeCredential(
+            String roomId, String managerCredential, RoomCredentials.Subject subject) {
+        var state = rooms.roomForAdmission(roomId);
+        if (state == null) throw new RoomDirectory.RevocationRejected();
+        rooms.execute(
+                state,
+                operation -> {
+                    operation.revokeCredential(
+                            managerCredential,
+                            subject,
+                            removedTerminals -> {
+                                var room = presence.get(roomId);
+                                if (room == null) return;
+                                var role =
+                                        subject.role() == RoomCredentials.Role.HOST
+                                                ? Role.HOST
+                                                : Role.PARTICIPANT;
+                                var id = new Identity(role, subject.id());
+                                var member = room.members.get(id);
+                                if (member != null) member.cancelExpiry();
+                                // Remove membership before close: even synchronous disconnect
+                                // callbacks are stale.
+                                removeMember(room, id, removedTerminals);
+                                if (member != null)
+                                    reject(member.peer, "invalid-credential", "invalid-credential");
+                            });
+                    return null;
+                });
+    }
+
     private void expire(Presence room, Identity id, Member member) {
         try {
             rooms.execute(
@@ -870,7 +901,7 @@ public final class RoomSessions implements AutoCloseable {
                                                 id.role() == Role.HOST
                                                         ? draft.removeHost(id.clientId())
                                                         : List.<Long>of(),
-                                        removed -> removeExpiredMember(room, id, removed));
+                                        removed -> removeMember(room, id, removed));
                         if (Boolean.TRUE.equals(empty)) {
                             operation.remove();
                             presence.remove(room.roomId, room);
@@ -887,8 +918,8 @@ public final class RoomSessions implements AutoCloseable {
         }
     }
 
-    /** Updates presence and delivers expiry after the durable host removal has committed. */
-    private boolean removeExpiredMember(Presence room, Identity id, List<Long> removedTerminals) {
+    /** Updates presence after durable removal; callers decide whether an empty room expires. */
+    private boolean removeMember(Presence room, Identity id, List<Long> removedTerminals) {
         room.members.remove(id);
         if (id.role() == Role.HOST) removedTerminals.forEach(room.output::remove);
         else

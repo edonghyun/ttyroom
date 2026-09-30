@@ -76,7 +76,7 @@
   [실행 범위](../../docs/VERIFICATION.md#2026-09-30-v8-입장-t93)를 연결했다.
 - 서버 설정으로 버전을 고르며 프로세스 하나는 한 버전만 받는다. **기본값과 React·Connector는 아직 v7**이다.
 
-## 마지막 구현 — T9.4
+## 이전 완료 — T9.4
 
 [T9.4 — React·Connector의 주체 credential 입장](https://github.com/edonghyun/ttyroom/issues/8).
 
@@ -88,9 +88,20 @@
 - Node v7 공통 프로세스 재검증 213개도 통과했다.
 - 구현 커밋: [`9b752b6`](https://github.com/edonghyun/ttyroom/commit/9b752b67d56a4697b1007967720d5da1c5c56975). 공개 CI의 최종 실행 링크와 완료 상태는 [T9.4 issue](https://github.com/edonghyun/ttyroom/issues/8)에 기록한다.
 
-## 다음 작업
+## 마지막 구현 — T9.5
 
 [T9.5 — credential 취소와 입장 경합 E2E](https://github.com/edonghyun/ttyroom/issues/9).
-공개 취소 API, 활성 연결 종료, 최종 경합 E2E를 구현한다. 아직 착수하지 않았다.
+
+- manager 전용 DELETE, credential·host workspace 원자적 제거, 활성 연결 종료를 구현했다.
+- 입장·교체·취소 순서, 저장 실패 시 기존 연결 보존, 늦은 callback과 binary 입력 차단을 검증했다.
+- Java 455개, v8 인증·취소 프로세스 15개, 등록 프로세스 4개, 실제 PTY 브라우저 42개 통과.
+- [현재 인증 계약](../../docs/AUTHENTICATION.md)과 [실행 범위](../../docs/VERIFICATION.md#2026-09-30-credential-취소-t95)를 갱신했다.
+- 공개 CI의 최종 실행과 완료 상태는 위 issue를 기준으로 확인한다.
+
+## 다음 후보
+
+[T11.1 — API 명세 자동 검증](https://github.com/edonghyun/ttyroom/issues/11):
+수동 HTTP 명세와 구현의 차이를 자동으로 잡는 최소 검증부터 검토한다.
+문서 UI 도입 여부는 별도로 판단한다.
 
 [T8.4 — 라이선스](https://github.com/edonghyun/ttyroom/issues/4)는 소유자 선택을 기다리는 별도 백로그로 유지한다.

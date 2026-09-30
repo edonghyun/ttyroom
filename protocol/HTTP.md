@@ -1,6 +1,6 @@
 # HTTP API 계약
 
-방 생성의 공통 필드와 Spring 전용 등록 API를 구분해 정리한다.
+방 생성의 공통 필드와 Spring 전용 등록·취소 API를 구분해 정리한다.
 실시간 협업은 [WebSocket/binary 명세](PROTOCOL.md)를 사용한다.
 기본 로컬 주소는 `http://127.0.0.1:3000`이다.
 
@@ -100,8 +100,8 @@ Bearer scheme의 대소문자는 구분하지 않으며 중복 헤더와 잘못�
   관리자 credential을 자동 생성하지 않는다. Node 참조 서버는 v2 파일을 읽을 수 없다.
 - 발급 성공과 오류 JSON 모두 `Cache-Control: no-store`다. 오류는 아래 고정된 문구만 반환한다.
   입력 원문·토큰·digest·저장소 예외를 응답에 복사하지 않는다.
-- 저장 성공 후 응답 유실은 자동 재시도 시 중복 등록을 만들 수 있다. idempotency key·취소 HTTP API는
-  아직 없으며, 재등록은 기존 credential을 회수하지 않는다.
+- 저장 성공 후 응답 유실은 자동 재시도 시 중복 등록을 만들 수 있다. idempotency key는
+  지원하지 않으며, 재등록은 기존 credential을 회수하지 않는다.
 
 | 상태 | JSON error 값                  | 조건                                                       |
 | ---- | ------------------------------ | ---------------------------------------------------------- |
@@ -113,7 +113,37 @@ Bearer scheme의 대소문자는 구분하지 않으며 중복 헤더와 잘못�
 
 공개 오류에서 없는 방과 잘못된 권한을 구분하지 않는다. 본문 형식 검사는 권한 검사에 앞선다.
 명시적으로 선택한 v7 서버에는 초대 토큰과 임의 role/clientId로 입장하는 경로가 남아 있다. v8 서버에서는 거절한다.
-v8 입장 경계가 실제 credential을 검증한다. HTTP 취소와 활성 연결 종료 API는 아직 제공하지 않는다.
+v8 입장 경계가 실제 credential을 검증한다.
+
+## Spring 취소 API
+
+- `DELETE /api/rooms/{roomId}/participants/{subjectId}`
+- `DELETE /api/rooms/{roomId}/hosts/{subjectId}`
+
+해당 방의 `Authorization: Bearer <관리 credential>` 헤더 하나와 빈 본문 또는 `{}`를 받는다.
+subjectId는 소문자 canonical UUID다. 관리 credential·초대 토큰을 URL에 넣지 않는다.
+성공은 **204, 빈 본문, Cache-Control: no-store**다. 유효한 관리 권한으로 없는 주체·이미 취소한
+주체·다른 역할의 주체를 지정해도 변경 없이 204다. 관리 credential 자체를 취소하는 경로는 없다.
+
+취소는 입장·연결 교체와 같은 방별 명령 순서에서 실행한다. credential 제거와 해당 host의
+터미널·host identity 제거를 한 번에 저장한다. 실패하면 기존 권한·연결·workspace를 유지한다.
+저장 성공 후 participant의 lease·presence 또는 host의 출력 버퍼·presence를 정리한다.
+현재 연결에는 `invalid-credential` 오류와 종료를 요청하고 이후 입장을 거절한다.
+참가자에게는 `lease-released` 후 `participant-left`, host 취소에는 `host-removed`를 알린다.
+전송 실패가 이미 저장된 취소를 되돌리지는 않는다. 응답은 원격 클라이언트의 종료 수신 확인이 아니다.
+마지막 멤버를 취소해도 방과 관리 credential은 남아 신규 등록이 가능하다.
+
+| 상태 | JSON error 값                             | 조건                                                                   |
+| ---- | ----------------------------------------- | ---------------------------------------------------------------------- |
+| 400  | `request body too large` / `invalid json` | 등록과 같은 16,384 bytes 한도·JSON 규칙                                |
+| 400  | `invalid revocation request`              | UUID 형식 오류·object가 아닌 본문·추가 필드                            |
+| 403  | `revocation forbidden`                    | 없는 방·잘못된/누락/중복 관리 헤더·다른 방 또는 다른 역할의 credential |
+| 503  | `revocation unavailable`                  | 저장 실패·서버 종료 상태                                               |
+
+오류 JSON도 no-store다. 본문·ID 검사를 권한 검사보다 먼저 수행한다.
+취소는 주체 credential의 무효화다. 초대 토큰 회전이나 사람 단위 차단은 아니며,
+이미 실행한 셸 명령을 되돌리거나 로컬 PTY 프로세스 종료를 보장하지 않는다.
+위 입장 차단은 기본 v8 계약이다. 비교용 v7 모드의 초대 토큰 입장에는 적용되지 않는다.
 
 ## 정적 웹과 WebSocket
 
@@ -127,6 +157,7 @@ v8 입장 경계가 실제 credential을 검증한다. HTTP 취소와 활성 연
 - [HTTP 공통 E2E](../e2e/src/http-api.e2e.ts): 기본값, trim, UTF-16 경계, 본문 bytes, 오류, 토큰과 URL.
 - [등록 HTTP 테스트](../backend/src/test/java/dev/ttyroom/adapter/http/RoomRegistrationTests.java): 권한·저장 실패·오류 응답.
 - [Spring 등록 프로세스 E2E](../e2e/src/registration.spring.ts): 실제 JAR·HTTP·새 PID의 관리 권한 복원.
+- [취소 프로세스 E2E](../e2e/src/revocation.spring.ts): 활성 연결 종료·재시작 후 취소 및 workspace 복원.
 - [정적 웹 E2E](../e2e/src/static-web.e2e.ts)
 
 현재 문서는 수동 명세다. OpenAPI 파일·Swagger UI 및 HTTP 명세 자동 드리프트 검사는
