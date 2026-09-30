@@ -31,7 +31,9 @@ public record ServerSettings(
             int terminals,
             long retainedHistoryBytes,
             int credentialsPerRoom,
-            int credentials) {}
+            int credentials,
+            int membershipsPerRoom,
+            int memberships) {}
 
     public RoomDirectory.Limits roomLimits() {
         long histories =
@@ -73,7 +75,9 @@ public record ServerSettings(
                         "terminals",
                         "retainedHistoryBytes",
                         "credentialsPerRoom",
-                        "credentials"));
+                        "credentials",
+                        "membershipsPerRoom",
+                        "memberships"));
         var capacityValues = new SettingsSource(environment, capacity);
         var root = new SettingsSource(environment, file);
         var policyValues = new SettingsSource(environment, policy);
@@ -128,6 +132,20 @@ public record ServerSettings(
                                 capacityValues.number(
                                         "credentials",
                                         "TTYROOM_MAX_CREDENTIALS",
+                                        128,
+                                        1,
+                                        1_000_000),
+                        (int)
+                                capacityValues.number(
+                                        "membershipsPerRoom",
+                                        "TTYROOM_MAX_MEMBERSHIPS_PER_ROOM",
+                                        64,
+                                        1,
+                                        1_000_000),
+                        (int)
+                                capacityValues.number(
+                                        "memberships",
+                                        "TTYROOM_MAX_MEMBERSHIPS",
                                         128,
                                         1,
                                         1_000_000)));

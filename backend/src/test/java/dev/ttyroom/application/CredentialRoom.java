@@ -27,10 +27,10 @@ final class CredentialRoom implements AutoCloseable {
         rooms = new RoomDirectory(store);
         invitation = rooms.create("Credential admission");
         var timers = mock(ExpiryTimers.class);
-        when(timers.schedule(any(Runnable.class), anyLong(), eq(TimeUnit.MILLISECONDS)))
+        when(timers.schedule(any(), any(Runnable.class), anyLong(), eq(TimeUnit.MILLISECONDS)))
                 .thenAnswer(
                         call -> {
-                            expiry.add(call.getArgument(0));
+                            expiry.add(call.getArgument(1));
                             return mock(ExpiryTimers.Cancellation.class);
                         });
         sessions =

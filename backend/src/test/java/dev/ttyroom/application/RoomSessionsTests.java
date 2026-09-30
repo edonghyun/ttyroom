@@ -1490,10 +1490,10 @@ class RoomSessionsTests {
         final List<ExpiryTimers.Cancellation> cancellations = new ArrayList<>();
 
         ManualExpiry() {
-            when(timers.schedule(any(Runnable.class), anyLong(), eq(TimeUnit.MILLISECONDS)))
+            when(timers.schedule(any(), any(Runnable.class), anyLong(), eq(TimeUnit.MILLISECONDS)))
                     .thenAnswer(
                             call -> {
-                                callbacks.add(call.getArgument(0));
+                                callbacks.add(call.getArgument(1));
                                 var cancellation = mock(ExpiryTimers.Cancellation.class);
                                 cancellations.add(cancellation);
                                 return cancellation;

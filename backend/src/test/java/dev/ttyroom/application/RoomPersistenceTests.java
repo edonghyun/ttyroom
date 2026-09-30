@@ -747,10 +747,10 @@ class RoomPersistenceTests {
             rooms = new RoomDirectory(store);
             this.invitation = invitation == null ? rooms.create("Test") : invitation;
             var timers = mock(ExpiryTimers.class);
-            when(timers.schedule(any(Runnable.class), anyLong(), eq(TimeUnit.MILLISECONDS)))
+            when(timers.schedule(any(), any(Runnable.class), anyLong(), eq(TimeUnit.MILLISECONDS)))
                     .thenAnswer(
                             call -> {
-                                expiries.add(call.getArgument(0));
+                                expiries.add(call.getArgument(1));
                                 return mock(ExpiryTimers.Cancellation.class);
                             });
             sessions = new RoomSessions(rooms, timers);

@@ -494,3 +494,39 @@ buffer pressure event는 0이었다. JFR queue event는 회당 제어 probe 2개
 그 결과와 source hash도 공개 JSON의 `diagnosticRun`에 보존했다. 수정 후에는 각 취소 알림의
 주체를 확인하고 소비한 뒤 다음 단계로 넘어간다. 이 도구 오류를 서버 메모리 누수나 제품 RED로
 해석하지 않는다. v7 임의 identity와 대기 expiry 작업의 후속 범위는 [#17](https://github.com/edonghyun/ttyroom/issues/17)에 등록했다.
+
+## T10.7 — membership과 만료 대기
+
+기본 membership 예산은 접속 중·유예 중을 합쳐 방별 64개·전체 128개다. v7/v8 모두 적용하고
+만료 실행은 방당 1개·전체 4개로 제한한다. 이 값은 저장 credential과 별도의 초기 정책이며,
+운영 수용량을 측정해 얻은 최적값이 아니다. 네 개의 서로 다른 방에서 저장이 막히면 후속 만료도
+대기한다. 전체 대기 수는 membership 예산, 실행 수는 worker 전달 예산으로 제한한다.
+
+`ExpiryStorageTests`는 실제 RoomSessions/RoomDirectory/ExpiryTimers와 gate를 둔 RoomStore를
+사용한다. 첫 방에 keeper 1명과 host 63명을 입장시키고 host들을 모두 종료한다. 첫 만료의
+`RoomStore.save`를 막은 동안 다른 방의 host 제거가 완료되는지 확인한다. 저장 해제 뒤 첫 방의
+63개 제거 알림과 영속 모델의 빈 host 목록, 종료 뒤 저장소 close와 잔류 작업을 관찰한다.
+실제 SQLite 디스크 지연이나 원격망 부하가 아니라 애플리케이션 저장 경계의 유한 실패 주입이다.
+
+```sh
+JAVA_HOME=/path/to/jdk21 ./backend/gradlew -p backend test --tests '*ExpiryStorageTests'
+```
+
+[공개 결과](performance/expiry.json)의 3회 모두 저장 대기 중 **62개 작업 보관**, 다른 방 정리 성공,
+저장 해제 후 host **63개 제거**, 종료 뒤 **대기 0개·실행 0개**를 확인했다. timer 내부 집합은
+fixture에서 monitor를 잡고 관찰했다. 이 구조 의존성은 격리 실험을 위한 것이며 공개 API 계약은 아니다.
+JSON의 microsecond 값은 진단용 관측 시간이다. 다른 로컬 작업과 겹칠 수 있는 테스트 실행이므로
+p95/처리량·운영 지연 기준으로 사용하지 않는다. heap/RSS/JFR·장시간 churn은 이 실험에서 측정하지 않았다.
+
+별도 행동 테스트는 실행 중 저장의 종료 대기, 대기 작업 취소, 같은 방 격리, 전역 실행 포화 후
+정리 재개와 막힌 방 뒤에서 timer를 **1,000회 생성·중복 취소한 후 보관 0개**를 확인한다.
+Spring 프로세스 테스트는 v7의 방별/전역 초과 입장, 다른 방의 응답, 유예 종료 뒤 슬롯 재사용,
+v8의 같은 credential 교체와 취소 후 새 주체 입장을 확인한다.
+
+HTTP/TCP 요청률·제어 요청 대기와 실제 배포 사양 검증은 남아 있다. 저장 예외가 난 만료를 자동으로
+무한 재시도하지 않는다. 기존 저장 실패 보존 계약과 재접속/취소 복구를 유지하며, 저장의 영구 정지가
+생기면 만료 완료와 graceful shutdown 시간도 보장하지 않는다.
+
+추가 특성화에서 v7 신규 host의 저장 뒤 welcome 실패를 3회 반복하면, live membership 예산 2개와
+별개로 영속 host 3개·만료 callback 0개가 남았다. 이 기존 경로의 보관/복원 한도는
+[#18](https://github.com/edonghyun/ttyroom/issues/18)에 분리했다. 이번 결과를 모든 identity 보관 경로의 상한으로 확대하지 않는다.

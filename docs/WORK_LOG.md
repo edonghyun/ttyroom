@@ -27,6 +27,7 @@
 - [수신 자원 한도와 참가자 부하](#수신-자원-한도와-참가자-부하)
 - [전역 자원 예약과 초과 요청 격리](#전역-자원-예약과-초과-요청-격리)
 - [Credential 발급과 보관 예산](#credential-발급과-보관-예산)
+- [Membership과 만료 대기](#membership과-만료-대기)
 
 ## 초기 구성과 검증 경계
 
@@ -487,3 +488,23 @@ T10.6 ([작업 #16](https://github.com/edonghyun/ttyroom/issues/16)). 연결 종
 v7의 임의 ID는 credential 예산을 사용하지 않아 유예 중 membership을 쌓을 수 있음을 기존
 동작의 특성화 테스트로 고정했다. v8 보관 한도와 v7 유예 상태 제한을 구분한다. 측정과
 후속 범위는 [성능 기록](PERFORMANCE.md#t106--credential-보관과-유예-상태)에 모았다.
+
+## Membership과 만료 대기
+
+T10.7 ([#17](https://github.com/edonghyun/ttyroom/issues/17))은 v7 임의 ID가 credential 예산을
+우회해 유예 상태를 늘리는 경로를 닫는다. v7/v8의 접속·유예 membership에 방별 64개·전체
+128개 예산을 적용했다. 기존 RoomSessions가 입장·교체·제거와 예약을 함께 소유한다.
+
+ExpiryTimers는 한 방당 하나, 전체 네 개만 실행하고 나머지 due 작업을 보관한다. 교체/제거 시
+대기 작업을 취소해 오래된 callback이 쌓이지 않게 한다. 같은 방의 저장을 기다리는 virtual thread를
+무제한 생성하지 않으며, 작업이 많다는 이유로 정리를 버리지 않는다. 전체 저장 장애를 해결하거나
+만료 시간을 보장하는 장치는 아니다.
+
+membership 방별/전역 초과 2건, 같은 방 중복 만료·전역 실행 초과 2건을 실제 assertion RED로
+확인한 뒤 구현했다. 저장·welcome 실패, 오래된 callback, 중복 취소, 재접속과 방별 격리를 추가 회귀로
+검증했다. 큐 보관 수 관찰은 테스트 fixture의 제한된 reflection으로만 수행하고 제품용 테스트 API를
+추가하지 않았다. 측정과 한계는 [성능 기록](PERFORMANCE.md#t107--membership과-만료-대기)에 둔다.
+
+리뷰에서 welcome 실패 뒤 남는 v7 영속 host 목록은 membership과 별개임을 특성화 테스트로 확인했다.
+저장 후 전달 실패를 무조건 롤백하지 않는 기존 계약을 유지하고, 별도 보관/복원 정책은
+[#18](https://github.com/edonghyun/ttyroom/issues/18)로 분리했다.

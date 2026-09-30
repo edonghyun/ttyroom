@@ -16,6 +16,13 @@
 | [T9.4](https://github.com/edonghyun/ttyroom/issues/8)   | React와 Connector를 주체별 credential 입장으로 전환 | T9.3      | 후속 인증        |
 | [T9.5](https://github.com/edonghyun/ttyroom/issues/9)   | credential 취소와 입장 경합을 E2E로 마감            | T9.4      | 후속 인증        |
 | [T10.1](https://github.com/edonghyun/ttyroom/issues/10) | 재현 가능한 지연·메모리 측정 기준 마련              | 없음      | 선택             |
+| [T10.2](https://github.com/edonghyun/ttyroom/issues/12) | 수신 자원 제한과 참가자 fanout 측정                 | T10.1     | 자원 경계        |
+| [T10.3](https://github.com/edonghyun/ttyroom/issues/13) | 포화 측정과 전역 자원 예산 정의                     | T10.2     | 자원 경계        |
+| [T10.4](https://github.com/edonghyun/ttyroom/issues/14) | 다중 terminal replay 예약 제한                      | T10.3     | 자원 경계        |
+| [T10.5](https://github.com/edonghyun/ttyroom/issues/15) | 전역 입장 예산과 배포 사양 검증                     | T10.4     | 배포 검증 남음   |
+| [T10.6](https://github.com/edonghyun/ttyroom/issues/16) | credential 발급·보관 예산                           | T10.5     | 자원 경계        |
+| [T10.7](https://github.com/edonghyun/ttyroom/issues/17) | membership·만료 작업 누적 제한                      | T10.6     | 자원 경계        |
+| [T10.8](https://github.com/edonghyun/ttyroom/issues/18) | welcome 실패 뒤 v7 영속 host 누적 제한              | T10.7     | 후속 자원 경계   |
 | [T11.1](https://github.com/edonghyun/ttyroom/issues/11) | API 명세 자동 검증과 문서 UI 필요성 검토            | T9.5      | 선택             |
 
 ## 범위 경계

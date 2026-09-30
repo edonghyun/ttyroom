@@ -1,5 +1,20 @@
 # 검증 기록
 
+## 2026-09-30 Membership과 만료 대기 T10.7
+
+- Java 전체 **555개 통과**. membership 한도·교체·실패·동시성, 실제 timer의 격리·포화·취소·종료를 검증했다.
+- 방별/전역 membership 초과 2건과 만료 실행 초과 2건의 assertion RED를 `artifacts/t10-7/`에 보존했다.
+  나머지는 추가 회귀이며 최초 Java 19 실행 오류는 제품 RED에 포함하지 않는다.
+- Java 21 / 최대 heap 512 MiB 불변 JAR의 Spring 인증·복구·한도 **36개 통과**.
+  신규 3개는 v7 방별/전역 membership과 v8 교체·취소 수명이다.
+- gate를 둔 RoomStore와 실제 timer의 유한 저장 지연 실험 **3회 통과**.
+  [관측 결과](performance/expiry.json)에 source/JAR hash와 대기·제거·종료 상태를 기록했다.
+- 실행 중 저장을 중단하지 않는 shutdown, 대기 timer 1,000회 취소 후 잔류 0개를 별도 검증했다.
+- TS 단위 591개, 타입·포맷·의존성 경계 검사 통과.
+- welcome 실패 뒤 남는 v7 영속 host 목록은 특성화 테스트로 확인해 [#18](https://github.com/edonghyun/ttyroom/issues/18)에 분리했다.
+
+배포 환경 검증은 #15에 남는다. 최종 커밋의 전체 CI 결과와 완료 기준은 #17에서 확인한다.
+
 ## 2026-09-30 Credential 발급·보관 예산 T10.6
 
 - Java **534개 통과**, 실패·오류·skip 0. manager 포함 방별/전역 경계, 동시 발급,

@@ -57,7 +57,10 @@ public class TtyRoomApplication {
                         settings.scrollbackBytesPerTerminal()),
                 settings.protocolVersion() == 8
                         ? RoomSessions.AdmissionMode.CREDENTIAL_V8
-                        : RoomSessions.AdmissionMode.INVITATION_V7);
+                        : RoomSessions.AdmissionMode.INVITATION_V7,
+                new RoomSessions.Limits(
+                        settings.capacity().membershipsPerRoom(),
+                        settings.capacity().memberships()));
     }
 
     @Bean

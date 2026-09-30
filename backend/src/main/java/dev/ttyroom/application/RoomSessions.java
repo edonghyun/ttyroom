@@ -22,6 +22,15 @@ import java.util.function.Function;
  * expiry.
  */
 public final class RoomSessions implements AutoCloseable {
+    public record Limits(int membershipsPerRoom, int memberships) {
+        public static final Limits DEFAULT = new Limits(64, 128);
+
+        public Limits {
+            if (membershipsPerRoom < 1 || memberships < 1)
+                throw new IllegalArgumentException("Invalid membership capacity");
+        }
+    }
+
     public enum Role {
         PARTICIPANT,
         HOST
@@ -195,6 +204,8 @@ public final class RoomSessions implements AutoCloseable {
     private final ConcurrentHashMap<String, Presence> presence = new ConcurrentHashMap<>();
     private final ExpiryTimers timers;
     private final Policy policy;
+    private final Limits limits;
+    private int memberships;
     private final AdmissionMode admissionMode;
     private volatile boolean closing;
     private volatile boolean closed;
@@ -220,7 +231,21 @@ public final class RoomSessions implements AutoCloseable {
     }
 
     RoomSessions(RoomDirectory rooms, ExpiryTimers timers, Policy policy, AdmissionMode mode) {
+        this(rooms, timers, policy, mode, Limits.DEFAULT);
+    }
+
+    public RoomSessions(RoomDirectory rooms, Policy policy, AdmissionMode mode, Limits limits) {
+        this(rooms, new ExpiryTimers(), policy, mode, limits);
+    }
+
+    RoomSessions(
+            RoomDirectory rooms,
+            ExpiryTimers timers,
+            Policy policy,
+            AdmissionMode mode,
+            Limits limits) {
         this.rooms = rooms;
+        this.limits = Objects.requireNonNull(limits);
         this.timers = timers;
         this.policy = Objects.requireNonNull(policy);
         this.admissionMode = Objects.requireNonNull(mode);
@@ -272,16 +297,47 @@ public final class RoomSessions implements AutoCloseable {
                     var room =
                             presence.computeIfAbsent(
                                     state.id, ignored -> new Presence(state, policy));
-                    return operation.changeIf(
-                            () -> true,
-                            draft -> {
-                                var identity = authenticated.identity();
-                                if (identity.role() == Role.HOST)
-                                    draft.rememberHost(identity.clientId(), authenticated.name());
-                                return new Member(authenticated, peer);
-                            },
-                            member -> attach(room, member));
+                    var identity = authenticated.identity();
+                    boolean reserved;
+                    synchronized (state) {
+                        try {
+                            reserved = reserveMember(room, identity);
+                        } catch (RoomDirectory.CapacityExceeded exhausted) {
+                            reject(peer, "capacity-exhausted", exhausted.getMessage());
+                            return null;
+                        }
+                    }
+                    try {
+                        return operation.changeIf(
+                                () -> true,
+                                draft -> {
+                                    if (identity.role() == Role.HOST)
+                                        draft.rememberHost(
+                                                identity.clientId(), authenticated.name());
+                                    return new Member(authenticated, peer);
+                                },
+                                member -> attach(room, member));
+                    } finally {
+                        synchronized (state) {
+                            if (reserved && !room.members.containsKey(identity)) releaseMember();
+                        }
+                    }
                 });
+    }
+
+    /** Called in room order; the global monitor protects counters, never storage or delivery. */
+    private synchronized boolean reserveMember(Presence room, Identity identity) {
+        if (room.members.containsKey(identity)) return false;
+        if (room.members.size() >= limits.membershipsPerRoom())
+            throw new RoomDirectory.CapacityExceeded("room memberships");
+        if (memberships >= limits.memberships())
+            throw new RoomDirectory.CapacityExceeded("memberships");
+        memberships++;
+        return true;
+    }
+
+    private synchronized void releaseMember() {
+        memberships--;
     }
 
     /** Runs after registration is committed, under the room state monitor. */
@@ -897,7 +953,11 @@ public final class RoomSessions implements AutoCloseable {
                             ? policy.participantGraceMs()
                             : policy.hostGraceMs();
             member.expiry =
-                    timers.schedule(() -> expire(room, id, member), grace, TimeUnit.MILLISECONDS);
+                    timers.schedule(
+                            room.state,
+                            () -> expire(room, id, member),
+                            grace,
+                            TimeUnit.MILLISECONDS);
         }
     }
 
@@ -964,7 +1024,11 @@ public final class RoomSessions implements AutoCloseable {
     /** Updates presence after durable removal; callers decide whether an empty room expires. */
     private boolean removeMember(Presence room, Identity id, List<Long> removedTerminals) {
         var removed = room.members.remove(id);
-        if (removed != null) removed.restoring.clear();
+        if (removed != null) {
+            removed.cancelExpiry();
+            removed.restoring.clear();
+            releaseMember();
+        }
         if (id.role() == Role.HOST) removedTerminals.forEach(room.output::remove);
         else
             for (var lease : room.control.removeParticipant(id.clientId()))

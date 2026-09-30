@@ -95,3 +95,16 @@ browser 순번, 제한된 history와 수신자별 output gap을 소유한다.
 현재 v7의 초대 토큰·역할 신뢰와 후속 인증 과제는 [보안 모델](../docs/SECURITY_MODEL.md)에 있다.
 
 개발 당시의 구조 비교와 단계별 변경은 [설계 이력](../docs/WORK_LOG.md#초기-백엔드-기록)에 보관한다.
+
+## Membership과 만료의 자원 경계
+
+RoomSessions는 연결 중·유예 중 identity의 방별/전역 예약을 소유한다. RoomDirectory의 방별
+명령 순서 안에서 입장과 제거를 조정하므로 동일 identity의 교체는 기존 예약을 재사용한다.
+저장 credential·physical transport의 예약과는 별개다. 초과 신규 입장은 저장·교체 전에 거절한다.
+
+ExpiryTimers는 방당 하나·전체 네 개의 만료 작업만 worker에 전달한다. 대기 deadline과 due
+작업을 취소할 수 있고, membership의 제거/교체가 취소를 소유해 대기 수를 제한한다. 큐를 가득
+채웠다는 이유로 만료를 버리지 않는다. 저장/room lock을 획득할 때 timer monitor는 보유하지 않는다.
+종료는 대기를 취소한 뒤 실행 중 작업을 기다린다. 저장이 영구 정지하면 종료 시간도 보장되지 않는다.
+[설정·수명](../docs/DEVELOPMENT.md#membership과-만료-작업)과
+[지연 저장 실험](../docs/PERFORMANCE.md#t107--membership과-만료-대기)을 함께 읽는다.

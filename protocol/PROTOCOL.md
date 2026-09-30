@@ -254,3 +254,8 @@ Spring v7/v8은 terminal/inventory 증가가 전역 예산을 넘으면
 같은 오류 코드를 사용한다. WebSocket 슬롯 초과는 hello 이전에 close 1013, 입장 미완료 5초는
 close 1008이다. 방 생성 초과는 OpenAPI의 HTTP 503 응답이다.
 [수명과 설정](../docs/DEVELOPMENT.md#전역-admission-예산-spring)을 참고한다.
+
+신규 hello의 membership 한도 초과도 `capacity-exhausted`를 사용한다. 이때 message는
+`room memberships capacity exhausted` 또는 `memberships capacity exhausted`이고 해당
+연결만 닫는다. 접속 중과 유예 중 identity를 함께 세며 같은 identity의 교체는 슬롯을 추가로
+쓰지 않는다. 물리 연결 한도는 먼저 적용된다. [membership 수명](../docs/DEVELOPMENT.md#membership과-만료-작업)을 참고한다.

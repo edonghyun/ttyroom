@@ -217,8 +217,8 @@ Connector 명령에는 fragment 없는 방 주소만 넣고, 표시되지 않는
 `error { code: "capacity-exhausted", message: "terminals" }`이며 기존 연결·저장 상태는 유지한다.
 로그에 credential이나 요청 payload를 추가하지 않는다.
 
-이 예산은 논리 payload와 admission 대상 개수를 제한한다. replay snapshot, frame 객체, native memory,
-credential 보관은 아래 별도 예산을 적용한다. v7의 grace membership과 HTTP 부하는 별도다. heap/RSS 전체 상한으로
+이 예산은 논리 payload와 admission 대상 개수를 제한한다. credential과 membership에는 아래 별도 예산을
+적용한다. replay snapshot·frame 객체·native memory와 HTTP 부하를 포함한 heap/RSS 전체 상한으로
 해석하지 않는다. [측정 조건과 한계](PERFORMANCE.md#t105--전역-admission-경계)를 함께 읽는다.
 
 ### Credential 발급·보관 예산
@@ -248,3 +248,38 @@ credential 예산이 가득 차면 방 개수에 여유가 있어도 생성할 �
 두되, 기본 방 4개가 각각 64개를 채우기 전에 전역 128개에서 제한한다. 발급/취소와 인증에 따른
 저장·복사·탐색 비용을 [유한한 로컬 시험](PERFORMANCE.md#t106--credential-보관과-유예-상태)으로
 확인한다. 이 값은 HTTP 요청률이나 동시에 기다리는 요청 수를 제한하지 않는다.
+
+### Membership과 만료 작업
+
+| JSON 필드                   | 환경변수                         | 기본값 |
+| --------------------------- | -------------------------------- | ------ |
+| capacity.membershipsPerRoom | TTYROOM_MAX_MEMBERSHIPS_PER_ROOM | 64     |
+| capacity.memberships        | TTYROOM_MAX_MEMBERSHIPS          | 128    |
+
+Spring v7/v8 모두 접속 중과 유예 중인 `(방, 역할, identity)`를 센다. 두 값은 1..1000000의
+정수다. participant와 host가 같은 예산을 사용하며 manager credential 자체는 membership이 아니다.
+물리 연결·저장 credential과 수명이 다르다. 재시작 시 membership은 복원하지 않으며 저장된 offline
+host 목록도 membership으로 세지 않는다. v7은 비교용 모드이고 임의 ID 입장도 이 한도를 적용한다.
+v7 host의 저장 후 welcome 실패로 남는 영속 identity는 이 예산 밖이며 [#18](https://github.com/edonghyun/ttyroom/issues/18)의 후속 대상이다.
+
+신규 identity를 방별 명령 순서 안에서 예약한다. host 저장 실패나 첫 welcome 실패로 입장이
+성립하지 않으면 반환한다. 같은 identity의 연결 교체는 추가 슬롯이 필요 없고, 이전 callback이
+새 연결을 제거하지 못한다. 연결 종료만으로 반환하지 않으며 유예 만료의 제거 또는 성공한 credential
+취소가 반환한다. 저장이 필요한 제거에서 저장 실패가 발생하면 membership과 예약은 유지한다.
+
+한도가 찼을 때 새로운 identity의 hello는 `error`의 `code: "capacity-exhausted"`와
+`message: "room memberships capacity exhausted"` 또는 `"memberships capacity exhausted"`를
+보낸 뒤 해당 연결을 닫는다. 인증 검사를 먼저 하며 기존 주체는 교체·재접속할 수 있다.
+단, 물리 WebSocket 슬롯은 별도 검사하므로 그것까지 가득 차면 hello 이전에 거절될 수 있다.
+
+만료 실행은 **한 방당 1개, 전체 4개**다. 실행 슬롯이 없으면 due 작업을 보관하고 슬롯 반환 뒤
+실행한다. 재접속·취소·제거는 대기 timer와 due 작업을 함께 취소한다. 이미 실행 중인 저장은
+interrupt하지 않고, 현재 Member와 동일한지 확인해 오래된 callback의 효과를 막는다.
+대기 작업은 membership당 최대 하나이고 이미 전달된 작업은 전체 4개 이하이므로 기본 설정에서
+대기 최대 128개 + 실행 최대 4개라는 상한을 갖는다. 같은 방의 저장 지연이 실행 슬롯을 모두 차지하지 않는다.
+네 개의 서로 다른 방에서 저장이 모두 막히면 후속 만료도 기다린다. 이 제한은 완료 시간 보장이 아니다.
+
+종료 시 새 작업과 대기 작업을 중단하고 이미 실행 중인 저장을 마친 뒤 저장소를 닫는다.
+저장 장애에 대한 무제한 자동 재시도는 하지 않는다. host 만료 저장 실패는 로그로 드러나며
+재접속·취소 등의 복구가 필요하다. HTTP/TCP 요청률과 명령 대기열 전체, 장시간 메모리 추세는
+별도 검증 대상이다. [유한 지연 실험](PERFORMANCE.md#t107--membership과-만료-대기)은 이 경계를 확인한다.
