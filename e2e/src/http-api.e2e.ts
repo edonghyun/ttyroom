@@ -1,13 +1,13 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ServerProcess } from "./server-process.js";
 
-// Share only the process. Each request creates its own room; no test consumes another's state.
+// Each case owns its process and stored rooms, including the global room budget.
 describe("방 생성 HTTP 계약 — Node/Spring 공통", () => {
   let server: ServerProcess;
-  beforeAll(async () => {
+  beforeEach(async () => {
     server = await ServerProcess.start({}, { startupTimeoutMs: 30_000 });
   }, 30_000);
-  afterAll(async () => {
+  afterEach(async () => {
     await server?.close();
   });
 
@@ -72,9 +72,13 @@ describe("방 생성 HTTP 계약 — Node/Spring 공통", () => {
   });
 
   it("요청마다 서로 다른 방과 초대 토큰을 발급한다", async () => {
-    const first = await (await createRoom("{}")).json();
-    const second = await (await createRoom("{}")).json();
+    const firstResponse = await createRoom("{}");
+    const secondResponse = await createRoom("{}");
+    const first = await firstResponse.json();
+    const second = await secondResponse.json();
 
+    expect(firstResponse.status).toBe(201);
+    expect(secondResponse.status).toBe(201);
     expect(first.roomId).not.toBe(second.roomId);
     expect(first.token).not.toBe(second.token);
   });
