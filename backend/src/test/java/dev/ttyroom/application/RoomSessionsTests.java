@@ -28,6 +28,134 @@ import java.util.stream.Stream;
 
 class RoomSessionsTests {
     @Test
+    void joiningManyTerminalsReservesOnlyOneHistoryUntilItsSyncDrains() {
+        try (var fixture = new Fixture()) {
+            fixture.hostWithHistory(4);
+            var newcomer = new Peer();
+            newcomer.pauseReplay = true;
+
+            fixture.join("newcomer", newcomer);
+            int initiallyReserved = newcomer.replayRequests;
+            var initialFrames = List.copyOf(newcomer.frames);
+            newcomer.drainReplay();
+            newcomer.drainReplay();
+            newcomer.drainReplay();
+            newcomer.drainReplay();
+
+            assertThat(newcomer.closed).isFalse();
+            assertThat(initiallyReserved).isEqualTo(1);
+            assertThat(initialFrames).extracting(OutputFrame::terminalId).containsExactly(1L);
+            assertThat(newcomer.frames)
+                    .extracting(OutputFrame::terminalId)
+                    .containsExactly(1L, 2L, 3L, 4L);
+            assertThat(newcomer.replayCompletions).isEmpty();
+        }
+    }
+
+    @Test
+    void outputDuringRecoveryIsReplayedOnceBeforeThatTerminalsLiveOutput() {
+        try (var fixture = new Fixture()) {
+            var host = fixture.hostWithHistory(2);
+            var newcomer = new Peer();
+            newcomer.pauseReplay = true;
+            fixture.join("newcomer", newcomer);
+
+            host.session.output(new OutputFrame(2, 2, new byte[] {2}));
+            var beforeSecondReplay = List.copyOf(newcomer.frames);
+            newcomer.drainReplay();
+            host.session.output(new OutputFrame(2, 3, new byte[] {3}));
+            newcomer.drainReplay();
+
+            assertThat(beforeSecondReplay).extracting(OutputFrame::terminalId).containsExactly(1L);
+            // The old 1 MiB frame is evicted when seq 2 arrives; bounded history stays
+            // authoritative.
+            assertThat(newcomer.frames)
+                    .extracting(OutputFrame::terminalId)
+                    .containsExactly(1L, 2L, 2L);
+            assertThat(newcomer.frames).extracting(OutputFrame::seq).containsExactly(1L, 2L, 3L);
+            assertThat(newcomer.messages)
+                    .filteredOn(Sync.class::isInstance)
+                    .containsExactly(new Sync(1, 1), new Sync(2, 2));
+        }
+    }
+
+    @Test
+    void lateReplayCompletionCannotAdvanceAReplacedConnection() {
+        try (var fixture = new Fixture()) {
+            fixture.hostWithHistory(4);
+            var old = new Peer();
+            old.pauseReplay = true;
+            fixture.join("alice", old);
+
+            var replacement = fixture.join("alice");
+            old.drainReplay();
+            old.session.disconnect();
+
+            assertThat(old.closed).isTrue();
+            assertThat(old.replayRequests).isEqualTo(1);
+            assertThat(replacement.closed).isFalse();
+            assertThat(replacement.frames).hasSize(4);
+        }
+    }
+
+    @Test
+    void resyncForAPendingTerminalUsesItsScheduledHistoryOnce() {
+        try (var fixture = new Fixture()) {
+            fixture.hostWithHistory(2);
+            var newcomer = new Peer();
+            newcomer.pauseReplay = true;
+            fixture.join("newcomer", newcomer);
+
+            newcomer.session.handle(new ParticipantCommand.ResyncOutput(2));
+            newcomer.drainReplay();
+            newcomer.drainReplay();
+
+            assertThat(newcomer.closed).isFalse();
+            assertThat(newcomer.replayRequests).isEqualTo(2);
+            assertThat(newcomer.messages)
+                    .filteredOn(Sync.class::isInstance)
+                    .containsExactly(new Sync(1, 1), new Sync(2, 1));
+        }
+    }
+
+    @Test
+    void laterReplayFailureClosesOnlyTheRecoveringParticipant() {
+        try (var fixture = new Fixture()) {
+            fixture.hostWithHistory(4);
+            var newcomer = new Peer();
+            newcomer.pauseReplay = true;
+            fixture.join("newcomer", newcomer);
+            var observer = fixture.join("observer");
+
+            newcomer.acceptingOutput = false;
+            newcomer.drainReplay();
+            observer.session.handle(new ParticipantCommand.AcquireLease(999));
+
+            assertThat(newcomer.closed).isTrue();
+            assertThat(newcomer.frames).hasSize(1);
+            assertThat(observer.closed).isFalse();
+            assertThat(observer.messages.getLast()).isInstanceOf(LeaseInvalid.class);
+            assertThat(fixture.expiry.callbacks).hasSize(1);
+        }
+    }
+
+    @Test
+    void disconnectCancelsHistoriesNotYetReserved() {
+        try (var fixture = new Fixture()) {
+            fixture.hostWithHistory(4);
+            var newcomer = new Peer();
+            newcomer.pauseReplay = true;
+            fixture.join("newcomer", newcomer);
+
+            newcomer.session.disconnect();
+            newcomer.drainReplay();
+
+            assertThat(newcomer.replayRequests).isEqualTo(1);
+            assertThat(newcomer.replayCompletions).isEmpty();
+        }
+    }
+
+    @Test
     void failedObserverDoesNotAbortAnotherParticipantsAdmission() {
         try (var fixture = new Fixture()) {
             var alice = fixture.join("alice");
@@ -1241,6 +1369,21 @@ class RoomSessionsTests {
             return peer;
         }
 
+        Peer hostWithHistory(int terminals) {
+            var host = joinHost("host");
+            host.session.handle(
+                    new HostCommand.Inventory(
+                            java.util.stream.LongStream.rangeClosed(1, terminals)
+                                    .mapToObj(
+                                            id ->
+                                                    new HostCommand.Runtime(
+                                                            id, "runtime-" + id, 0, 0))
+                                    .toList()));
+            for (long id = 1; id <= terminals; id++)
+                host.session.output(new OutputFrame(id, 1, new byte[1_048_576]));
+            return host;
+        }
+
         boolean invitationIsValid() {
             return rooms.acceptsToken(room.roomId(), room.token());
         }
@@ -1255,6 +1398,9 @@ class RoomSessionsTests {
         final List<RoomNotice> messages = new ArrayList<>();
         final List<OutputFrame> frames = new ArrayList<>();
         final List<InputFrame> inputs = new ArrayList<>();
+        boolean pauseReplay;
+        final java.util.ArrayDeque<Runnable> replayCompletions = new java.util.ArrayDeque<>();
+        int replayRequests;
         boolean acceptingInput;
         int inputAttempts;
         int sendAttempts;
@@ -1263,6 +1409,10 @@ class RoomSessionsTests {
         Runnable disconnect;
         RoomSessions.Session session;
         boolean closed;
+
+        void drainReplay() {
+            replayCompletions.removeFirst().run();
+        }
 
         void recoverTerminal() {
             session.handle(
@@ -1292,10 +1442,16 @@ class RoomSessionsTests {
         }
 
         @Override
-        public void replayOutput(List<OutputFrame> frames, RoomNotice.Sync boundary) {
+        public void replayOutput(
+                List<OutputFrame> frames, RoomNotice.Sync boundary, Runnable afterSync) {
+            if (pauseReplay && !replayCompletions.isEmpty())
+                throw new RoomSessions.PeerUnavailable("Replay still in flight");
+            replayRequests++;
             if (!acceptingOutput) throw new RoomSessions.PeerUnavailable("Replay budget exhausted");
             this.frames.addAll(frames);
             messages.add(boundary);
+            if (pauseReplay) replayCompletions.addLast(afterSync);
+            else afterSync.run();
         }
 
         public boolean offerOutput(OutputFrame frame, RoomNotice.OutputGap gap) {

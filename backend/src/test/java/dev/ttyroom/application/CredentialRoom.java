@@ -177,6 +177,8 @@ final class CredentialRoom implements AutoCloseable {
         RoomSessions.Session session;
         boolean closed;
         boolean failSend;
+        boolean pauseReplay;
+        final java.util.ArrayDeque<Runnable> replayCompletions = new java.util.ArrayDeque<>();
 
         Welcome welcome() {
             return notices.stream()
@@ -200,8 +202,10 @@ final class CredentialRoom implements AutoCloseable {
             return true;
         }
 
-        public void replayOutput(List<OutputFrame> frames, Sync boundary) {
+        public void replayOutput(List<OutputFrame> frames, Sync boundary, Runnable afterSync) {
             notices.add(boundary);
+            if (pauseReplay) replayCompletions.addLast(afterSync);
+            else afterSync.run();
         }
 
         public void close() {

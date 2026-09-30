@@ -280,11 +280,13 @@ public final class RoomSocketHandler extends TextWebSocketHandler implements Aut
         }
 
         @Override
-        public void replayOutput(List<OutputFrame> frames, RoomNotice.Sync boundary) {
+        public void replayOutput(
+                List<OutputFrame> frames, RoomNotice.Sync boundary, Runnable afterSync) {
             if (!socket.isOpen()) throw new RoomSessions.PeerUnavailable("WebSocket is closed");
             sender.replay(
                     frames,
-                    new TextMessage(json.writeValueAsString(RoomProtocol.encode(boundary))));
+                    new TextMessage(json.writeValueAsString(RoomProtocol.encode(boundary))),
+                    afterSync);
         }
 
         @Override

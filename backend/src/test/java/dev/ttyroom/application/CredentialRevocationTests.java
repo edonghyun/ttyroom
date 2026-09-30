@@ -18,6 +18,31 @@ import java.util.concurrent.atomic.AtomicReference;
 
 class CredentialRevocationTests {
     @Test
+    void revocationPreventsALateSyncFromReservingAnotherTerminalHistory() {
+        try (var room = new CredentialRoom()) {
+            var host = room.givenConnected(room.host(), "Host");
+            host.session.handle(
+                    new HostCommand.Inventory(
+                            List.of(
+                                    new HostCommand.Runtime(1, "one", 0, 0),
+                                    new HostCommand.Runtime(2, "two", 0, 0))));
+            var credential = room.participant();
+            var alice = new Peer();
+            alice.pauseReplay = true;
+            room.connect(credential.secret(), "Alice", alice);
+
+            room.revoke(credential);
+            alice.replayCompletions.removeFirst().run();
+
+            assertThat(alice.closed).isTrue();
+            assertThat(alice.notices)
+                    .filteredOn(Sync.class::isInstance)
+                    .containsExactly(new Sync(1, 0));
+            assertThat(alice.replayCompletions).isEmpty();
+        }
+    }
+
+    @Test
     void revokingAParticipantReleasesItsLeaseAndMakesLateCallbacksAndInputInert() {
         try (var room = new CredentialRoom()) {
             var credential = room.participant();

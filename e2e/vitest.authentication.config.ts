@@ -6,6 +6,7 @@ export default defineConfig({
       "src/admission.spring.ts",
       "src/revocation.spring.ts",
       "src/inbound-limits.spring.ts",
+      "src/workspace-replay.spring.ts",
     ],
     fileParallelism: false,
     testTimeout: 30_000,

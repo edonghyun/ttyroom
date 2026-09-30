@@ -168,10 +168,12 @@ class TerminalOutputTests {
             notices.add(notice);
         }
 
-        public void replayOutput(List<OutputFrame> frames, RoomNotice.Sync boundary) {
+        public void replayOutput(
+                List<OutputFrame> frames, RoomNotice.Sync boundary, Runnable afterSync) {
             if (!accepting) throw new RoomSessions.PeerUnavailable("Replay budget exhausted");
             this.frames.addAll(frames);
             notices.add(boundary);
+            afterSync.run();
         }
 
         public boolean offerOutput(OutputFrame frame, RoomNotice.OutputGap gap) {

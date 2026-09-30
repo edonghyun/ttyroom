@@ -9,6 +9,7 @@ import dev.ttyroom.domain.RoomControl.TerminalRejection;
 import dev.ttyroom.domain.TerminalWorkspace;
 
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -58,9 +59,11 @@ public final class RoomSessions implements AutoCloseable {
 
         /**
          * Reserve an immutable replay followed by its sync, ordered with other sends. Does not wait
-         * for I/O. Throws PeerUnavailable if the replay budget is exhausted.
+         * for I/O. Runs afterSync only after the final sync is written and its reservation
+         * released, outside transport locks. Cancellation/failure never reports completion. Throws
+         * PeerUnavailable if the replay budget is exhausted.
          */
-        void replayOutput(List<OutputFrame> frames, Sync boundary);
+        void replayOutput(List<OutputFrame> frames, Sync boundary, Runnable afterSync);
 
         /** Initiate a best-effort close without waiting for network I/O. */
         void close();
@@ -140,6 +143,7 @@ public final class RoomSessions implements AutoCloseable {
         final HostPresence host;
         // Presence outlives a connection through grace/replacement, and ends on member expiry.
         Long focusedTerminalId;
+        final LinkedHashSet<Long> restoring = new LinkedHashSet<>();
         boolean connected = true;
         ExpiryTimers.Cancellation expiry;
 
@@ -222,6 +226,27 @@ public final class RoomSessions implements AutoCloseable {
         this.admissionMode = Objects.requireNonNull(mode);
     }
 
+    /** One history reservation per joining connection; pending terminals stay in room history. */
+    private void replayNext(Presence room, Member member) {
+        synchronized (room.state) {
+            if (closed || room.members.get(member.identity) != member || !member.connected) return;
+            if (member.restoring.isEmpty()) return;
+            long terminalId = member.restoring.removeFirst();
+            room.output.replay(
+                    member.peer,
+                    terminalId,
+                    () -> {
+                        try {
+                            replayNext(room, member);
+                        } catch (RuntimeException failure) {
+                            disconnected(room, member.identity, member);
+                            member.peer.close();
+                            if (!(failure instanceof PeerUnavailable)) throw failure;
+                        }
+                    });
+        }
+    }
+
     /** Returns a connection-scoped session, or null if admission was rejected or failed. */
     public Session join(AdmissionRequest request, Peer peer) {
         if (request.protocolVersion() != admissionMode.version
@@ -278,6 +303,7 @@ public final class RoomSessions implements AutoCloseable {
         try {
             if (previous != null) {
                 previous.cancelExpiry();
+                previous.restoring.clear();
                 previous.peer.close();
             } else if (identity.role() == Role.PARTICIPANT) {
                 broadcast(room, member, new ParticipantJoined(participant(member)));
@@ -285,8 +311,9 @@ public final class RoomSessions implements AutoCloseable {
             if (identity.role() == Role.PARTICIPANT) {
                 for (var terminal : room.control.terminals()) {
                     if (terminal.status() == TerminalWorkspace.Status.OPEN)
-                        room.output.replay(peer, terminal.terminalId());
+                        member.restoring.add(terminal.terminalId());
                 }
+                replayNext(room, member);
             }
         } catch (RuntimeException failure) {
             // A programming error must surface, but this caller will never receive its
@@ -415,7 +442,9 @@ public final class RoomSessions implements AutoCloseable {
                 var accepted = room.output.accept(frame);
                 if (accepted == null) return;
                 for (var target : List.copyOf(room.members.values())) {
-                    if (!target.connected || target.identity.role() != Role.PARTICIPANT) continue;
+                    if (!target.connected
+                            || target.identity.role() != Role.PARTICIPANT
+                            || target.restoring.contains(accepted.terminalId())) continue;
                     try {
                         room.output.deliver(target.peer, accepted);
                     } catch (PeerUnavailable unavailable) {
@@ -504,7 +533,8 @@ public final class RoomSessions implements AutoCloseable {
 
         private void resyncOutput(long terminalId) {
             if (room.control.terminal(terminalId).isEmpty()) reply(new ResyncRejected(terminalId));
-            else room.output.replay(member.peer, terminalId);
+            else if (!member.restoring.contains(terminalId))
+                room.output.replay(member.peer, terminalId);
         }
 
         private void releaseLease(ParticipantCommand.ReleaseLease release) {
@@ -844,6 +874,7 @@ public final class RoomSessions implements AutoCloseable {
         synchronized (room.state) {
             if (room.members.get(id) != member || !member.connected) return;
             member.connected = false;
+            member.restoring.clear();
             if (id.role() == Role.HOST) {
                 member.host.disconnected();
                 broadcast(room, null, new HostOffline(id.clientId()));
@@ -920,7 +951,8 @@ public final class RoomSessions implements AutoCloseable {
 
     /** Updates presence after durable removal; callers decide whether an empty room expires. */
     private boolean removeMember(Presence room, Identity id, List<Long> removedTerminals) {
-        room.members.remove(id);
+        var removed = room.members.remove(id);
+        if (removed != null) removed.restoring.clear();
         if (id.role() == Role.HOST) removedTerminals.forEach(room.output::remove);
         else
             for (var lease : room.control.removeParticipant(id.clientId()))

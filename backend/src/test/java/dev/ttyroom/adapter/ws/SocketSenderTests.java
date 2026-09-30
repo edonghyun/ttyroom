@@ -355,6 +355,61 @@ class SocketSenderTests {
     }
 
     @Test
+    void syncCompletionReleasesTheBudgetBeforeSchedulingTheNextHistory() throws Exception {
+        try (var peer = new Fixture()) {
+            var history = frames(1, 3 * 1_048_576);
+            var completions = new AtomicInteger();
+            var heldSenderLock = new java.util.concurrent.atomic.AtomicBoolean();
+
+            peer.sender.replay(
+                    history,
+                    new TextMessage("first sync"),
+                    () -> {
+                        heldSenderLock.set(Thread.holdsLock(peer.sender));
+                        completions.incrementAndGet();
+                        peer.sender.replay(
+                                history,
+                                new TextMessage("second sync"),
+                                () -> {
+                                    completions.incrementAndGet();
+                                    peer.sender.finish(CloseStatus.NORMAL);
+                                });
+                    });
+            peer.awaitClose();
+
+            assertThat(peer.delivered)
+                    .containsExactly(
+                            "output:1", "first sync", "output:1", "second sync", "<close>");
+            assertThat(completions.get()).isEqualTo(2);
+            assertThat(heldSenderLock.get()).isFalse();
+            assertThat(peer.closeStatus).isEqualTo(CloseStatus.NORMAL);
+        }
+    }
+
+    @Test
+    void aFailedFinalSyncDoesNotReportReplayCompletion() throws Exception {
+        try (var peer = new Fixture()) {
+            var completions = new AtomicInteger();
+            doAnswer(
+                            call -> {
+                                if (call.getArgument(0) instanceof TextMessage)
+                                    throw new IOException("failed sync");
+                                peer.record(call.getArgument(0));
+                                return null;
+                            })
+                    .when(peer.socket)
+                    .sendMessage(any());
+
+            peer.sender.replay(frames(1, 1), new TextMessage("sync"), completions::incrementAndGet);
+            peer.awaitClose();
+
+            assertThat(completions.get()).isZero();
+            assertThat(peer.delivered).containsExactly("output:1", "<close>");
+            assertThat(peer.closeStatus).isEqualTo(CloseStatus.SERVER_ERROR);
+        }
+    }
+
+    @Test
     void completedReplayReleasesCapacityForTheNextRequest() throws Exception {
         try (var peer = new Fixture()) {
             var history = frames(1, 3 * 1_048_576);
@@ -406,8 +461,9 @@ class SocketSenderTests {
     @Test
     void abortDuringReplayDiscardsTheRemainderAndRejectsNewReservations() throws Exception {
         try (var peer = new Fixture()) {
+            var completions = new AtomicInteger();
             peer.blockWrites();
-            peer.sender.replay(frames(2, 1), new TextMessage("sync"));
+            peer.sender.replay(frames(2, 1), new TextMessage("sync"), completions::incrementAndGet);
             peer.awaitWrite();
 
             peer.sender.abort(CloseStatus.GOING_AWAY);
@@ -420,6 +476,7 @@ class SocketSenderTests {
             assertThat(failure).isInstanceOf(PeerUnavailable.class);
             assertThat(peer.closeStatus).isEqualTo(CloseStatus.GOING_AWAY);
             assertThat(peer.disconnects.get()).isEqualTo(1);
+            assertThat(completions.get()).isZero();
         }
     }
 

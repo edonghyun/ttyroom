@@ -865,9 +865,10 @@ class RoomPersistenceTests {
             return true;
         }
 
-        public void replayOutput(List<OutputFrame> replay, Sync boundary) {
+        public void replayOutput(List<OutputFrame> replay, Sync boundary, Runnable afterSync) {
             frames.addAll(replay);
             notices.add(boundary);
+            afterSync.run();
         }
 
         public void close() {

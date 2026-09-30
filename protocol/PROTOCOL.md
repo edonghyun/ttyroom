@@ -88,6 +88,9 @@ hello 외의 메시지·binary 형식은 두 버전이 공유한다.
 
 - 재접속은 **새 연결 + 동일 clientId의 hello**다. 전송 계층은 재연결을 숨기지 않는다.
 - 서버는 재접속자에게 현재 Room 스냅샷과 터미널별 스크롤백 replay를 제공한다.
+  여러 터미널은 하나씩 복구하며 각 history는 해당 터미널 복구를 시작할 때의 retained 출력이다.
+  아직 시작하지 않은 터미널의 새 출력은 history에 반영하고, snapshot 뒤 출력은 해당 `sync` 다음에 보낸다.
+  전체 workspace의 동일 시각 snapshot이나 무제한 history를 보장하지 않는다.
 - Host는 `welcome` 직후 살아 있는 PTY와 로컬 출력 범위를 `host-inventory`로 보고한다.
   서버는 저장된 `runtimeId`와 일치하는 PTY만 활성화하고 `host-ready.replayAfterSeq`를 응답한다.
   Connector는 그 이후 출력만 재전송한 뒤 `terminal-replay-complete`를 보낸다. 이 handshake가
@@ -104,6 +107,7 @@ hello 외의 메시지·binary 형식은 두 버전이 공유한다.
 - `resync-output-request { terminalId }`의 응답은 요청한 터미널의 현재 retained scrollback
   출력 프레임 전부(오래된 순서부터)와 마지막 `sync`다. 다른 터미널 출력은 replay하지 않는다.
   클라이언트는 요청 시 해당 터미널 표시 버퍼를 비우고 replay를 대체 상태로 적용한다.
+  입장 복구를 아직 시작하지 않은 터미널의 요청은 이미 예정된 replay·sync로 충족한다.
 
 ## 제어 메시지
 

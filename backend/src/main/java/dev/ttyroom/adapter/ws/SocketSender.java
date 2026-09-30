@@ -49,9 +49,11 @@ final class SocketSender {
         final List<OutputFrame> frames;
         final TextMessage boundary;
         final long bytes;
+        final Runnable afterSync;
         private int cursor;
 
-        Replay(List<OutputFrame> frames, TextMessage boundary) {
+        Replay(List<OutputFrame> frames, TextMessage boundary, Runnable afterSync) {
+            this.afterSync = afterSync;
             this.frames = List.copyOf(frames);
             this.boundary = boundary;
             this.bytes =
@@ -154,7 +156,11 @@ final class SocketSender {
 
     /** Reserve the whole snapshot or close; never partially enqueue a replay. */
     void replay(List<OutputFrame> frames, TextMessage boundary) {
-        var replay = new Replay(frames, boundary);
+        replay(frames, boundary, () -> {});
+    }
+
+    void replay(List<OutputFrame> frames, TextMessage boundary, Runnable afterSync) {
+        var replay = new Replay(frames, boundary, afterSync);
         synchronized (this) {
             if (finishing || terminated) throw new PeerUnavailable("WebSocket sender is closed");
             if (replay.bytes <= REPLAY_BYTES - replayBytes
@@ -216,6 +222,7 @@ final class SocketSender {
                                 () -> writeTimedOut(message),
                                 limits.writeTimeout().toNanos(),
                                 TimeUnit.NANOSECONDS);
+                Runnable afterSync = null;
                 try {
                     socket.sendMessage(message.message());
                 } finally {
@@ -233,6 +240,7 @@ final class SocketSender {
                                         replayBytes -= replay.bytes;
                                         replayFrames -= replay.frames.size();
                                         replayRequests--;
+                                        afterSync = replay.afterSync;
                                     }
                                 }
                             }
@@ -240,6 +248,8 @@ final class SocketSender {
                     }
                     deadline.cancel(false);
                 }
+                // Application work may take the room monitor; never call it under this monitor.
+                if (afterSync != null) afterSync.run();
             }
         } catch (IOException | IllegalStateException unavailable) {
             abort(CloseStatus.SERVER_ERROR);

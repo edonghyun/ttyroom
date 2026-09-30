@@ -68,6 +68,20 @@ eligibility는 저장 뒤 다시 검사하지 않으며, 후속 효과가 현재
 불확실한 실행을 자동 재시도하지 않으며 exactly-once 실행을 보장하지 않는다.
 프로세스가 commit과 알림 사이에 종료될 때의 지속적 전달을 위한 outbox도 구현하지 않았다.
 
+## 여러 터미널의 입장 복구
+
+`RoomSessions`는 입장 snapshot의 열린 terminal ID를 연결별로 보관하고 한 history씩 예약한다.
+`SocketSender`가 마지막 sync를 전송하고 예약을 반납하면 transport monitor 밖에서 완료를 알린다.
+다음 snapshot 선택은 room monitor 안에서 이루어지지만 네트워크 전송을 기다리지 않는다.
+아직 선택하지 않은 terminal의 출력은 room history에만 반영하며, 선택 이후 출력은 예약한 sync 뒤에
+정렬된다. 다른 terminal의 control/live 메시지는 그 사이에도 처리될 수 있다.
+
+기존 연결별 replay 4 MiB·65,536 frames·16 requests와 write timeout은 유지한다.
+복구 작업은 모든 history를 복사하지 않고 terminal ID만 기다리므로 예약된 payload는 terminal 하나씩이다.
+완료는 socket write 성공이며 원격 브라우저의 처리 ACK는 아니다. 실패·취소에는 완료를 호출하지 않고,
+이미 실행 중인 늦은 콜백은 현재 연결 동일성·연결 상태를 다시 확인한다.
+전역 room/connection/terminal 개수와 총 retained history 제한은 [후속 #15](https://github.com/edonghyun/ttyroom/issues/15)의 범위다.
+
 ## 코드와 검증 근거
 
 - [RoomDirectory](../backend/src/main/java/dev/ttyroom/application/RoomDirectory.java): `execute`, `RoomOperation.changeIf`의 직렬화·저장·commit 계약.

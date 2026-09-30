@@ -71,9 +71,15 @@ final class TerminalOutput {
     }
 
     void replay(RoomSessions.Peer peer, long terminalId) {
+        replay(peer, terminalId, () -> {});
+    }
+
+    void replay(RoomSessions.Peer peer, long terminalId, Runnable afterSync) {
         var stream = streams.get(terminalId);
         peer.replayOutput(
-                stream == null ? List.of() : List.copyOf(stream.history), sync(terminalId));
+                stream == null ? List.of() : List.copyOf(stream.history),
+                sync(terminalId),
+                afterSync);
         // The accepted replay and final sync supersede a pending live-delivery gap.
         var peerGaps = gaps.get(peer);
         if (peerGaps != null) {
