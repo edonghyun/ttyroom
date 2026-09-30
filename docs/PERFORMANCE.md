@@ -434,3 +434,63 @@ RSS 수집 실패, JFR DataLoss는 0이었다. admission 거절은 JFR buffer �
 참가자의 grace metadata 등이 남아 있고 10회 churn만으로 장시간 잔류 추세를 판단할 수 없다.
 이번 결과는 설정된 예산의 거절·반납과 다중 방 복구를 확인하며, 이전 지속 출력 시험과
 조합한 전역 최대 부하·원격망·배포 사양 검증은 아니다.
+
+## T10.6 — credential 보관과 유예 상태
+
+`capacity.credentialsPerRoom=64`, `capacity.credentials=128`은 manager를 포함한 보관 수다.
+16개 연결을 사용할 때 미접속·재접속용 credential의 여유를 두고, 방 4개가 각각 64개를 채우는
+것은 전역 128개에서 제한한다. 측정으로 도출한 최대 수용량이나 최적값이 아닌 보수적인 초기 정책이다.
+권한 검사·저장 실패·취소·재시작 수명은 [설정 안내](DEVELOPMENT.md#credential-발급보관-예산)에 정의한다.
+
+```sh
+JAVA_HOME=/path/to/jdk21 TTYROOM_CAPACITY_PROFILE=credentials \
+  ./scripts/measure-capacity.sh artifacts/capacity-credentials
+```
+
+불변 JAR, Java 21/G1 `-Xms256m -Xmx512m`, macOS 로컬에서 다른 빌드·테스트와 겹치지 않게
+실행한다. 실제 PTY·브라우저 대신 합성 HTTP/WS peer를 사용한다. 방 2개를 각각 manager 1명,
+계속 접속하는 participant 1명, 추가 participant 62명으로 채운다. 총 128개 credential이다.
+이 상태에서 새 방의 manager 발급과 기존 방의 participant 발급을 거절하는지 확인한다.
+
+방마다 credential 하나를 100회 취소·재발급해 보관 수를 유지한다. 이후 방별 62개 고유 identity를
+차례로 연결·종료하고 기본 15초 grace의 joined/left 알림을 전부 수집한다. keeper를 재접속해
+snapshot에 1명만 남는지 확인한다. 각 방은 차례로 시험하며, keeper가 방 삭제를 막는다.
+마지막으로 추가 credential 124개를 취소해 manager와 keeper 총 4개만 남긴다.
+
+발급은 HTTP 응답까지, 취소는 HTTP와 해당 주체의 삭제 알림까지, 인증은 WS 연결과 welcome까지의
+클라이언트 관측 지연이다. 인증 탐색 함수만의 실행 시간이 아니며 10 ms polling도 포함한다.
+빈 상태/최대 credential/발급 churn/유예 종료/취소 후 강제 GC heap과 SQLite 파일·sidecar 크기를
+기록한다. 파일 크기는 SQLite가 재사용하는 빈 페이지까지 포함하므로 논리 보관 항목 수와 다르다.
+JFR queue/pressure·RSS 수집 오류도 확인한다. 동일 조건을 3회 반복한다.
+
+v8의 공개 등록·입장·취소 경로에서는 membership이 발급된 identity에 연결되고 취소가 membership과
+유예 타이머를 정리한다. v7은 credential 없이 임의 ID로 입장하므로 이 예산의 보호 대상이 아니다.
+특성화 테스트에서는 저장 credential 1개 상태에서도 연결을 차례로 바꿔 grace membership 4개가
+남았고 expiry 후 1개로 줄었다. 이미 실행 큐에 전달된 expiry 작업과 HTTP 요청 대기열도 별도 경계다.
+전체 heap 상한이나 장시간 누수 부재, 배포 환경 성능을 보장하지 않는다.
+
+### 관측 결과
+
+[공개 JSON](performance/credentials.json)의 최종 3회 모두 완료했다. `9feb1bb` 이후 작업 중인
+소스로 실행했으며 manifest에 `dirty: true`와 제품/JAR/harness hash를 기록했다.
+
+| 반복 | 최대 credential / 발급 churn / grace 후 / 취소 후 GC heap | 최대 관측 RSS | 발급 / 취소 / 연결+welcome p95 상한 |
+| ---- | --------------------------------------------------------- | ------------- | ----------------------------------- |
+| 1    | 16.25 / 15.71 / 15.78 / 15.85 MiB                         | 388.64 MiB    | 6 / 17 / 25 ms                      |
+| 2    | 16.33 / 15.95 / 16.21 / 15.93 MiB                         | 355.59 MiB    | 6 / 16 / 24 ms                      |
+| 3    | 16.26 / 15.73 / 15.80 / 15.97 MiB                         | 350.95 MiB    | 6 / 16 / 25 ms                      |
+
+회당 발급 326회, 취소 324회, 연결+welcome 128회를 관찰했다. 취소 지연 최대는 반복별
+230.06 / 36.29 / 23.78 ms였다. p95만으로 최악 지연을 감추지 않는다.
+각 방은 grace 중 최대 participant 63명, joined/left 각각 62회, grace 후 keeper 1명을 관찰했다.
+모든 방의 keeper가 제어 요청에 응답했다. 추가 방/participant 발급은 모두 503으로 거절됐다.
+
+SQLite 파일은 빈 상태 12 KiB에서 128개 적재 후 44 KiB가 됐고 발급 churn·grace·취소 후에도
+44 KiB였다. 보관 항목을 취소해도 물리 파일이 즉시 줄어든다고 가정하지 않는다. 기록된 바이트는
+파일 크기이며 DB의 논리 사용량·vacuum 결과를 측정한 것은 아니다. RSS 수집 실패·JFR DataLoss·
+buffer pressure event는 0이었다. JFR queue event는 회당 제어 probe 2개이며 대량 제어 부하가 아니다.
+
+최초 측정은 이전 취소 단계의 `participant-left` 알림 100개를 grace 만료로 잘못 집계해 실패했다.
+그 결과와 source hash도 공개 JSON의 `diagnosticRun`에 보존했다. 수정 후에는 각 취소 알림의
+주체를 확인하고 소비한 뒤 다음 단계로 넘어간다. 이 도구 오류를 서버 메모리 누수나 제품 RED로
+해석하지 않는다. v7 임의 identity와 대기 expiry 작업의 후속 범위는 [#17](https://github.com/edonghyun/ttyroom/issues/17)에 등록했다.

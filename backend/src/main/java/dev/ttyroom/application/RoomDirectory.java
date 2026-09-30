@@ -22,11 +22,15 @@ import java.util.function.Supplier;
 
 /** Owns room identity, command ordering and save-before-commit changes. */
 public final class RoomDirectory implements AutoCloseable {
-    public record Limits(int rooms, int terminals) {
+    public record Limits(int rooms, int terminals, int credentialsPerRoom, int credentials) {
+        public Limits(int rooms, int terminals) {
+            this(rooms, terminals, 64, 128);
+        }
+
         public static final Limits DEFAULT = new Limits(4, 16);
 
         public Limits {
-            if (rooms < 1 || terminals < 0)
+            if (rooms < 1 || terminals < 0 || credentialsPerRoom < 1 || credentials < 1)
                 throw new IllegalArgumentException("Invalid room capacity");
         }
     }
@@ -46,35 +50,52 @@ public final class RoomDirectory implements AutoCloseable {
 
     private final Limits limits;
     private int reservedRooms;
+    private int reservedCredentials;
     private int reservedTerminals;
 
     // Only short counter changes hold this monitor; storage and room work never do.
-    private synchronized void reserve(int roomCount, int terminalCount) {
+    private synchronized void reserve(int roomCount, int terminalCount, int credentialCount) {
         if (roomCount > limits.rooms() - reservedRooms) throw new CapacityExceeded("rooms");
         if (terminalCount > limits.terminals() - reservedTerminals)
             throw new CapacityExceeded("terminals");
+        if (credentialCount > limits.credentials() - reservedCredentials)
+            throw new CapacityExceeded("credentials");
+        reservedCredentials += credentialCount;
         reservedRooms += roomCount;
         reservedTerminals += terminalCount;
     }
 
-    private synchronized void release(int roomCount, int terminalCount) {
+    private synchronized void release(int roomCount, int terminalCount, int credentialCount) {
+        reservedCredentials -= credentialCount;
         reservedRooms -= roomCount;
         reservedTerminals -= terminalCount;
     }
 
     /** Reserve growth before saving; a failed save returns only that operation's reservation. */
     private void saveWithCapacity(Room room, StoredRoom record) {
+        int credentials = record.credentials().size();
+        requireRoomCredentialCapacity(credentials);
+        int credentialGrowth = Math.max(0, credentials - room.reservedCredentials);
         int target = record.control().workspace().terminals().size();
         int growth = Math.max(0, target - room.reservedTerminals);
-        reserve(0, growth);
+        reserve(0, growth, credentialGrowth);
         try {
             store.save(record);
         } catch (RuntimeException | Error failure) {
-            release(0, growth);
+            release(0, growth, credentialGrowth);
             throw failure;
         }
-        release(0, Math.max(0, room.reservedTerminals - target));
+        release(
+                0,
+                Math.max(0, room.reservedTerminals - target),
+                Math.max(0, room.reservedCredentials - credentials));
+        room.reservedCredentials = credentials;
         room.reservedTerminals = target;
+    }
+
+    private void requireRoomCredentialCapacity(int credentials) {
+        if (credentials > limits.credentialsPerRoom())
+            throw new CapacityExceeded("room credentials");
     }
 
     private final ConcurrentHashMap<String, Room> rooms = new ConcurrentHashMap<>();
@@ -117,6 +138,7 @@ public final class RoomDirectory implements AutoCloseable {
 
     private void restore(List<StoredRoom> storedRooms) {
         for (var stored : storedRooms) {
+            requireRoomCredentialCapacity(stored.credentials().size());
             var room =
                     new Room(
                             stored.roomId(),
@@ -124,7 +146,7 @@ public final class RoomDirectory implements AutoCloseable {
                             HexFormat.of().parseHex(stored.tokenHash()),
                             RoomControl.restore(stored.control()),
                             RoomCredentials.restore(stored.credentials()));
-            reserve(1, room.reservedTerminals);
+            reserve(1, room.reservedTerminals, room.reservedCredentials);
             if (rooms.putIfAbsent(room.id, room) != null)
                 throw new IllegalArgumentException("Duplicate room ID");
         }
@@ -133,11 +155,11 @@ public final class RoomDirectory implements AutoCloseable {
     public Invitation create(String name) {
         return duringOperation(
                 () -> {
-                    reserve(1, 0);
+                    reserve(1, 0, 0);
                     try {
                         return createRoom(name);
                     } catch (RuntimeException | Error failure) {
-                        release(1, 0);
+                        release(1, 0, 0);
                         throw failure;
                     }
                 });
@@ -155,7 +177,7 @@ public final class RoomDirectory implements AutoCloseable {
                         new RoomControl(),
                         new RoomCredentials());
         var manager = room.credentials.issue(RoomCredentials.Role.MANAGER);
-        store.save(room.durableState());
+        saveWithCapacity(room, room.durableState());
         rooms.put(room.id, room);
         return new Invitation(room.id, room.name, token, manager.secret());
     }
@@ -343,7 +365,7 @@ public final class RoomDirectory implements AutoCloseable {
                 if (before.equals(after)) return result;
                 record = room.durableState(room.control.durableState(), after);
             }
-            store.save(record);
+            saveWithCapacity(room, record);
             synchronized (room) {
                 room.credentials = draft;
                 return result;
@@ -390,7 +412,8 @@ public final class RoomDirectory implements AutoCloseable {
         /** A separate durable decision: delete failure cannot undo an earlier change. */
         void remove() {
             store.delete(room.id);
-            if (rooms.remove(room.id, room)) release(1, room.reservedTerminals);
+            if (rooms.remove(room.id, room))
+                release(1, room.reservedTerminals, room.reservedCredentials);
         }
     }
 
@@ -461,6 +484,7 @@ public final class RoomDirectory implements AutoCloseable {
         final RoomControl control;
         private RoomCredentials credentials;
         private int reservedTerminals;
+        private int reservedCredentials;
         private final ReentrantLock commands = new ReentrantLock(true);
         private final byte[] tokenHash;
 
@@ -476,6 +500,7 @@ public final class RoomDirectory implements AutoCloseable {
             this.control = control;
             this.reservedTerminals = control.durableState().workspace().terminals().size();
             this.credentials = credentials;
+            this.reservedCredentials = credentials.durableState().size();
         }
 
         /** Shares the room monitor with mutations and realtime session access. */

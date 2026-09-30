@@ -1,5 +1,23 @@
 # 검증 기록
 
+## 2026-09-30 Credential 발급·보관 예산 T10.6
+
+- Java **534개 통과**, 실패·오류·skip 0. manager 포함 방별/전역 경계, 동시 발급,
+  저장 실패, 취소·삭제·중복 반납, 복원 초과를 검증했다.
+- TS 단위 **591개**, 타입·포맷·의존성 경계 검사 통과.
+- 최대 heap 512 MiB 불변 JAR의 Spring 인증·복구·한도 **33개 통과**. 새 credential 사례 4개는
+  503/no-store, 잘못된 권한의 403, 정상 참가자 유지, 재시작·취소 후 재발급과 host/participant 공유 예산을 확인한다.
+- Spring HTTP 명세·등록 계약 **13개 통과**.
+- `artifacts/t10-6/credential-red.log`는 방별/전역 한도 미적용 assertion 실패다.
+  변경 전 RoomDirectory 소스도 같은 디렉터리에 보존했다. 저장·동시성·HTTP 사례는 추가 회귀다.
+- v7 grace membership 특성화는 credential 예산과 별개로 ID가 누적되는 기존 동작을 확인한다.
+  관련 후속 작업은 [#17](https://github.com/edonghyun/ttyroom/issues/17)에 남겼다.
+- 최종 credential 측정 **3/3 완료**. 128개 보관, 방별 100회 취소·재발급, 62개 고유 identity의
+  연결/종료와 기본 15초 유예 후 snapshot 1명을 확인했다. [공개 관측](performance/credentials.json)에
+  최초 도구 오류와 수정 후 결과, source/JAR hash, 지연·heap·저장 크기·RSS·JFR를 구분해 보존한다.
+
+이는 로컬 유한 실행이며 실제 배포 사양 검증은 #15에 남는다. 최종 CI 결과는 #16에 기록한다.
+
 ## 2026-09-30 전역 admission 예산 T10.5
 
 - Java 전체 **517개 통과**, 실패·오류·skip 0. 방/terminal/connection의 마지막 슬롯 경합,

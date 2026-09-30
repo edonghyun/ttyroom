@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, rm, writeFile, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve, join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
@@ -17,6 +17,8 @@ export interface TestPolicy {
 
 const WORKSPACE_ROOT = resolve(import.meta.dirname, "../..");
 export interface TestCapacity {
+  credentialsPerRoom: number;
+  credentials: number;
   rooms: number;
   connections: number;
   terminals: number;
@@ -81,6 +83,22 @@ export class ServerProcess {
 
   diagnostics(): string {
     return this.process?.diagnostics() ?? "server not started";
+  }
+
+  /** Physical SQLite footprint, including any sidecars; contains no stored values. */
+  async storageBytes(): Promise<number> {
+    const file = join(this.directory, `state-${this.stateGeneration}.sqlite`);
+    const sizes = await Promise.all(
+      ["", "-wal", "-shm", "-journal"].map(async (suffix) => {
+        try {
+          return (await stat(file + suffix)).size;
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code === "ENOENT") return 0;
+          throw error;
+        }
+      }),
+    );
+    return sizes.reduce((sum, size) => sum + size, 0);
   }
 
   async restart(downtimeMs = 0): Promise<void> {

@@ -19,6 +19,36 @@ class ServerSettingsTests {
     @TempDir Path directory;
 
     @Test
+    void credentialCapacityUsesEnvironmentOverridesAndReachesTheStorageBoundary() throws Exception {
+        var environment =
+                configuredFile(
+                                """
+                                {"capacity":{"credentialsPerRoom":4,"credentials":6}}
+                                """)
+                        .withProperty("TTYROOM_MAX_CREDENTIALS", "8");
+
+        var settings = ServerSettings.load(environment);
+        var defaults = ServerSettings.load(configuredFile("{}"));
+
+        assertThat(settings.capacity().credentialsPerRoom()).isEqualTo(4);
+        assertThat(settings.capacity().credentials()).isEqualTo(8);
+        assertThat(settings.roomLimits().credentialsPerRoom()).isEqualTo(4);
+        assertThat(settings.roomLimits().credentials()).isEqualTo(8);
+        assertThat(defaults.capacity().credentialsPerRoom()).isEqualTo(64);
+        assertThat(defaults.capacity().credentials()).isEqualTo(128);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"TTYROOM_MAX_CREDENTIALS", "TTYROOM_MAX_CREDENTIALS_PER_ROOM"})
+    void zeroCredentialCapacityFailsStartup(String key) throws Exception {
+        var environment = configuredFile("{}").withProperty(key, "0");
+
+        var failure = catchThrowable(() -> ServerSettings.load(environment));
+
+        assertThat(failure).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
     void capacityUsesEnvironmentThenFileThenDefaults() throws Exception {
         var environment =
                 configuredFile(

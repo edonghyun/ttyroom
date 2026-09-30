@@ -25,7 +25,13 @@ public record ServerSettings(
         long sendBufferDropThresholdBytes,
         long maxQueuedDataBytesPerConnection,
         Capacity capacity) {
-    public record Capacity(int rooms, int connections, int terminals, long retainedHistoryBytes) {}
+    public record Capacity(
+            int rooms,
+            int connections,
+            int terminals,
+            long retainedHistoryBytes,
+            int credentialsPerRoom,
+            int credentials) {}
 
     public RoomDirectory.Limits roomLimits() {
         long histories =
@@ -33,7 +39,10 @@ public record ServerSettings(
                         ? capacity.terminals()
                         : capacity.retainedHistoryBytes() / scrollbackBytesPerTerminal;
         return new RoomDirectory.Limits(
-                capacity.rooms(), (int) Math.min(capacity.terminals(), histories));
+                capacity.rooms(),
+                (int) Math.min(capacity.terminals(), histories),
+                capacity.credentialsPerRoom(),
+                capacity.credentials());
     }
 
     private static final long MAX_SAFE_INTEGER = 9_007_199_254_740_991L;
@@ -57,7 +66,14 @@ public record ServerSettings(
         var capacity = file.path("capacity");
         if (capacity.isMissingNode()) capacity = JsonMapper.builder().build().createObjectNode();
         requireFields(
-                capacity, Set.of("rooms", "connections", "terminals", "retainedHistoryBytes"));
+                capacity,
+                Set.of(
+                        "rooms",
+                        "connections",
+                        "terminals",
+                        "retainedHistoryBytes",
+                        "credentialsPerRoom",
+                        "credentials"));
         var capacityValues = new SettingsSource(environment, capacity);
         var root = new SettingsSource(environment, file);
         var policyValues = new SettingsSource(environment, policy);
@@ -100,7 +116,21 @@ public record ServerSettings(
                         capacityValues.nonNegative(
                                 "retainedHistoryBytes",
                                 "TTYROOM_MAX_RETAINED_HISTORY_BYTES",
-                                16_777_216)));
+                                16_777_216),
+                        (int)
+                                capacityValues.number(
+                                        "credentialsPerRoom",
+                                        "TTYROOM_MAX_CREDENTIALS_PER_ROOM",
+                                        64,
+                                        1,
+                                        1_000_000),
+                        (int)
+                                capacityValues.number(
+                                        "credentials",
+                                        "TTYROOM_MAX_CREDENTIALS",
+                                        128,
+                                        1,
+                                        1_000_000)));
     }
 
     private static JsonNode readFile(String explicitPath) {

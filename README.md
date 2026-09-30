@@ -88,6 +88,7 @@ node connector/dist/index.js join "http://localhost:3000/r/ROOM_ID" --name "내 
 실행 스크립트의 작업 디렉터리는 저장소 루트이므로 상대 설정·SQLite 경로도 루트 기준입니다.
 `TTYROOM_STATE_PATH`를 생략하면 Spring은 메모리 모드로 실행합니다.
 Spring은 기본적으로 저장된 방 4개·WebSocket 16개·terminal 16개·retained payload 16 MiB를 제한합니다.
+Credential은 manager를 포함해 방별 64개·서버 전체 128개까지 보관합니다.
 [설정과 자원 수명](docs/DEVELOPMENT.md#전역-admission-예산-spring)을 확인하세요. 이 값은 배포 수용량 보장이 아닙니다.
 현재 Spring은 `127.0.0.1`에 바인딩하므로 이 안내는 로컬 실행 기준입니다.
 

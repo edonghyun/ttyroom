@@ -86,20 +86,23 @@ export class SocketProbe {
       this.socket.send(part, { binary: true, fin: index === parts.length - 1 }),
     );
   }
-  async next(): Promise<ServerMessage> {
-    const packet = await this.nextPacket();
+  async next(timeoutMs?: number): Promise<ServerMessage> {
+    const packet = await this.nextPacket(timeoutMs);
     if (packet.kind !== "control")
       throw new Error("Expected a control message, received binary data");
     return packet.message;
   }
-  async nextPacket(): Promise<ProbePacket> {
-    await waitUntil(() => {
-      this.check();
-      if (this.messages.length > 0) return true;
-      if (this.socket.readyState === WebSocket.CLOSED)
-        throw new Error("Socket closed before expected message");
-      return false;
-    });
+  async nextPacket(timeoutMs?: number): Promise<ProbePacket> {
+    await waitUntil(
+      () => {
+        this.check();
+        if (this.messages.length > 0) return true;
+        if (this.socket.readyState === WebSocket.CLOSED)
+          throw new Error("Socket closed before expected message");
+        return false;
+      },
+      { timeoutMs },
+    );
     return this.messages.shift()!;
   }
   async disconnect() {

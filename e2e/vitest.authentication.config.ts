@@ -7,6 +7,7 @@ export default defineConfig({
       "src/revocation.spring.ts",
       "src/inbound-limits.spring.ts",
       "src/global-limits.spring.ts",
+      "src/credential-limits.spring.ts",
       "src/workspace-replay.spring.ts",
     ],
     fileParallelism: false,

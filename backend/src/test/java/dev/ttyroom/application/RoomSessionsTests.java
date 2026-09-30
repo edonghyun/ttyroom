@@ -28,6 +28,24 @@ import java.util.stream.Stream;
 
 class RoomSessionsTests {
     @Test
+    void legacyIdentitiesAccumulateDuringGraceIndependentlyOfCredentialCapacity() {
+        var rooms =
+                new RoomDirectory(RoomStore.transientOnly(), new RoomDirectory.Limits(1, 1, 1, 1));
+        try (var fixture = new Fixture(rooms, null)) {
+            fixture.join("keeper");
+
+            for (int i = 0; i < 3; i++) fixture.join("transient-" + i).session.disconnect();
+            var before = (Welcome) fixture.join("keeper").messages.getFirst();
+            List.copyOf(fixture.expiry.callbacks).forEach(Runnable::run);
+            var after = (Welcome) fixture.join("keeper").messages.getFirst();
+
+            assertThat(fixture.durableState().credentials()).hasSize(1);
+            assertThat(before.participants()).hasSize(4);
+            assertThat(after.participants()).hasSize(1);
+        }
+    }
+
+    @Test
     void joiningManyTerminalsReservesOnlyOneHistoryUntilItsSyncDrains() {
         try (var fixture = new Fixture()) {
             fixture.hostWithHistory(4);

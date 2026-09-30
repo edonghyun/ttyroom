@@ -218,5 +218,33 @@ Connector 명령에는 fragment 없는 방 주소만 넣고, 표시되지 않는
 로그에 credential이나 요청 payload를 추가하지 않는다.
 
 이 예산은 논리 payload와 admission 대상 개수를 제한한다. replay snapshot, frame 객체, native memory,
-credential 누적, grace 기간의 membership metadata, HTTP 부하는 별도다. heap/RSS 전체 상한으로
+credential 보관은 아래 별도 예산을 적용한다. v7의 grace membership과 HTTP 부하는 별도다. heap/RSS 전체 상한으로
 해석하지 않는다. [측정 조건과 한계](PERFORMANCE.md#t105--전역-admission-경계)를 함께 읽는다.
+
+### Credential 발급·보관 예산
+
+| JSON 필드                   | 환경변수                         | 기본값 |
+| --------------------------- | -------------------------------- | ------ |
+| capacity.credentialsPerRoom | TTYROOM_MAX_CREDENTIALS_PER_ROOM | 64     |
+| capacity.credentials        | TTYROOM_MAX_CREDENTIALS          | 128    |
+
+두 값은 각각 방 하나와 서버 프로세스 전체에 저장하는 credential 수이며 1..1000000의 정수다.
+manager·host·participant가 같은 예산을 사용한다. 새 방은 manager 1개를 발급하므로 전역
+credential 예산이 가득 차면 방 개수에 여유가 있어도 생성할 수 없다.
+
+발급·취소·방 삭제는 기존 저장 경계 안에서 예약/반납한다. 발급 저장에 실패하면 증가분을
+반환하고 응답에 비밀값을 내보내지 않는다. 취소 저장에 실패하면 기존 credential과 예약을 유지한다.
+성공한 취소와 방 삭제만 보관 예약을 반환한다. 개별 연결 종료나 membership 유예 만료는 credential을
+자동 취소하지 않는다. 기존 정책에 따라 마지막 member의 유예 만료로 방까지 삭제되는 경우에는
+그 방의 credential도 함께 해제된다. 한도를 낮춰 저장 데이터가 초과하면 삭제 없이 시작을 실패시킨다.
+
+유효한 권한으로 한도를 넘는 발급을 요청하면 HTTP 503과 `Cache-Control: no-store`를 반환한다.
+오류는 `room credentials capacity exhausted` 또는 `credentials capacity exhausted`다.
+기존 credential은 계속 인증·재접속·취소할 수 있다. 초과 시 이미 발급한 credential을 자동으로
+퇴출하지 않으며 관리자가 불필요한 주체를 취소한 뒤 재발급할 수 있다. 잘못된 권한에는 계속
+403 `registration forbidden`을 반환한다.
+
+64/128은 운영 최대치를 뜻하지 않는 검증용 기본값이다. 기본 전역 연결 한도 16개보다 등록 여유를
+두되, 기본 방 4개가 각각 64개를 채우기 전에 전역 128개에서 제한한다. 발급/취소와 인증에 따른
+저장·복사·탐색 비용을 [유한한 로컬 시험](PERFORMANCE.md#t106--credential-보관과-유예-상태)으로
+확인한다. 이 값은 HTTP 요청률이나 동시에 기다리는 요청 수를 제한하지 않는다.

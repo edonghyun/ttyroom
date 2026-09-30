@@ -522,7 +522,12 @@
               "properties": {
                 "error": {
                   "type": "string",
-                  "enum": ["registration unavailable", "rooms capacity exhausted"]
+                  "enum": [
+                    "registration unavailable",
+                    "rooms capacity exhausted",
+                    "room credentials capacity exhausted",
+                    "credentials capacity exhausted"
+                  ]
                 }
               }
             },

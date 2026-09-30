@@ -8,7 +8,7 @@ if [ "$#" -ne 1 ] || [ -z "${JAVA_HOME:-}" ]; then
   exit 2
 fi
 TTYROOM_CAPACITY_PROFILE=${TTYROOM_CAPACITY_PROFILE:-full}
-case "$TTYROOM_CAPACITY_PROFILE" in smoke|full|recovery|admission) ;; *) echo 'Unknown capacity profile' >&2; exit 2 ;; esac
+case "$TTYROOM_CAPACITY_PROFILE" in smoke|full|recovery|admission|credentials) ;; *) echo 'Unknown capacity profile' >&2; exit 2 ;; esac
 export TTYROOM_CAPACITY_PROFILE
 mkdir -p "$(dirname -- "$1")"
 mkdir "$1"
@@ -33,4 +33,5 @@ writeFileSync(join(dir,'manifest.json'),JSON.stringify({startedAt:new Date().toI
 JS
 runner=src/performance/capacity-run.ts
 if [ "$TTYROOM_CAPACITY_PROFILE" = admission ]; then runner=src/performance/admission-run.ts; fi
+if [ "$TTYROOM_CAPACITY_PROFILE" = credentials ]; then runner=src/performance/credential-run.ts; fi
 pnpm --filter @ttyroom/e2e exec tsx "$runner" > "$TTYROOM_CAPACITY_DIR/run.log" 2>&1
