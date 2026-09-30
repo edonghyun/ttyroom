@@ -9,6 +9,7 @@ export default defineConfig({
       "src/global-limits.spring.ts",
       "src/credential-limits.spring.ts",
       "src/membership-limits.spring.ts",
+      "src/stored-host-limits.spring.ts",
       "src/workspace-replay.spring.ts",
     ],
     fileParallelism: false,

@@ -17,6 +17,8 @@ export interface TestPolicy {
 
 const WORKSPACE_ROOT = resolve(import.meta.dirname, "../..");
 export interface TestCapacity {
+  storedHostsPerRoom: number;
+  storedHosts: number;
   membershipsPerRoom: number;
   memberships: number;
   credentialsPerRoom: number;

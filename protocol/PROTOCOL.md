@@ -259,3 +259,8 @@ close 1008이다. 방 생성 초과는 OpenAPI의 HTTP 503 응답이다.
 `room memberships capacity exhausted` 또는 `memberships capacity exhausted`이고 해당
 연결만 닫는다. 접속 중과 유예 중 identity를 함께 세며 같은 identity의 교체는 슬롯을 추가로
 쓰지 않는다. 물리 연결 한도는 먼저 적용된다. [membership 수명](../docs/DEVELOPMENT.md#membership과-만료-작업)을 참고한다.
+
+저장 host identity 예산을 넘는 새 host hello는 `capacity-exhausted`와
+`room stored hosts capacity exhausted` 또는 `stored hosts capacity exhausted`를 반환하고
+해당 연결을 닫는다. 이미 저장된 동일 host는 이 한도 안에서 재접속·inventory 복구할 수 있다.
+credential 등록과 실제 host 입장 예약은 다르다. [저장 host 수명](../docs/DEVELOPMENT.md#저장-host-identity-예산)을 참고한다.

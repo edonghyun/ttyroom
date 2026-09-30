@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 1,
+  "scope": "Finite application experiment using an in-memory RoomStore and controlled expiry callbacks. Welcome delivery deliberately throws PeerUnavailable. No SQLite I/O, heap/RSS, network latency or throughput measurement.",
+  "revision": "b0dfa061fc23d39615cfcb35f50b45632423fe22",
+  "dirty": true,
+  "jdk": "Temurin 21.0.12.1+1",
+  "limits": {
+    "storedHostsPerRoom": 4,
+    "storedHosts": 6
+  },
+  "interpretation": "Of 40 distinct admission attempts, 6 reach welcome delivery and fail after saving; 34 are rejected before saving. Each cleanup/replacement round observes total stored hosts 5 then 6. Restart reconstructs application objects from saved records; real SQLite process restart is verified separately in stored-host-limits.spring.ts.",
+  "sourceSha256": {
+    "backend/src/main/java/dev/ttyroom/TtyRoomApplication.java": "ba35cbffaf7bf3d51d7189db8c325725e4a92ca5a791a6df091dfd38d6788cf4",
+    "backend/src/main/java/dev/ttyroom/adapter/config/ServerSettings.java": "b82a186c2bc0e2eb807b93081872481ab86a8c97e23f91244a3ad5bc42b076ab",
+    "backend/src/main/java/dev/ttyroom/adapter/http/HealthController.java": "eae72dff87f2442ec1938879a60467861a84de937f4f67ae27a8b8e6eb80269a",
+    "backend/src/main/java/dev/ttyroom/adapter/http/RoomController.java": "bc3800d3dc595c473fae54376378b538df8d0def63cf50174198eb98eef7622b",
+    "backend/src/main/java/dev/ttyroom/adapter/http/StaticWebController.java": "163f2220c85e4bf8c3275d199314ad912c6c5d259c3de21bc5ba8c4ae72d3a5a",
+    "backend/src/main/java/dev/ttyroom/adapter/sqlite/SqliteRoomStore.java": "842ae5e4bee1d3f8adba9c89770b8bbbee71cd64513b3ef127134f89e5b24f3c",
+    "backend/src/main/java/dev/ttyroom/adapter/sqlite/StoredRoomJson.java": "755efea8902441870a1a3557bfa40b1055da42d111e0a38384f4ce3ab8412ee0",
+    "backend/src/main/java/dev/ttyroom/adapter/ws/BufferEvents.java": "ef33c2f98af626324b338e7d83f33099c3a9723eaa871c42958ffb662fe46faf",
+    "backend/src/main/java/dev/ttyroom/adapter/ws/ControlInbox.java": "d2be972864726d69561a509fcad80674aa8d191959ee907e9fce8e9a058b8a48",
+    "backend/src/main/java/dev/ttyroom/adapter/ws/IncomingMessages.java": "f95d80bbc6a1267ab67da9e6544cb986954cd35329259c9eac115f74265d14af",
+    "backend/src/main/java/dev/ttyroom/adapter/ws/InputWire.java": "70149fdff7b08dd4b867db8262a7408ff4c4a70710aa2996171e164b0292785e",
+    "backend/src/main/java/dev/ttyroom/adapter/ws/OutputWire.java": "2b45df50c534a30e74334c2f68504bee7fd008c9bf9737c3765c61936d8375cf",
+    "backend/src/main/java/dev/ttyroom/adapter/ws/RoomProtocol.java": "034339b761c89c801638ee8bd49e351f3ed3fb388b3ed4013e2ecbbb1b245b78",
+    "backend/src/main/java/dev/ttyroom/adapter/ws/RoomSocketHandler.java": "f073ce16cfc9de586266f40bed0040dbeea065ffffb444b90f428c3659b11a32",
+    "backend/src/main/java/dev/ttyroom/adapter/ws/SocketSender.java": "ef2693f49fb6e5c6b8ea717c2721c311d83a494140602ebd059b4057605f6a59",
+    "backend/src/main/java/dev/ttyroom/adapter/ws/WebSocketConfiguration.java": "b0698830073fbddaa2561546adfd3fef3ea84e048660a581bfdcf1b4a9b0fdc1",
+    "backend/src/main/java/dev/ttyroom/application/CursorPosition.java": "7ca89bee1e849aaee96ee16a42fb5da16bb39ce88cec69c964567b5030a6e8bd",
+    "backend/src/main/java/dev/ttyroom/application/ExpiryTimers.java": "a55b228b94bbf2d95cf160903b65908f1ef6768048048f9483134f4233ad5395",
+    "backend/src/main/java/dev/ttyroom/application/HostCommand.java": "e6280e1c86ac4ea06ccdddac3676090dc4306d2eeae7834463d28329ea52355a",
+    "backend/src/main/java/dev/ttyroom/application/InputFrame.java": "5c19638c263db02684e510e8cfc76e32df1cf78a25d175da46ddc4a6a2271b96",
+    "backend/src/main/java/dev/ttyroom/application/OutputFrame.java": "684c89fb2ac9b21472a66cc8f92259c99cfd08f135f1fd21a61eb1cf1b26f52c",
+    "backend/src/main/java/dev/ttyroom/application/ParticipantCommand.java": "39c1b004a2d0b46f5c55ffd11ce49e519cf904682ccedf4614ed7708cd468d29",
+    "backend/src/main/java/dev/ttyroom/application/RoomCredentials.java": "6c0f9dea71d7e492dff09553676e94b307e4658f1b45d3798433de9d741427c2",
+    "backend/src/main/java/dev/ttyroom/application/RoomDirectory.java": "abaf35107da789b9f29057ec13dfab617481c02a4d704e85137e2950de469c7f",
+    "backend/src/main/java/dev/ttyroom/application/RoomNotice.java": "d94e7cddd221f40d9f09fae913d33a12f57bead46b655db8d86f328d05720da6",
+    "backend/src/main/java/dev/ttyroom/application/RoomSessions.java": "69cb5ac8d48605504cdc62700868c1e0e57c4c89ea525e9d9928e95906920f0a",
+    "backend/src/main/java/dev/ttyroom/application/RoomStore.java": "f4cbab0f75618183541f33b9b0deb404eea6ccf9284f02afd3e3bef936a169cb",
+    "backend/src/main/java/dev/ttyroom/application/TerminalOutput.java": "33c035242d1640a7f92cd14086f61f9e8ef518d8d4dd1f9140ab9fa2ce92f92f",
+    "backend/src/main/java/dev/ttyroom/domain/HostPresence.java": "9e8d37a1782a45cba6b66bbbb7fadf50ee9bc4ed19a41586a9a69ccb55b1b3be",
+    "backend/src/main/java/dev/ttyroom/domain/LeaseControl.java": "4d3820c2d3355a2905242f548d36a5fb90de123dfce49d07aaf273b965753160",
+    "backend/src/main/java/dev/ttyroom/domain/RoomControl.java": "683e483997faaa35721c742841b521a85f2d097df632c7b6d290c1d138e92556",
+    "backend/src/main/java/dev/ttyroom/domain/TerminalWorkspace.java": "8f1fce4b0895dbab04c1e104cb97bda848ae620e3fbe22271fa47167c9024d54",
+    "backend/src/test/java/dev/ttyroom/application/StoredHostCapacityTests.java": "25ca61e53627213e8ed27be8d45595a3615b13b9163490cc602ccf7ae7d56767",
+    "e2e/src/server-process.ts": "e532b0690ba4814a79134d28d18e731a2293337617987c694f61bf34a191f329",
+    "e2e/src/stored-host-limits.spring.ts": "c3f541ee29dee3d773fd9090f6be4e8bb81e77dabd048a6f89ba932abcf322ee"
+  },
+  "jarSha256": "ea0c6c8c507d0c4bdf14234f4223112a271f19c4c71758199c659f7a0a5d0100",
+  "trials": [
+    {
+      "repetition": 1,
+      "uniqueAdmissionAttempts": 40,
+      "capacityRejections": 34,
+      "retainedAfterAttempts": 6,
+      "cleanupReplacementRounds": 20,
+      "afterEachCleanup": 5,
+      "afterEachReplacement": 6,
+      "afterRestart": 6
+    },
+    {
+      "repetition": 2,
+      "uniqueAdmissionAttempts": 40,
+      "capacityRejections": 34,
+      "retainedAfterAttempts": 6,
+      "cleanupReplacementRounds": 20,
+      "afterEachCleanup": 5,
+      "afterEachReplacement": 6,
+      "afterRestart": 6
+    },
+    {
+      "repetition": 3,
+      "uniqueAdmissionAttempts": 40,
+      "capacityRejections": 34,
+      "retainedAfterAttempts": 6,
+      "cleanupReplacementRounds": 20,
+      "afterEachCleanup": 5,
+      "afterEachReplacement": 6,
+      "afterRestart": 6
+    }
+  ]
+}

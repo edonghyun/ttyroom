@@ -317,6 +317,9 @@ public final class RoomSessions implements AutoCloseable {
                                     return new Member(authenticated, peer);
                                 },
                                 member -> attach(room, member));
+                    } catch (RoomDirectory.CapacityExceeded exhausted) {
+                        reject(peer, "capacity-exhausted", exhausted.getMessage());
+                        return null;
                     } finally {
                         synchronized (state) {
                             if (reserved && !room.members.containsKey(identity)) releaseMember();

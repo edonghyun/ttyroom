@@ -260,7 +260,7 @@ Spring v7/v8 모두 접속 중과 유예 중인 `(방, 역할, identity)`를 센
 정수다. participant와 host가 같은 예산을 사용하며 manager credential 자체는 membership이 아니다.
 물리 연결·저장 credential과 수명이 다르다. 재시작 시 membership은 복원하지 않으며 저장된 offline
 host 목록도 membership으로 세지 않는다. v7은 비교용 모드이고 임의 ID 입장도 이 한도를 적용한다.
-v7 host의 저장 후 welcome 실패로 남는 영속 identity는 이 예산 밖이며 [#18](https://github.com/edonghyun/ttyroom/issues/18)의 후속 대상이다.
+welcome 실패 뒤 남는 영속 host identity는 membership 대신 아래의 저장 host 예산으로 제한한다.
 
 신규 identity를 방별 명령 순서 안에서 예약한다. host 저장 실패나 첫 welcome 실패로 입장이
 성립하지 않으면 반환한다. 같은 identity의 연결 교체는 추가 슬롯이 필요 없고, 이전 callback이
@@ -283,3 +283,32 @@ interrupt하지 않고, 현재 Member와 동일한지 확인해 오래된 callba
 저장 장애에 대한 무제한 자동 재시도는 하지 않는다. host 만료 저장 실패는 로그로 드러나며
 재접속·취소 등의 복구가 필요하다. HTTP/TCP 요청률과 명령 대기열 전체, 장시간 메모리 추세는
 별도 검증 대상이다. [유한 지연 실험](PERFORMANCE.md#t107--membership과-만료-대기)은 이 경계를 확인한다.
+
+### 저장 host identity 예산
+
+| JSON 필드                   | 환경변수                          | 기본값 |
+| --------------------------- | --------------------------------- | ------ |
+| capacity.storedHostsPerRoom | TTYROOM_MAX_STORED_HOSTS_PER_ROOM | 64     |
+| capacity.storedHosts        | TTYROOM_MAX_STORED_HOSTS          | 128    |
+
+Spring v7/v8의 영속 host 목록을 방별/서버 전체로 센다. 두 값은 1..1000000의 정수이며 기본값은
+운영 수용량을 보장하지 않는 초기 정책이다. 연결 여부·membership·terminal 개수와 무관하게 저장된
+host 한 개가 한 슬롯을 쓴다. v7 임의 host ID도 포함하며, v8 host credential 발급만으로는 이 슬롯을
+예약하지 않는다. 따라서 credential을 발급받았어도 첫 host 입장은 보관 한도로 거절될 수 있다.
+
+RoomDirectory가 host·terminal·credential 증가분을 저장 전에 함께 예약한다. 저장 실패는 증가분을
+반환하고 기존 영속 상태를 보존한다. 저장 성공 뒤 welcome 전송에 실패하면 이미 저장한 host와
+그 예약을 유지한다. 전송 실패를 이유로 기존 workspace를 롤백하거나 삭제하지 않는다.
+
+새 host가 한도를 넘으면 hello에 `capacity-exhausted`와 `room stored hosts capacity exhausted`
+또는 `stored hosts capacity exhausted`를 반환한 뒤 해당 연결을 닫는다. 이 입장에 할당한 새
+membership 예약도 반환한다. 저장된 동일 host의 재접속·이름 갱신·inventory 복구에는 추가 host
+슬롯이 필요 없다. 물리 연결과 membership 예산은 각자의 수명에 따라 별도로 적용한다.
+
+성공한 host 만료·취소 저장이나 방 삭제가 보관 슬롯을 반환한다. 연결 종료만으로는 반환하지 않는다.
+v7에서 welcome 실패 뒤 live member가 없는 host는 같은 ID로 재접속한 뒤 정상 유예 만료로 정리할 수
+있다. v8은 manager의 host credential 취소도 사용할 수 있다. 재시작은 offline host와 quota를 함께
+복원한다. 설정을 낮춰 기존 저장 수가 초과하면 데이터를 지우지 않고 시작을 실패시킨다.
+
+이 정책은 항목 수를 제한한다. DB 파일 크기·메모리 bytes·HTTP 요청률의 상한이나 불필요한 모든
+host의 자동 만료 정책은 아니다. [실패 주입과 프로세스 검증](PERFORMANCE.md#t108--저장-host-identity-보관)을 참고한다.

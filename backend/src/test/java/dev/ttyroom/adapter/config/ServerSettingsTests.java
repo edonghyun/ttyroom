@@ -19,6 +19,31 @@ class ServerSettingsTests {
     @TempDir Path directory;
 
     @Test
+    void storedHostCapacityUsesEnvironmentOverridesAndReachesTheStorageBoundary() throws Exception {
+        var environment =
+                configuredFile("{\"capacity\":{\"storedHostsPerRoom\":2,\"storedHosts\":3}}")
+                        .withProperty("TTYROOM_MAX_STORED_HOSTS", "5");
+
+        var settings = ServerSettings.load(environment);
+        var defaults = ServerSettings.load(configuredFile("{}"));
+
+        assertThat(settings.roomLimits().storedHostsPerRoom()).isEqualTo(2);
+        assertThat(settings.roomLimits().storedHosts()).isEqualTo(5);
+        assertThat(defaults.roomLimits().storedHostsPerRoom()).isEqualTo(64);
+        assertThat(defaults.roomLimits().storedHosts()).isEqualTo(128);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"TTYROOM_MAX_STORED_HOSTS", "TTYROOM_MAX_STORED_HOSTS_PER_ROOM"})
+    void zeroStoredHostCapacityFailsStartup(String key) throws Exception {
+        var environment = configuredFile("{}").withProperty(key, "0");
+
+        var failure = catchThrowable(() -> ServerSettings.load(environment));
+
+        assertThat(failure).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
     void membershipCapacityUsesEnvironmentOverridesAndDefaults() throws Exception {
         var environment =
                 configuredFile("{\"capacity\":{\"membershipsPerRoom\":3,\"memberships\":6}}")

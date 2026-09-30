@@ -22,7 +22,7 @@
 | [T10.5](https://github.com/edonghyun/ttyroom/issues/15) | 전역 입장 예산과 배포 사양 검증                     | T10.4     | 배포 검증 남음   |
 | [T10.6](https://github.com/edonghyun/ttyroom/issues/16) | credential 발급·보관 예산                           | T10.5     | 자원 경계        |
 | [T10.7](https://github.com/edonghyun/ttyroom/issues/17) | membership·만료 작업 누적 제한                      | T10.6     | 자원 경계        |
-| [T10.8](https://github.com/edonghyun/ttyroom/issues/18) | welcome 실패 뒤 v7 영속 host 누적 제한              | T10.7     | 후속 자원 경계   |
+| [T10.8](https://github.com/edonghyun/ttyroom/issues/18) | welcome 실패 뒤 영속 host 누적 제한                 | T10.7     | 후속 자원 경계   |
 | [T11.1](https://github.com/edonghyun/ttyroom/issues/11) | API 명세 자동 검증과 문서 UI 필요성 검토            | T9.5      | 선택             |
 
 ## 범위 경계

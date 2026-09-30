@@ -108,3 +108,9 @@ ExpiryTimers는 방당 하나·전체 네 개의 만료 작업만 worker에 전�
 종료는 대기를 취소한 뒤 실행 중 작업을 기다린다. 저장이 영구 정지하면 종료 시간도 보장되지 않는다.
 [설정·수명](../docs/DEVELOPMENT.md#membership과-만료-작업)과
 [지연 저장 실험](../docs/PERFORMANCE.md#t107--membership과-만료-대기)을 함께 읽는다.
+
+저장 host identity는 RoomDirectory가 소유하는 별도 예산이다. terminal·credential과 함께 증가분을
+저장 전에 예약하고 감소분은 저장 성공 뒤 반환한다. offline·welcome 실패 후 host도 복원 시 포함한다.
+RoomSessions는 저장 한도 초과를 입장 거절로 전달하고 신규 membership 예약을 되돌린다. 저장 후
+welcome 전송 실패는 기존 저장/전달 분리 계약대로 host와 workspace를 보존한다. 같은 host의 재입장은
+추가 저장 슬롯을 사용하지 않는다. [구체적인 수명](../docs/DEVELOPMENT.md#저장-host-identity-예산)을 따른다.

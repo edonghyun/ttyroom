@@ -33,7 +33,9 @@ public record ServerSettings(
             int credentialsPerRoom,
             int credentials,
             int membershipsPerRoom,
-            int memberships) {}
+            int memberships,
+            int storedHostsPerRoom,
+            int storedHosts) {}
 
     public RoomDirectory.Limits roomLimits() {
         long histories =
@@ -44,7 +46,9 @@ public record ServerSettings(
                 capacity.rooms(),
                 (int) Math.min(capacity.terminals(), histories),
                 capacity.credentialsPerRoom(),
-                capacity.credentials());
+                capacity.credentials(),
+                capacity.storedHostsPerRoom(),
+                capacity.storedHosts());
     }
 
     private static final long MAX_SAFE_INTEGER = 9_007_199_254_740_991L;
@@ -77,7 +81,9 @@ public record ServerSettings(
                         "credentialsPerRoom",
                         "credentials",
                         "membershipsPerRoom",
-                        "memberships"));
+                        "memberships",
+                        "storedHostsPerRoom",
+                        "storedHosts"));
         var capacityValues = new SettingsSource(environment, capacity);
         var root = new SettingsSource(environment, file);
         var policyValues = new SettingsSource(environment, policy);
@@ -146,6 +152,20 @@ public record ServerSettings(
                                 capacityValues.number(
                                         "memberships",
                                         "TTYROOM_MAX_MEMBERSHIPS",
+                                        128,
+                                        1,
+                                        1_000_000),
+                        (int)
+                                capacityValues.number(
+                                        "storedHostsPerRoom",
+                                        "TTYROOM_MAX_STORED_HOSTS_PER_ROOM",
+                                        64,
+                                        1,
+                                        1_000_000),
+                        (int)
+                                capacityValues.number(
+                                        "storedHosts",
+                                        "TTYROOM_MAX_STORED_HOSTS",
                                         128,
                                         1,
                                         1_000_000)));

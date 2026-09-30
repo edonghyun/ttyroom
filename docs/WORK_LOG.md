@@ -28,6 +28,7 @@
 - [전역 자원 예약과 초과 요청 격리](#전역-자원-예약과-초과-요청-격리)
 - [Credential 발급과 보관 예산](#credential-발급과-보관-예산)
 - [Membership과 만료 대기](#membership과-만료-대기)
+- [저장 host identity 보관](#저장-host-identity-보관)
 
 ## 초기 구성과 검증 경계
 
@@ -508,3 +509,18 @@ membership 방별/전역 초과 2건, 같은 방 중복 만료·전역 실행 �
 리뷰에서 welcome 실패 뒤 남는 v7 영속 host 목록은 membership과 별개임을 특성화 테스트로 확인했다.
 저장 후 전달 실패를 무조건 롤백하지 않는 기존 계약을 유지하고, 별도 보관/복원 정책은
 [#18](https://github.com/edonghyun/ttyroom/issues/18)로 분리했다.
+
+## 저장 host identity 보관
+
+T10.8 ([#18](https://github.com/edonghyun/ttyroom/issues/18))은 welcome 실패 뒤 live membership 없이
+남는 host 목록에 별도 예산을 적용했다. v7/v8 저장 host 기본 한도는 방별 64개·전역 128개이며,
+RoomDirectory의 기존 원자적 저장 경계에서 terminal·credential과 함께 예약·반납한다.
+
+저장된 같은 host는 보관 한도에 도달해도 재접속할 수 있다. 첫 welcome 전송 실패로 저장한 host를
+롤백하지 않는다. 터미널 소유권·재시작 복구를 유지하고, 성공한 만료·취소·방 삭제가 슬롯을 반환한다.
+HTTP host credential 발급과 첫 host 입장의 보관 예약을 구분한다.
+
+방별/전역 welcome 실패 누적의 초과 입장 2건을 먼저 assertion RED로 확인했다. 저장 실패,
+삭제·취소·중복 반납, 동시 입장·저장 대기, 복원 초과와 기존 host의 workspace 복구는 추가 회귀다.
+제어 가능한 Peer 전송 실패·만료 callback과 실제 Spring/SQLite 프로세스 재시작을 별도 근거로 남겼다.
+[유한 누적·정리 관측](PERFORMANCE.md#t108--저장-host-identity-보관)은 성능 최대치 측정이 아니다.

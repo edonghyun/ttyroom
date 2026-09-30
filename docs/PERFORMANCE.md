@@ -530,3 +530,33 @@ HTTP/TCP 요청률·제어 요청 대기와 실제 배포 사양 검증은 남�
 추가 특성화에서 v7 신규 host의 저장 뒤 welcome 실패를 3회 반복하면, live membership 예산 2개와
 별개로 영속 host 3개·만료 callback 0개가 남았다. 이 기존 경로의 보관/복원 한도는
 [#18](https://github.com/edonghyun/ttyroom/issues/18)에 분리했다. 이번 결과를 모든 identity 보관 경로의 상한으로 확대하지 않는다.
+
+## T10.8 — 저장 host identity 보관
+
+live membership과 별도로 Spring v7/v8의 저장 host identity를 방별 64개·전체 128개까지 보관한다.
+welcome 실패 후 남은 host와 재시작으로 복원한 offline host도 포함한다. 같은 ID의 재접속은 기존
+슬롯을 재사용한다. 이 수치는 초기 정책이며 운영 최대 수용량을 추정해 얻은 값이 아니다.
+
+`StoredHostCapacityTests`의 유한 실험은 방별 4개·전체 6개 한도, 방 2개를 사용한다.
+40개의 서로 다른 host 입장을 시도하며, Peer가 welcome을 받으면 의도적으로 전송 실패를 낸다.
+6개는 저장 후 전달 실패로 남고, 나머지 34개는 저장 전에 한도로 거절된다. 그 뒤 같은 host의
+재접속→유예 만료 callback→새 host의 welcome 실패를 20회 반복한다. 매회 저장 수가 5→6으로
+변하고, 저장 레코드로 application을 재생성한 뒤에도 6개와 기존 host의 재입장을 확인한다.
+
+```sh
+JAVA_HOME=/path/to/jdk21 ./backend/gradlew -p backend test --tests '*StoredHostCapacityTests'
+```
+
+[공개 관측 JSON](performance/stored-hosts.json)의 3회 모두 같은 결과다. 인메모리 RoomStore와
+제어 가능한 만료 callback을 쓴 애플리케이션 실패 주입이며 실제 timer/SQLite 처리량을 측정한 것은
+아니다. source와 JAR hash를 보존했다. heap/RSS·DB 파일 크기·원격망 지연·장시간 누수는 측정하지 않았다.
+
+별도 `stored-host-limits.spring.ts`는 Java 21 / 최대 heap 512 MiB 불변 Spring JAR와 실제 SQLite를
+사용한다. v7의 방별/전역 한도 각각에서 재시작 후 새 host 20개를 모두 거절하면서 기존 host의
+terminal 7 소유권과 inventory 복구, 다른 방의 응답을 확인한다. 실제 유예 만료 뒤 보관 슬롯 재사용과
+v8의 host credential 취소 후 새 host 입장도 검증한다. 프로세스 테스트의 잔류 상태는 재시작으로
+만들며, 네트워크 타이밍으로 welcome 실패를 강제했다고 주장하지 않는다.
+
+이 결과는 저장 항목 수·예약 수명·복구 경계를 검증한다. 저장 실패의 자동 복구나 모든 host의 자동
+만료 정책을 제공하지 않는다. HTTP/TCP 요청률, 대기 중 제어 요청, 실제 배포 사양에서의 전체 부하는
+별도 범위다. #15의 배포 검증은 계속 열어둔다.
