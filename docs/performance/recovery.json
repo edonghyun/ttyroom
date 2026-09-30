@@ -1,0 +1,4774 @@
+{
+  "schemaVersion": 1,
+  "scope": "T10.4 recovery profile after pacing workspace replay. Same harness as the T10.3 recovery run; compression disabled; synthetic peers, no PTY or browser. Not a production capacity bound.",
+  "histogramEncoding": "nonzeroBuckets entries are [upper bound in ms,count]; bucket 1001 means >1000ms; omitted buckets are zero.",
+  "manifest": {
+    "startedAt": "2026-09-30T06:06:11.438Z",
+    "revision": "36f75687a5821aeada3e91f1a25c543c4721b6f7",
+    "dirty": false,
+    "profile": "recovery",
+    "node": "v26.3.1",
+    "java": "openjdk 21.0.12.1 2026-08-18 LTS\nOpenJDK Runtime Environment Temurin-21.0.12.1+1 (build 21.0.12.1+1-LTS)\nOpenJDK 64-Bit Server VM Temurin-21.0.12.1+1 (build 21.0.12.1+1-LTS, mixed mode, sharing)",
+    "jvmArguments": ["-Xms256m", "-Xmx512m", "-XX:+UseG1GC"],
+    "jarSha256": "43e21f18ffdb1a027deff42d1c930bba123e62161e1959bb4b48be92a6814a9d",
+    "jfcSha256": "d5df8107a9ca2f39e10299210e590fb752288b07ef5e5144c5472df9a59bbfe8",
+    "sourceSha256": {
+      "backend/build.gradle": "65812ef2d3911d844196adceeb7baba75dc991be5d872330eb9d0d07ad70ff20",
+      "backend/src/main/java/dev/ttyroom/TtyRoomApplication.java": "44bec30f2d1a4d6646f005f7fa5a396b68fdbc18798d6a9308923c519caeac9c",
+      "backend/src/main/java/dev/ttyroom/adapter/config/ServerSettings.java": "74b443a83c59e9fbe438ab727cbae7fb3d7078ddd97fd99fa7765bdad27b2519",
+      "backend/src/main/java/dev/ttyroom/adapter/http/HealthController.java": "eae72dff87f2442ec1938879a60467861a84de937f4f67ae27a8b8e6eb80269a",
+      "backend/src/main/java/dev/ttyroom/adapter/http/RoomController.java": "dc3788a64ce381081566030dff64d8b41c2f3bd61cd282aa2cd2e5d051d0fea6",
+      "backend/src/main/java/dev/ttyroom/adapter/http/StaticWebController.java": "163f2220c85e4bf8c3275d199314ad912c6c5d259c3de21bc5ba8c4ae72d3a5a",
+      "backend/src/main/java/dev/ttyroom/adapter/sqlite/SqliteRoomStore.java": "842ae5e4bee1d3f8adba9c89770b8bbbee71cd64513b3ef127134f89e5b24f3c",
+      "backend/src/main/java/dev/ttyroom/adapter/sqlite/StoredRoomJson.java": "755efea8902441870a1a3557bfa40b1055da42d111e0a38384f4ce3ab8412ee0",
+      "backend/src/main/java/dev/ttyroom/adapter/ws/BufferEvents.java": "ef33c2f98af626324b338e7d83f33099c3a9723eaa871c42958ffb662fe46faf",
+      "backend/src/main/java/dev/ttyroom/adapter/ws/ControlInbox.java": "d2be972864726d69561a509fcad80674aa8d191959ee907e9fce8e9a058b8a48",
+      "backend/src/main/java/dev/ttyroom/adapter/ws/IncomingMessages.java": "f95d80bbc6a1267ab67da9e6544cb986954cd35329259c9eac115f74265d14af",
+      "backend/src/main/java/dev/ttyroom/adapter/ws/InputWire.java": "70149fdff7b08dd4b867db8262a7408ff4c4a70710aa2996171e164b0292785e",
+      "backend/src/main/java/dev/ttyroom/adapter/ws/OutputWire.java": "2b45df50c534a30e74334c2f68504bee7fd008c9bf9737c3765c61936d8375cf",
+      "backend/src/main/java/dev/ttyroom/adapter/ws/RoomProtocol.java": "034339b761c89c801638ee8bd49e351f3ed3fb388b3ed4013e2ecbbb1b245b78",
+      "backend/src/main/java/dev/ttyroom/adapter/ws/RoomSocketHandler.java": "f02463478b2bd86a2b5b8cf07794436985da31f7dbcf6fd656ceb00db7f7fc12",
+      "backend/src/main/java/dev/ttyroom/adapter/ws/SocketSender.java": "ef2693f49fb6e5c6b8ea717c2721c311d83a494140602ebd059b4057605f6a59",
+      "backend/src/main/java/dev/ttyroom/adapter/ws/WebSocketConfiguration.java": "b0698830073fbddaa2561546adfd3fef3ea84e048660a581bfdcf1b4a9b0fdc1",
+      "backend/src/main/java/dev/ttyroom/application/CursorPosition.java": "7ca89bee1e849aaee96ee16a42fb5da16bb39ce88cec69c964567b5030a6e8bd",
+      "backend/src/main/java/dev/ttyroom/application/ExpiryTimers.java": "1b51b429304316a17d1f4d373e9c2604ef609788685e3ec20a3681dad29987eb",
+      "backend/src/main/java/dev/ttyroom/application/HostCommand.java": "e6280e1c86ac4ea06ccdddac3676090dc4306d2eeae7834463d28329ea52355a",
+      "backend/src/main/java/dev/ttyroom/application/InputFrame.java": "5c19638c263db02684e510e8cfc76e32df1cf78a25d175da46ddc4a6a2271b96",
+      "backend/src/main/java/dev/ttyroom/application/OutputFrame.java": "684c89fb2ac9b21472a66cc8f92259c99cfd08f135f1fd21a61eb1cf1b26f52c",
+      "backend/src/main/java/dev/ttyroom/application/ParticipantCommand.java": "39c1b004a2d0b46f5c55ffd11ce49e519cf904682ccedf4614ed7708cd468d29",
+      "backend/src/main/java/dev/ttyroom/application/RoomCredentials.java": "6c0f9dea71d7e492dff09553676e94b307e4658f1b45d3798433de9d741427c2",
+      "backend/src/main/java/dev/ttyroom/application/RoomDirectory.java": "c698bc14e18964b8d442c0bc54da8099da34d6fd2fa0f36f64bd87b589478e09",
+      "backend/src/main/java/dev/ttyroom/application/RoomNotice.java": "d94e7cddd221f40d9f09fae913d33a12f57bead46b655db8d86f328d05720da6",
+      "backend/src/main/java/dev/ttyroom/application/RoomSessions.java": "09b9dc305f58b34760334128be299799c9903f847789724d3bdcf858d4a6e922",
+      "backend/src/main/java/dev/ttyroom/application/RoomStore.java": "f4cbab0f75618183541f33b9b0deb404eea6ccf9284f02afd3e3bef936a169cb",
+      "backend/src/main/java/dev/ttyroom/application/TerminalOutput.java": "33c035242d1640a7f92cd14086f61f9e8ef518d8d4dd1f9140ab9fa2ce92f92f",
+      "backend/src/main/java/dev/ttyroom/domain/HostPresence.java": "9e8d37a1782a45cba6b66bbbb7fadf50ee9bc4ed19a41586a9a69ccb55b1b3be",
+      "backend/src/main/java/dev/ttyroom/domain/LeaseControl.java": "4d3820c2d3355a2905242f548d36a5fb90de123dfce49d07aaf273b965753160",
+      "backend/src/main/java/dev/ttyroom/domain/RoomControl.java": "683e483997faaa35721c742841b521a85f2d097df632c7b6d290c1d138e92556",
+      "backend/src/main/java/dev/ttyroom/domain/TerminalWorkspace.java": "8f1fce4b0895dbab04c1e104cb97bda848ae620e3fbe22271fa47167c9024d54",
+      "backend/src/main/resources/application.properties": "90eb8ce3fa4d4048cfcc38cdb8142361f7758e9ade5ce5433cda8eb130f392b8",
+      "e2e/src/performance/capacity-peer.ts": "852d6c31a239680c076e0a77efbf1356cf81329a6d4d9a9493f8ac983b756308",
+      "e2e/src/performance/capacity-report.spec.ts": "4d9ae1f5d1b63e8a23842149251803ff0aac08f1b8b3fe199e0e10a6406c95c6",
+      "e2e/src/performance/capacity-report.ts": "0213b9167b8b9195b17b6bc5a05e50d8fc75901ebec92fedb1a74667a85ec171",
+      "e2e/src/performance/capacity-run.ts": "cc3ba39bdf2949414fa68e3ef42a33dd457f91944c185271b97c84cd8df12a08",
+      "e2e/src/performance/jvm-observation.ts": "b568ff7a20758604f6a06f0a054c32d3dab21ac64403b2001ab4a4b4cbf4f79c",
+      "e2e/src/registered-room.ts": "3770df48ea26f4da345f0b9c8ca92cb2d03a3adbe35099283b55aa4d12e0e86c",
+      "e2e/src/server-process.ts": "21a75ab9766131181df6fd0fa5e5e1b5fb6287273274e530a20f65c5282f0b7c",
+      "e2e/src/test-process.ts": "841c405d39413a746a1fccee0c71313a7038372e992260d3e538acadd67b46a6",
+      "e2e/src/wait-until.ts": "4f064059e99f3e413fe29491e6ada126c463af4712cedcf68466e0eaeaef3675",
+      "pnpm-lock.yaml": "f51a2ad20a45d00267de7a55da221447e4bb4aa0bd96c037438fd502d1a9e063",
+      "scripts/measure-capacity.sh": "a0858c7693e0c45d167b693d88f2c679985075e7acaa9863b3ba46e21a9ae7df"
+    }
+  },
+  "results": [
+    {
+      "scenario": {
+        "name": "slow-uncompressed",
+        "terminals": 16,
+        "hosts": 1,
+        "kibPerSecondPerTerminal": 256,
+        "seconds": 20,
+        "recording": true,
+        "compression": false,
+        "slow": true
+      },
+      "negotiatedExtensions": [""],
+      "completed": true,
+      "failures": [],
+      "environment": {
+        "node": "v26.3.1",
+        "os": "darwin 25.5.0",
+        "cpu": "Apple M4 Max",
+        "logicalCpus": 16,
+        "memoryBytes": 51539607552
+      },
+      "startMs": 1790748379359,
+      "endMs": 1790748399371,
+      "load": {
+        "completed": true,
+        "expectedFrames": 102400,
+        "receivedFrames": 102400,
+        "sentPayloadBytes": 83886080,
+        "elapsedMs": 20011.756541000002,
+        "maxScheduleLagMs": 5.969833000002836,
+        "gaps": 0,
+        "sequenceErrors": 0,
+        "output": {
+          "count": 102400,
+          "p95UpperMs": 2,
+          "maxMs": 9.919291999998677,
+          "over1000Ms": 0,
+          "nonzeroBuckets": [
+            [1, 79466],
+            [2, 19836],
+            [3, 1805],
+            [4, 659],
+            [5, 197],
+            [6, 205],
+            [7, 81],
+            [8, 65],
+            [10, 86]
+          ]
+        },
+        "control": {
+          "count": 201,
+          "p95UpperMs": 3,
+          "maxMs": 7.777750000001106,
+          "over1000Ms": 0,
+          "nonzeroBuckets": [
+            [1, 116],
+            [2, 69],
+            [3, 6],
+            [4, 1],
+            [6, 3],
+            [7, 1],
+            [8, 5]
+          ]
+        }
+      },
+      "heap": [
+        {
+          "phase": "empty",
+          "at": "2026-09-30T06:06:14.346Z",
+          "usedBytes": 17509376,
+          "diagnosticMs": 159.69845900000018
+        },
+        {
+          "phase": "loaded",
+          "at": "2026-09-30T06:06:39.544Z",
+          "usedBytes": 33564672,
+          "diagnosticMs": 172.2044169999972
+        },
+        {
+          "phase": "released",
+          "at": "2026-09-30T06:06:44.735Z",
+          "usedBytes": 16457728,
+          "diagnosticMs": 168.71487499999785
+        }
+      ],
+      "flight": {
+        "queue": {
+          "count": 201,
+          "p95UpperMs": 1,
+          "maxMs": 4.668666,
+          "over1000Ms": 0,
+          "nonzeroBuckets": [
+            [1, 197],
+            [4, 1],
+            [5, 3]
+          ]
+        },
+        "pressure": {
+          "outbound:rejected": 192,
+          "outbound:live-drop": 192
+        },
+        "gc": [
+          {
+            "at": "2026-09-30T15:06:19.742321500+09:00",
+            "pauseMs": 2.8167079999999998,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T15:06:21.759773958+09:00",
+            "pauseMs": 2.256583,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T15:06:23.770823375+09:00",
+            "pauseMs": 2.774458,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T15:06:25.768869208+09:00",
+            "pauseMs": 0.891667,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T15:06:27.761122333+09:00",
+            "pauseMs": 2.0912080000000004,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T15:06:29.760320125+09:00",
+            "pauseMs": 2.45825,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T15:06:31.751479833+09:00",
+            "pauseMs": 0.943667,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T15:06:33.760671958+09:00",
+            "pauseMs": 2.73025,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T15:06:35.740802875+09:00",
+            "pauseMs": 2.021125,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T15:06:37.731256083+09:00",
+            "pauseMs": 2.017292,
+            "cause": "G1 Evacuation Pause"
+          }
+        ],
+        "heap": [
+          {
+            "at": "2026-09-30T15:06:19.742323333+09:00",
+            "when": "Before GC",
+            "usedBytes": 175537272
+          },
+          {
+            "at": "2026-09-30T15:06:19.745136958+09:00",
+            "when": "After GC",
+            "usedBytes": 35002328
+          },
+          {
+            "at": "2026-09-30T15:06:21.759775750+09:00",
+            "when": "Before GC",
+            "usedBytes": 178657240
+          },
+          {
+            "at": "2026-09-30T15:06:21.762029416+09:00",
+            "when": "After GC",
+            "usedBytes": 36669592
+          },
+          {
+            "at": "2026-09-30T15:06:23.770825125+09:00",
+            "when": "Before GC",
+            "usedBytes": 180324504
+          },
+          {
+            "at": "2026-09-30T15:06:23.773596750+09:00",
+            "when": "After GC",
+            "usedBytes": 37784296
+          },
+          {
+            "at": "2026-09-30T15:06:25.768870416+09:00",
+            "when": "Before GC",
+            "usedBytes": 180390632
+          },
+          {
+            "at": "2026-09-30T15:06:25.769760375+09:00",
+            "when": "After GC",
+            "usedBytes": 38624800
+          },
+          {
+            "at": "2026-09-30T15:06:27.761124208+09:00",
+            "when": "Before GC",
+            "usedBytes": 180182560
+          },
+          {
+            "at": "2026-09-30T15:06:27.763212416+09:00",
+            "when": "After GC",
+            "usedBytes": 37850152
+          },
+          {
+            "at": "2026-09-30T15:06:29.760322+09:00",
+            "when": "Before GC",
+            "usedBytes": 180456488
+          },
+          {
+            "at": "2026-09-30T15:06:29.762777083+09:00",
+            "when": "After GC",
+            "usedBytes": 37915976
+          },
+          {
+            "at": "2026-09-30T15:06:31.751480916+09:00",
+            "when": "Before GC",
+            "usedBytes": 180522312
+          },
+          {
+            "at": "2026-09-30T15:06:31.752422916+09:00",
+            "when": "After GC",
+            "usedBytes": 38964552
+          },
+          {
+            "at": "2026-09-30T15:06:33.760673750+09:00",
+            "when": "Before GC",
+            "usedBytes": 180522312
+          },
+          {
+            "at": "2026-09-30T15:06:33.763401125+09:00",
+            "when": "After GC",
+            "usedBytes": 38471128
+          },
+          {
+            "at": "2026-09-30T15:06:35.740804708+09:00",
+            "when": "Before GC",
+            "usedBytes": 180028888
+          },
+          {
+            "at": "2026-09-30T15:06:35.742822708+09:00",
+            "when": "After GC",
+            "usedBytes": 38582184
+          },
+          {
+            "at": "2026-09-30T15:06:37.731257833+09:00",
+            "when": "Before GC",
+            "usedBytes": 179091368
+          },
+          {
+            "at": "2026-09-30T15:06:37.733272083+09:00",
+            "when": "After GC",
+            "usedBytes": 37677560
+          }
+        ],
+        "cpu": [
+          {
+            "at": "2026-09-30T15:06:20.168525750+09:00",
+            "jvmFractionOfMachine": 0.018750000000000003
+          },
+          {
+            "at": "2026-09-30T15:06:21.173834458+09:00",
+            "jvmFractionOfMachine": 0.017326733
+          },
+          {
+            "at": "2026-09-30T15:06:22.179791875+09:00",
+            "jvmFractionOfMachine": 0.013125000000000001
+          },
+          {
+            "at": "2026-09-30T15:06:23.181881125+09:00",
+            "jvmFractionOfMachine": 0.016089109
+          },
+          {
+            "at": "2026-09-30T15:06:24.184491750+09:00",
+            "jvmFractionOfMachine": 0.01125
+          },
+          {
+            "at": "2026-09-30T15:06:25.185054750+09:00",
+            "jvmFractionOfMachine": 0.011875
+          },
+          {
+            "at": "2026-09-30T15:06:26.189851875+09:00",
+            "jvmFractionOfMachine": 0.0117574255
+          },
+          {
+            "at": "2026-09-30T15:06:27.197334+09:00",
+            "jvmFractionOfMachine": 0.0125
+          },
+          {
+            "at": "2026-09-30T15:06:28.201384750+09:00",
+            "jvmFractionOfMachine": 0.011757426
+          },
+          {
+            "at": "2026-09-30T15:06:29.204200416+09:00",
+            "jvmFractionOfMachine": 0.011875
+          },
+          {
+            "at": "2026-09-30T15:06:30.208154250+09:00",
+            "jvmFractionOfMachine": 0.011875
+          },
+          {
+            "at": "2026-09-30T15:06:31.213369791+09:00",
+            "jvmFractionOfMachine": 0.010519802
+          },
+          {
+            "at": "2026-09-30T15:06:32.217928916+09:00",
+            "jvmFractionOfMachine": 0.010624999999999999
+          },
+          {
+            "at": "2026-09-30T15:06:33.222793333+09:00",
+            "jvmFractionOfMachine": 0.0129950495
+          },
+          {
+            "at": "2026-09-30T15:06:34.223307+09:00",
+            "jvmFractionOfMachine": 0.0125
+          },
+          {
+            "at": "2026-09-30T15:06:35.228054791+09:00",
+            "jvmFractionOfMachine": 0.018125000000000002
+          },
+          {
+            "at": "2026-09-30T15:06:36.231281083+09:00",
+            "jvmFractionOfMachine": 0.010519802
+          },
+          {
+            "at": "2026-09-30T15:06:37.234983458+09:00",
+            "jvmFractionOfMachine": 0.01125
+          },
+          {
+            "at": "2026-09-30T15:06:38.240193583+09:00",
+            "jvmFractionOfMachine": 0.011757426
+          },
+          {
+            "at": "2026-09-30T15:06:39.243279083+09:00",
+            "jvmFractionOfMachine": 0.0125
+          }
+        ],
+        "lostBytes": 0
+      },
+      "slow": {
+        "gaps": 0,
+        "closeCode": 1006
+      },
+      "rss": [
+        {
+          "at": "2026-09-30T06:06:13.493Z",
+          "serverRssBytes": 292634624,
+          "generatorRssBytes": 86982656,
+          "sampleMs": 5.070833000000221
+        },
+        {
+          "at": "2026-09-30T06:06:14.498Z",
+          "serverRssBytes": 334151680,
+          "generatorRssBytes": 103497728,
+          "sampleMs": 3.166500000000269
+        },
+        {
+          "at": "2026-09-30T06:06:15.502Z",
+          "serverRssBytes": 342523904,
+          "generatorRssBytes": 116785152,
+          "sampleMs": 3.22070900000017
+        },
+        {
+          "at": "2026-09-30T06:06:16.513Z",
+          "serverRssBytes": 382910464,
+          "generatorRssBytes": 126861312,
+          "sampleMs": 9.50274999999965
+        },
+        {
+          "at": "2026-09-30T06:06:17.518Z",
+          "serverRssBytes": 383188992,
+          "generatorRssBytes": 130105344,
+          "sampleMs": 3.36266599999999
+        },
+        {
+          "at": "2026-09-30T06:06:18.525Z",
+          "serverRssBytes": 391675904,
+          "generatorRssBytes": 133677056,
+          "sampleMs": 6.05279100000007
+        },
+        {
+          "at": "2026-09-30T06:06:19.531Z",
+          "serverRssBytes": 391757824,
+          "generatorRssBytes": 136626176,
+          "sampleMs": 6.883250000000771
+        },
+        {
+          "at": "2026-09-30T06:06:20.537Z",
+          "serverRssBytes": 396148736,
+          "generatorRssBytes": 137560064,
+          "sampleMs": 5.911334000000352
+        },
+        {
+          "at": "2026-09-30T06:06:21.547Z",
+          "serverRssBytes": 396115968,
+          "generatorRssBytes": 150880256,
+          "sampleMs": 8.958000000000538
+        },
+        {
+          "at": "2026-09-30T06:06:22.556Z",
+          "serverRssBytes": 398180352,
+          "generatorRssBytes": 151568384,
+          "sampleMs": 8.243916999999783
+        },
+        {
+          "at": "2026-09-30T06:06:23.567Z",
+          "serverRssBytes": 398311424,
+          "generatorRssBytes": 152961024,
+          "sampleMs": 11.058834000001298
+        },
+        {
+          "at": "2026-09-30T06:06:24.575Z",
+          "serverRssBytes": 398622720,
+          "generatorRssBytes": 153124864,
+          "sampleMs": 7.217832999998791
+        },
+        {
+          "at": "2026-09-30T06:06:25.585Z",
+          "serverRssBytes": 398639104,
+          "generatorRssBytes": 153272320,
+          "sampleMs": 10.81866699999955
+        },
+        {
+          "at": "2026-09-30T06:06:26.595Z",
+          "serverRssBytes": 398868480,
+          "generatorRssBytes": 153272320,
+          "sampleMs": 9.122333999999682
+        },
+        {
+          "at": "2026-09-30T06:06:27.599Z",
+          "serverRssBytes": 398901248,
+          "generatorRssBytes": 153976832,
+          "sampleMs": 4.0286660000001575
+        },
+        {
+          "at": "2026-09-30T06:06:28.612Z",
+          "serverRssBytes": 399015936,
+          "generatorRssBytes": 153976832,
+          "sampleMs": 12.291375000000698
+        },
+        {
+          "at": "2026-09-30T06:06:29.620Z",
+          "serverRssBytes": 399015936,
+          "generatorRssBytes": 154238976,
+          "sampleMs": 8.49470900000233
+        },
+        {
+          "at": "2026-09-30T06:06:30.626Z",
+          "serverRssBytes": 399441920,
+          "generatorRssBytes": 154238976,
+          "sampleMs": 6.57220800000141
+        },
+        {
+          "at": "2026-09-30T06:06:31.637Z",
+          "serverRssBytes": 399441920,
+          "generatorRssBytes": 154238976,
+          "sampleMs": 9.512332999998762
+        },
+        {
+          "at": "2026-09-30T06:06:32.647Z",
+          "serverRssBytes": 399605760,
+          "generatorRssBytes": 156139520,
+          "sampleMs": 10.071833000001789
+        },
+        {
+          "at": "2026-09-30T06:06:33.658Z",
+          "serverRssBytes": 399605760,
+          "generatorRssBytes": 156139520,
+          "sampleMs": 10.491582999999082
+        },
+        {
+          "at": "2026-09-30T06:06:34.662Z",
+          "serverRssBytes": 401866752,
+          "generatorRssBytes": 156319744,
+          "sampleMs": 3.309000000001106
+        },
+        {
+          "at": "2026-09-30T06:06:35.674Z",
+          "serverRssBytes": 401801216,
+          "generatorRssBytes": 159383552,
+          "sampleMs": 10.74462499999936
+        },
+        {
+          "at": "2026-09-30T06:06:36.682Z",
+          "serverRssBytes": 402128896,
+          "generatorRssBytes": 160382976,
+          "sampleMs": 7.42725000000064
+        },
+        {
+          "at": "2026-09-30T06:06:37.691Z",
+          "serverRssBytes": 402145280,
+          "generatorRssBytes": 161382400,
+          "sampleMs": 7.52520899999945
+        },
+        {
+          "at": "2026-09-30T06:06:38.697Z",
+          "serverRssBytes": 402456576,
+          "generatorRssBytes": 161447936,
+          "sampleMs": 7.096666999997979
+        },
+        {
+          "at": "2026-09-30T06:06:39.702Z",
+          "serverRssBytes": 416448512,
+          "generatorRssBytes": 161464320,
+          "sampleMs": 3.1814999999987776
+        },
+        {
+          "at": "2026-09-30T06:06:40.711Z",
+          "serverRssBytes": 416448512,
+          "generatorRssBytes": 161497088,
+          "sampleMs": 7.505084000000352
+        },
+        {
+          "at": "2026-09-30T06:06:41.720Z",
+          "serverRssBytes": 416448512,
+          "generatorRssBytes": 161497088,
+          "sampleMs": 7.27612500000032
+        },
+        {
+          "at": "2026-09-30T06:06:42.728Z",
+          "serverRssBytes": 416448512,
+          "generatorRssBytes": 161497088,
+          "sampleMs": 7.635833000000275
+        },
+        {
+          "at": "2026-09-30T06:06:43.738Z",
+          "serverRssBytes": 416448512,
+          "generatorRssBytes": 161497088,
+          "sampleMs": 8.921707999998034
+        },
+        {
+          "at": "2026-09-30T06:06:44.742Z",
+          "serverRssBytes": 416546816,
+          "generatorRssBytes": 161513472,
+          "sampleMs": 2.905041000001802
+        }
+      ],
+      "rssFailures": [],
+      "allRecordingPressure": {
+        "outbound:rejected": 4861,
+        "outbound:live-drop": 4861
+      },
+      "rawSha256": {
+        "result.json": "602c235e66012f4d37ae42e0ea2f246afbcaf537bb2893c89a6ee08a014b3069",
+        "flight.json": "ec9831f1b9128524e024b2c7f99e2a3878714f6c58039fa0dc77be947760a15e",
+        "server.jfr": "574dbb316c4fac74906f4d723cf69545931d483bfc0371f287bf10a3c58ca094"
+      }
+    },
+    {
+      "scenario": {
+        "name": "replay-3-1",
+        "terminals": 3,
+        "hosts": 1,
+        "kibPerSecondPerTerminal": 256,
+        "seconds": 20,
+        "recording": true,
+        "compression": false,
+        "reconnect": true
+      },
+      "negotiatedExtensions": [""],
+      "completed": true,
+      "failures": [],
+      "environment": {
+        "node": "v26.3.1",
+        "os": "darwin 25.5.0",
+        "cpu": "Apple M4 Max",
+        "logicalCpus": 16,
+        "memoryBytes": 51539607552
+      },
+      "startMs": 1790748411952,
+      "endMs": 1790748431964,
+      "load": {
+        "completed": true,
+        "expectedFrames": 19200,
+        "receivedFrames": 19200,
+        "sentPayloadBytes": 15728640,
+        "elapsedMs": 20012.088416,
+        "maxScheduleLagMs": 10.774582999998529,
+        "gaps": 0,
+        "sequenceErrors": 0,
+        "output": {
+          "count": 19200,
+          "p95UpperMs": 2,
+          "maxMs": 8.534500000001572,
+          "over1000Ms": 0,
+          "nonzeroBuckets": [
+            [1, 17405],
+            [2, 1500],
+            [3, 178],
+            [4, 28],
+            [5, 43],
+            [6, 37],
+            [9, 9]
+          ]
+        },
+        "control": {
+          "count": 201,
+          "p95UpperMs": 2,
+          "maxMs": 10.471541999999317,
+          "over1000Ms": 0,
+          "nonzeroBuckets": [
+            [1, 152],
+            [2, 41],
+            [3, 4],
+            [4, 2],
+            [8, 1],
+            [11, 1]
+          ]
+        }
+      },
+      "heap": [
+        {
+          "phase": "empty",
+          "at": "2026-09-30T06:06:46.938Z",
+          "usedBytes": 17380352,
+          "diagnosticMs": 147.29554199999984
+        },
+        {
+          "phase": "loaded",
+          "at": "2026-09-30T06:07:12.125Z",
+          "usedBytes": 19652608,
+          "diagnosticMs": 161.2423329999947
+        },
+        {
+          "phase": "released",
+          "at": "2026-09-30T06:07:17.337Z",
+          "usedBytes": 17082368,
+          "diagnosticMs": 165.4698750000025
+        }
+      ],
+      "flight": {
+        "queue": {
+          "count": 201,
+          "p95UpperMs": 1,
+          "maxMs": 2.6345840000000003,
+          "over1000Ms": 0,
+          "nonzeroBuckets": [
+            [1, 200],
+            [3, 1]
+          ]
+        },
+        "pressure": {},
+        "gc": [
+          {
+            "at": "2026-09-30T15:06:58.412712208+09:00",
+            "pauseMs": 1.1575419999999998,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T15:07:09.954166250+09:00",
+            "pauseMs": 2.459708,
+            "cause": "G1 Evacuation Pause"
+          }
+        ],
+        "heap": [
+          {
+            "at": "2026-09-30T15:06:58.412713125+09:00",
+            "when": "Before GC",
+            "usedBytes": 176764520
+          },
+          {
+            "at": "2026-09-30T15:06:58.413869292+09:00",
+            "when": "After GC",
+            "usedBytes": 20526696
+          },
+          {
+            "at": "2026-09-30T15:07:09.954168292+09:00",
+            "when": "Before GC",
+            "usedBytes": 176764520
+          },
+          {
+            "at": "2026-09-30T15:07:09.956625+09:00",
+            "when": "After GC",
+            "usedBytes": 20260072
+          }
+        ],
+        "cpu": [
+          {
+            "at": "2026-09-30T15:06:52.783216500+09:00",
+            "jvmFractionOfMachine": 0.01375
+          },
+          {
+            "at": "2026-09-30T15:06:53.788464375+09:00",
+            "jvmFractionOfMachine": 0.00875
+          },
+          {
+            "at": "2026-09-30T15:06:54.793776458+09:00",
+            "jvmFractionOfMachine": 0.0049504951
+          },
+          {
+            "at": "2026-09-30T15:06:55.798230167+09:00",
+            "jvmFractionOfMachine": 0.005
+          },
+          {
+            "at": "2026-09-30T15:06:56.799514500+09:00",
+            "jvmFractionOfMachine": 0.013125000000000001
+          },
+          {
+            "at": "2026-09-30T15:06:57.801894375+09:00",
+            "jvmFractionOfMachine": 0.0037128714
+          },
+          {
+            "at": "2026-09-30T15:06:58.803803333+09:00",
+            "jvmFractionOfMachine": 0.004375
+          },
+          {
+            "at": "2026-09-30T15:06:59.808969667+09:00",
+            "jvmFractionOfMachine": 0.004375
+          },
+          {
+            "at": "2026-09-30T15:07:00.812115333+09:00",
+            "jvmFractionOfMachine": 0.0030940594
+          },
+          {
+            "at": "2026-09-30T15:07:01.817436208+09:00",
+            "jvmFractionOfMachine": 0.004375
+          },
+          {
+            "at": "2026-09-30T15:07:02.819606125+09:00",
+            "jvmFractionOfMachine": 0.004375
+          },
+          {
+            "at": "2026-09-30T15:07:03.824868292+09:00",
+            "jvmFractionOfMachine": 0.0080445547
+          },
+          {
+            "at": "2026-09-30T15:07:04.827320833+09:00",
+            "jvmFractionOfMachine": 0.004375
+          },
+          {
+            "at": "2026-09-30T15:07:05.829965+09:00",
+            "jvmFractionOfMachine": 0.0037128712
+          },
+          {
+            "at": "2026-09-30T15:07:06.830521833+09:00",
+            "jvmFractionOfMachine": 0.005625
+          },
+          {
+            "at": "2026-09-30T15:07:07.835410750+09:00",
+            "jvmFractionOfMachine": 0.004375
+          },
+          {
+            "at": "2026-09-30T15:07:08.837133042+09:00",
+            "jvmFractionOfMachine": 0.004375
+          },
+          {
+            "at": "2026-09-30T15:07:09.837766+09:00",
+            "jvmFractionOfMachine": 0.00375
+          },
+          {
+            "at": "2026-09-30T15:07:10.843051833+09:00",
+            "jvmFractionOfMachine": 0.0049504951
+          },
+          {
+            "at": "2026-09-30T15:07:11.846789833+09:00",
+            "jvmFractionOfMachine": 0.004375
+          }
+        ],
+        "lostBytes": 0
+      },
+      "recovery": {
+        "completed": true,
+        "errors": [],
+        "restoredParticipants": 5,
+        "elapsedMs": 32.215416999999434,
+        "bytes": 15728640,
+        "expectedBytes": 15728640,
+        "closures": [null, null, null, null, null]
+      },
+      "rss": [
+        {
+          "at": "2026-09-30T06:06:46.309Z",
+          "serverRssBytes": 297910272,
+          "generatorRssBytes": 181436416,
+          "sampleMs": 2.9908329999962007
+        },
+        {
+          "at": "2026-09-30T06:06:47.317Z",
+          "serverRssBytes": 331857920,
+          "generatorRssBytes": 181927936,
+          "sampleMs": 6.628916999994544
+        },
+        {
+          "at": "2026-09-30T06:06:48.328Z",
+          "serverRssBytes": 332283904,
+          "generatorRssBytes": 181977088,
+          "sampleMs": 9.321750000002794
+        },
+        {
+          "at": "2026-09-30T06:06:49.337Z",
+          "serverRssBytes": 332890112,
+          "generatorRssBytes": 183566336,
+          "sampleMs": 8.061625000002095
+        },
+        {
+          "at": "2026-09-30T06:06:50.345Z",
+          "serverRssBytes": 333152256,
+          "generatorRssBytes": 188841984,
+          "sampleMs": 6.873790999998164
+        },
+        {
+          "at": "2026-09-30T06:06:51.352Z",
+          "serverRssBytes": 333578240,
+          "generatorRssBytes": 197558272,
+          "sampleMs": 6.477083000005223
+        },
+        {
+          "at": "2026-09-30T06:06:52.360Z",
+          "serverRssBytes": 333791232,
+          "generatorRssBytes": 191856640,
+          "sampleMs": 7.514375000006112
+        },
+        {
+          "at": "2026-09-30T06:06:53.368Z",
+          "serverRssBytes": 335298560,
+          "generatorRssBytes": 191856640,
+          "sampleMs": 7.555000000000291
+        },
+        {
+          "at": "2026-09-30T06:06:54.375Z",
+          "serverRssBytes": 337264640,
+          "generatorRssBytes": 191873024,
+          "sampleMs": 5.998708999999508
+        },
+        {
+          "at": "2026-09-30T06:06:55.382Z",
+          "serverRssBytes": 338477056,
+          "generatorRssBytes": 192004096,
+          "sampleMs": 6.69616600000154
+        },
+        {
+          "at": "2026-09-30T06:06:56.386Z",
+          "serverRssBytes": 343277568,
+          "generatorRssBytes": 192004096,
+          "sampleMs": 3.4600419999987935
+        },
+        {
+          "at": "2026-09-30T06:06:57.390Z",
+          "serverRssBytes": 356335616,
+          "generatorRssBytes": 191938560,
+          "sampleMs": 4.238333999994211
+        },
+        {
+          "at": "2026-09-30T06:06:58.393Z",
+          "serverRssBytes": 369704960,
+          "generatorRssBytes": 191938560,
+          "sampleMs": 2.917416999996931
+        },
+        {
+          "at": "2026-09-30T06:06:59.396Z",
+          "serverRssBytes": 373686272,
+          "generatorRssBytes": 191938560,
+          "sampleMs": 2.942125000001397
+        },
+        {
+          "at": "2026-09-30T06:07:00.402Z",
+          "serverRssBytes": 373112832,
+          "generatorRssBytes": 184123392,
+          "sampleMs": 5.713916000000609
+        },
+        {
+          "at": "2026-09-30T06:07:01.405Z",
+          "serverRssBytes": 344489984,
+          "generatorRssBytes": 170606592,
+          "sampleMs": 2.8963329999969574
+        },
+        {
+          "at": "2026-09-30T06:07:02.410Z",
+          "serverRssBytes": 344653824,
+          "generatorRssBytes": 170606592,
+          "sampleMs": 4.349167000000307
+        },
+        {
+          "at": "2026-09-30T06:07:03.415Z",
+          "serverRssBytes": 346750976,
+          "generatorRssBytes": 170606592,
+          "sampleMs": 3.415333000004466
+        },
+        {
+          "at": "2026-09-30T06:07:04.432Z",
+          "serverRssBytes": 349339648,
+          "generatorRssBytes": 165462016,
+          "sampleMs": 16.98487500000192
+        },
+        {
+          "at": "2026-09-30T06:07:05.442Z",
+          "serverRssBytes": 353402880,
+          "generatorRssBytes": 165478400,
+          "sampleMs": 10.19629200000054
+        },
+        {
+          "at": "2026-09-30T06:07:06.452Z",
+          "serverRssBytes": 353992704,
+          "generatorRssBytes": 165478400,
+          "sampleMs": 9.738499999999476
+        },
+        {
+          "at": "2026-09-30T06:07:07.462Z",
+          "serverRssBytes": 354107392,
+          "generatorRssBytes": 165478400,
+          "sampleMs": 8.91383300000598
+        },
+        {
+          "at": "2026-09-30T06:07:08.477Z",
+          "serverRssBytes": 354500608,
+          "generatorRssBytes": 165494784,
+          "sampleMs": 15.369250000003376
+        },
+        {
+          "at": "2026-09-30T06:07:09.492Z",
+          "serverRssBytes": 354795520,
+          "generatorRssBytes": 165494784,
+          "sampleMs": 13.7465830000001
+        },
+        {
+          "at": "2026-09-30T06:07:10.501Z",
+          "serverRssBytes": 355909632,
+          "generatorRssBytes": 165494784,
+          "sampleMs": 8.555916999997862
+        },
+        {
+          "at": "2026-09-30T06:07:11.509Z",
+          "serverRssBytes": 356073472,
+          "generatorRssBytes": 165494784,
+          "sampleMs": 6.567125000001397
+        },
+        {
+          "at": "2026-09-30T06:07:12.515Z",
+          "serverRssBytes": 384598016,
+          "generatorRssBytes": 171180032,
+          "sampleMs": 5.048416000005091
+        },
+        {
+          "at": "2026-09-30T06:07:13.524Z",
+          "serverRssBytes": 384598016,
+          "generatorRssBytes": 171180032,
+          "sampleMs": 7.969207999994978
+        },
+        {
+          "at": "2026-09-30T06:07:14.531Z",
+          "serverRssBytes": 384598016,
+          "generatorRssBytes": 171180032,
+          "sampleMs": 6.321832999994513
+        },
+        {
+          "at": "2026-09-30T06:07:15.538Z",
+          "serverRssBytes": 384598016,
+          "generatorRssBytes": 171180032,
+          "sampleMs": 6.312625000005937
+        },
+        {
+          "at": "2026-09-30T06:07:16.546Z",
+          "serverRssBytes": 377569280,
+          "generatorRssBytes": 171180032,
+          "sampleMs": 7.538542000002053
+        }
+      ],
+      "rssFailures": [],
+      "allRecordingPressure": {},
+      "rawSha256": {
+        "result.json": "465666575b9d3d2356cdbd941f2112144c2addb41c3ce27a4fcbe0d385a941da",
+        "flight.json": "45811c1a54ba18a1f9df7d071aea89ac2e0134c70715b4d173d5acf28a4f4baa",
+        "server.jfr": "7916ee98240aade86accf2361c85d5401122750fe17d3444f6b61fdeec936d70"
+      }
+    },
+    {
+      "scenario": {
+        "name": "replay-3-2",
+        "terminals": 3,
+        "hosts": 1,
+        "kibPerSecondPerTerminal": 256,
+        "seconds": 20,
+        "recording": true,
+        "compression": false,
+        "reconnect": true
+      },
+      "negotiatedExtensions": [""],
+      "completed": true,
+      "failures": [],
+      "environment": {
+        "node": "v26.3.1",
+        "os": "darwin 25.5.0",
+        "cpu": "Apple M4 Max",
+        "logicalCpus": 16,
+        "memoryBytes": 51539607552
+      },
+      "startMs": 1790748444816,
+      "endMs": 1790748464828,
+      "load": {
+        "completed": true,
+        "expectedFrames": 19200,
+        "receivedFrames": 19200,
+        "sentPayloadBytes": 15728640,
+        "elapsedMs": 20011.69466699999,
+        "maxScheduleLagMs": 6.655124999990221,
+        "gaps": 0,
+        "sequenceErrors": 0,
+        "output": {
+          "count": 19200,
+          "p95UpperMs": 2,
+          "maxMs": 5.192790999994031,
+          "over1000Ms": 0,
+          "nonzeroBuckets": [
+            [1, 17422],
+            [2, 1635],
+            [3, 115],
+            [4, 21],
+            [5, 6],
+            [6, 1]
+          ]
+        },
+        "control": {
+          "count": 201,
+          "p95UpperMs": 2,
+          "maxMs": 3.2133749999920838,
+          "over1000Ms": 0,
+          "nonzeroBuckets": [
+            [1, 144],
+            [2, 50],
+            [3, 6],
+            [4, 1]
+          ]
+        }
+      },
+      "heap": [
+        {
+          "phase": "empty",
+          "at": "2026-09-30T06:07:19.805Z",
+          "usedBytes": 17338368,
+          "diagnosticMs": 154.58062500000233
+        },
+        {
+          "phase": "loaded",
+          "at": "2026-09-30T06:07:45.008Z",
+          "usedBytes": 19607552,
+          "diagnosticMs": 179.48670799999672
+        },
+        {
+          "phase": "released",
+          "at": "2026-09-30T06:07:50.218Z",
+          "usedBytes": 17050624,
+          "diagnosticMs": 166.3446249999979
+        }
+      ],
+      "flight": {
+        "queue": {
+          "count": 201,
+          "p95UpperMs": 1,
+          "maxMs": 1.404417,
+          "over1000Ms": 0,
+          "nonzeroBuckets": [
+            [1, 200],
+            [2, 1]
+          ]
+        },
+        "pressure": {},
+        "gc": [
+          {
+            "at": "2026-09-30T15:07:31.178904959+09:00",
+            "pauseMs": 1.41,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T15:07:42.708188792+09:00",
+            "pauseMs": 1.1314579999999999,
+            "cause": "G1 Evacuation Pause"
+          }
+        ],
+        "heap": [
+          {
+            "at": "2026-09-30T15:07:31.178906584+09:00",
+            "when": "Before GC",
+            "usedBytes": 176722680
+          },
+          {
+            "at": "2026-09-30T15:07:31.180314125+09:00",
+            "when": "After GC",
+            "usedBytes": 20199128
+          },
+          {
+            "at": "2026-09-30T15:07:42.708190542+09:00",
+            "when": "Before GC",
+            "usedBytes": 176436952
+          },
+          {
+            "at": "2026-09-30T15:07:42.709319250+09:00",
+            "when": "After GC",
+            "usedBytes": 19925040
+          }
+        ],
+        "cpu": [
+          {
+            "at": "2026-09-30T15:07:25.636281084+09:00",
+            "jvmFractionOfMachine": 0.011875
+          },
+          {
+            "at": "2026-09-30T15:07:26.641462292+09:00",
+            "jvmFractionOfMachine": 0.0086633662
+          },
+          {
+            "at": "2026-09-30T15:07:27.646658750+09:00",
+            "jvmFractionOfMachine": 0.005
+          },
+          {
+            "at": "2026-09-30T15:07:28.649711917+09:00",
+            "jvmFractionOfMachine": 0.0125
+          },
+          {
+            "at": "2026-09-30T15:07:29.651620667+09:00",
+            "jvmFractionOfMachine": 0.0049504951
+          },
+          {
+            "at": "2026-09-30T15:07:30.652614209+09:00",
+            "jvmFractionOfMachine": 0.005
+          },
+          {
+            "at": "2026-09-30T15:07:31.657567709+09:00",
+            "jvmFractionOfMachine": 0.005
+          },
+          {
+            "at": "2026-09-30T15:07:32.661409375+09:00",
+            "jvmFractionOfMachine": 0.0049504951
+          },
+          {
+            "at": "2026-09-30T15:07:33.666753834+09:00",
+            "jvmFractionOfMachine": 0.00375
+          },
+          {
+            "at": "2026-09-30T15:07:34.670211792+09:00",
+            "jvmFractionOfMachine": 0.0049504951
+          },
+          {
+            "at": "2026-09-30T15:07:35.673258375+09:00",
+            "jvmFractionOfMachine": 0.005
+          },
+          {
+            "at": "2026-09-30T15:07:36.678504417+09:00",
+            "jvmFractionOfMachine": 0.007500000000000001
+          },
+          {
+            "at": "2026-09-30T15:07:37.683708167+09:00",
+            "jvmFractionOfMachine": 0.0043316832
+          },
+          {
+            "at": "2026-09-30T15:07:38.685907959+09:00",
+            "jvmFractionOfMachine": 0.00375
+          },
+          {
+            "at": "2026-09-30T15:07:39.690618542+09:00",
+            "jvmFractionOfMachine": 0.0049504951
+          },
+          {
+            "at": "2026-09-30T15:07:40.691060959+09:00",
+            "jvmFractionOfMachine": 0.004375
+          },
+          {
+            "at": "2026-09-30T15:07:41.694610084+09:00",
+            "jvmFractionOfMachine": 0.00375
+          },
+          {
+            "at": "2026-09-30T15:07:42.699901+09:00",
+            "jvmFractionOfMachine": 0.0043316832
+          },
+          {
+            "at": "2026-09-30T15:07:43.701270667+09:00",
+            "jvmFractionOfMachine": 0.004375
+          },
+          {
+            "at": "2026-09-30T15:07:44.703335334+09:00",
+            "jvmFractionOfMachine": 0.005
+          }
+        ],
+        "lostBytes": 0
+      },
+      "recovery": {
+        "completed": true,
+        "errors": [],
+        "restoredParticipants": 5,
+        "elapsedMs": 31.728625000003376,
+        "bytes": 15728640,
+        "expectedBytes": 15728640,
+        "closures": [null, null, null, null, null]
+      },
+      "rss": [
+        {
+          "at": "2026-09-30T06:07:19.169Z",
+          "serverRssBytes": 281935872,
+          "generatorRssBytes": 171393024,
+          "sampleMs": 3.450125000003027
+        },
+        {
+          "at": "2026-09-30T06:07:20.176Z",
+          "serverRssBytes": 315686912,
+          "generatorRssBytes": 171507712,
+          "sampleMs": 6.272916000001715
+        },
+        {
+          "at": "2026-09-30T06:07:21.184Z",
+          "serverRssBytes": 316801024,
+          "generatorRssBytes": 160481280,
+          "sampleMs": 7.571874999994179
+        },
+        {
+          "at": "2026-09-30T06:07:22.191Z",
+          "serverRssBytes": 317112320,
+          "generatorRssBytes": 139264000,
+          "sampleMs": 6.990374999993946
+        },
+        {
+          "at": "2026-09-30T06:07:23.208Z",
+          "serverRssBytes": 317603840,
+          "generatorRssBytes": 139395072,
+          "sampleMs": 16.293250000002445
+        },
+        {
+          "at": "2026-09-30T06:07:24.212Z",
+          "serverRssBytes": 317652992,
+          "generatorRssBytes": 139427840,
+          "sampleMs": 3.0367499999993015
+        },
+        {
+          "at": "2026-09-30T06:07:25.215Z",
+          "serverRssBytes": 318586880,
+          "generatorRssBytes": 139542528,
+          "sampleMs": 3.6170420000125887
+        },
+        {
+          "at": "2026-09-30T06:07:26.228Z",
+          "serverRssBytes": 320749568,
+          "generatorRssBytes": 139542528,
+          "sampleMs": 11.161499999987427
+        },
+        {
+          "at": "2026-09-30T06:07:27.234Z",
+          "serverRssBytes": 324763648,
+          "generatorRssBytes": 139542528,
+          "sampleMs": 6.1600409999955446
+        },
+        {
+          "at": "2026-09-30T06:07:28.241Z",
+          "serverRssBytes": 325730304,
+          "generatorRssBytes": 139542528,
+          "sampleMs": 6.6539170000032755
+        },
+        {
+          "at": "2026-09-30T06:07:29.252Z",
+          "serverRssBytes": 329187328,
+          "generatorRssBytes": 139542528,
+          "sampleMs": 9.92904199998884
+        },
+        {
+          "at": "2026-09-30T06:07:30.256Z",
+          "serverRssBytes": 342114304,
+          "generatorRssBytes": 139542528,
+          "sampleMs": 2.803834000005736
+        },
+        {
+          "at": "2026-09-30T06:07:31.263Z",
+          "serverRssBytes": 357695488,
+          "generatorRssBytes": 139558912,
+          "sampleMs": 6.211834000001545
+        },
+        {
+          "at": "2026-09-30T06:07:32.271Z",
+          "serverRssBytes": 357728256,
+          "generatorRssBytes": 139558912,
+          "sampleMs": 7.370915999999852
+        },
+        {
+          "at": "2026-09-30T06:07:33.277Z",
+          "serverRssBytes": 357728256,
+          "generatorRssBytes": 139575296,
+          "sampleMs": 5.896875000005821
+        },
+        {
+          "at": "2026-09-30T06:07:34.280Z",
+          "serverRssBytes": 357711872,
+          "generatorRssBytes": 139575296,
+          "sampleMs": 3.147040999989258
+        },
+        {
+          "at": "2026-09-30T06:07:35.287Z",
+          "serverRssBytes": 357728256,
+          "generatorRssBytes": 139575296,
+          "sampleMs": 6.044291999991401
+        },
+        {
+          "at": "2026-09-30T06:07:36.300Z",
+          "serverRssBytes": 357777408,
+          "generatorRssBytes": 139591680,
+          "sampleMs": 11.901792000004207
+        },
+        {
+          "at": "2026-09-30T06:07:37.305Z",
+          "serverRssBytes": 357793792,
+          "generatorRssBytes": 139591680,
+          "sampleMs": 5.612332999997307
+        },
+        {
+          "at": "2026-09-30T06:07:38.315Z",
+          "serverRssBytes": 357793792,
+          "generatorRssBytes": 139591680,
+          "sampleMs": 8.543209000010393
+        },
+        {
+          "at": "2026-09-30T06:07:39.322Z",
+          "serverRssBytes": 357924864,
+          "generatorRssBytes": 139608064,
+          "sampleMs": 6.657082999998238
+        },
+        {
+          "at": "2026-09-30T06:07:40.329Z",
+          "serverRssBytes": 357941248,
+          "generatorRssBytes": 139608064,
+          "sampleMs": 6.327416999993147
+        },
+        {
+          "at": "2026-09-30T06:07:41.335Z",
+          "serverRssBytes": 358121472,
+          "generatorRssBytes": 139624448,
+          "sampleMs": 5.934583000009297
+        },
+        {
+          "at": "2026-09-30T06:07:42.339Z",
+          "serverRssBytes": 358744064,
+          "generatorRssBytes": 139624448,
+          "sampleMs": 3.256374999997206
+        },
+        {
+          "at": "2026-09-30T06:07:43.346Z",
+          "serverRssBytes": 360103936,
+          "generatorRssBytes": 139624448,
+          "sampleMs": 7.045375000001513
+        },
+        {
+          "at": "2026-09-30T06:07:44.354Z",
+          "serverRssBytes": 360153088,
+          "generatorRssBytes": 139689984,
+          "sampleMs": 7.941374999994878
+        },
+        {
+          "at": "2026-09-30T06:07:45.362Z",
+          "serverRssBytes": 364199936,
+          "generatorRssBytes": 145260544,
+          "sampleMs": 7.245708000002196
+        },
+        {
+          "at": "2026-09-30T06:07:46.366Z",
+          "serverRssBytes": 364183552,
+          "generatorRssBytes": 144310272,
+          "sampleMs": 3.2253749999945285
+        },
+        {
+          "at": "2026-09-30T06:07:47.370Z",
+          "serverRssBytes": 364183552,
+          "generatorRssBytes": 144310272,
+          "sampleMs": 3.2186669999937294
+        },
+        {
+          "at": "2026-09-30T06:07:48.381Z",
+          "serverRssBytes": 364183552,
+          "generatorRssBytes": 144310272,
+          "sampleMs": 9.336291999992682
+        },
+        {
+          "at": "2026-09-30T06:07:49.385Z",
+          "serverRssBytes": 364101632,
+          "generatorRssBytes": 144310272,
+          "sampleMs": 3.261083999997936
+        },
+        {
+          "at": "2026-09-30T06:07:50.389Z",
+          "serverRssBytes": 365051904,
+          "generatorRssBytes": 144310272,
+          "sampleMs": 3.4495420000021113
+        }
+      ],
+      "rssFailures": [],
+      "allRecordingPressure": {},
+      "rawSha256": {
+        "result.json": "c653d62c6b7b8f850c2e4c4c3feedbc70d15549025bd394a5d5c13496937d9d6",
+        "flight.json": "ac75d6897667247b29e1959b091b121f7172c3f839242c41c3c68b633f9b46e9",
+        "server.jfr": "016a6b2316518d7533b086e88f844fc659e6d055ddabac8c9fc02491c60c5fd0"
+      }
+    },
+    {
+      "scenario": {
+        "name": "replay-3-3",
+        "terminals": 3,
+        "hosts": 1,
+        "kibPerSecondPerTerminal": 256,
+        "seconds": 20,
+        "recording": true,
+        "compression": false,
+        "reconnect": true
+      },
+      "negotiatedExtensions": [""],
+      "completed": true,
+      "failures": [],
+      "environment": {
+        "node": "v26.3.1",
+        "os": "darwin 25.5.0",
+        "cpu": "Apple M4 Max",
+        "logicalCpus": 16,
+        "memoryBytes": 51539607552
+      },
+      "startMs": 1790748477441,
+      "endMs": 1790748497455,
+      "load": {
+        "completed": true,
+        "expectedFrames": 19200,
+        "receivedFrames": 19200,
+        "sentPayloadBytes": 15728640,
+        "elapsedMs": 20012.851874999993,
+        "maxScheduleLagMs": 9.708249999996042,
+        "gaps": 0,
+        "sequenceErrors": 0,
+        "output": {
+          "count": 19200,
+          "p95UpperMs": 2,
+          "maxMs": 3.8907909999979893,
+          "over1000Ms": 0,
+          "nonzeroBuckets": [
+            [1, 18114],
+            [2, 979],
+            [3, 81],
+            [4, 26]
+          ]
+        },
+        "control": {
+          "count": 201,
+          "p95UpperMs": 2,
+          "maxMs": 6.079624999998487,
+          "over1000Ms": 0,
+          "nonzeroBuckets": [
+            [1, 175],
+            [2, 21],
+            [3, 3],
+            [4, 1],
+            [7, 1]
+          ]
+        }
+      },
+      "heap": [
+        {
+          "phase": "empty",
+          "at": "2026-09-30T06:07:52.429Z",
+          "usedBytes": 17362944,
+          "diagnosticMs": 166.5565409999981
+        },
+        {
+          "phase": "loaded",
+          "at": "2026-09-30T06:08:17.631Z",
+          "usedBytes": 19624960,
+          "diagnosticMs": 176.09404099998937
+        },
+        {
+          "phase": "released",
+          "at": "2026-09-30T06:08:22.847Z",
+          "usedBytes": 17068032,
+          "diagnosticMs": 168.45487500001036
+        }
+      ],
+      "flight": {
+        "queue": {
+          "count": 201,
+          "p95UpperMs": 1,
+          "maxMs": 1.320542,
+          "over1000Ms": 0,
+          "nonzeroBuckets": [
+            [1, 199],
+            [2, 2]
+          ]
+        },
+        "pressure": {},
+        "gc": [
+          {
+            "at": "2026-09-30T15:08:03.963203417+09:00",
+            "pauseMs": 0.81625,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T15:08:15.433888750+09:00",
+            "pauseMs": 1.3777920000000001,
+            "cause": "G1 Evacuation Pause"
+          }
+        ],
+        "heap": [
+          {
+            "at": "2026-09-30T15:08:03.963204958+09:00",
+            "when": "Before GC",
+            "usedBytes": 176747120
+          },
+          {
+            "at": "2026-09-30T15:08:03.964019167+09:00",
+            "when": "After GC",
+            "usedBytes": 20700856
+          },
+          {
+            "at": "2026-09-30T15:08:15.433890750+09:00",
+            "when": "Before GC",
+            "usedBytes": 175890104
+          },
+          {
+            "at": "2026-09-30T15:08:15.435265667+09:00",
+            "when": "After GC",
+            "usedBytes": 19853200
+          }
+        ],
+        "cpu": [
+          {
+            "at": "2026-09-30T15:07:58.241231292+09:00",
+            "jvmFractionOfMachine": 0.015625
+          },
+          {
+            "at": "2026-09-30T15:07:59.246440083+09:00",
+            "jvmFractionOfMachine": 0.006875
+          },
+          {
+            "at": "2026-09-30T15:08:00.251632417+09:00",
+            "jvmFractionOfMachine": 0.0043316831
+          },
+          {
+            "at": "2026-09-30T15:08:01.257146667+09:00",
+            "jvmFractionOfMachine": 0.005
+          },
+          {
+            "at": "2026-09-30T15:08:02.262546583+09:00",
+            "jvmFractionOfMachine": 0.0099009907
+          },
+          {
+            "at": "2026-09-30T15:08:03.266335458+09:00",
+            "jvmFractionOfMachine": 0.004375
+          },
+          {
+            "at": "2026-09-30T15:08:04.269035750+09:00",
+            "jvmFractionOfMachine": 0.005
+          },
+          {
+            "at": "2026-09-30T15:08:05.269868500+09:00",
+            "jvmFractionOfMachine": 0.0043316832
+          },
+          {
+            "at": "2026-09-30T15:08:06.274778333+09:00",
+            "jvmFractionOfMachine": 0.004375
+          },
+          {
+            "at": "2026-09-30T15:08:07.280054750+09:00",
+            "jvmFractionOfMachine": 0.0037128712
+          },
+          {
+            "at": "2026-09-30T15:08:08.281064375+09:00",
+            "jvmFractionOfMachine": 0.004375
+          },
+          {
+            "at": "2026-09-30T15:08:09.282120417+09:00",
+            "jvmFractionOfMachine": 0.007500000000000001
+          },
+          {
+            "at": "2026-09-30T15:08:10.286695+09:00",
+            "jvmFractionOfMachine": 0.004375
+          },
+          {
+            "at": "2026-09-30T15:08:11.290513958+09:00",
+            "jvmFractionOfMachine": 0.0037128712
+          },
+          {
+            "at": "2026-09-30T15:08:12.294563292+09:00",
+            "jvmFractionOfMachine": 0.005625
+          },
+          {
+            "at": "2026-09-30T15:08:13.299914667+09:00",
+            "jvmFractionOfMachine": 0.0037128714
+          },
+          {
+            "at": "2026-09-30T15:08:14.305088125+09:00",
+            "jvmFractionOfMachine": 0.004375
+          },
+          {
+            "at": "2026-09-30T15:08:15.310839250+09:00",
+            "jvmFractionOfMachine": 0.0037128712
+          },
+          {
+            "at": "2026-09-30T15:08:16.315510292+09:00",
+            "jvmFractionOfMachine": 0.004375
+          },
+          {
+            "at": "2026-09-30T15:08:17.317748833+09:00",
+            "jvmFractionOfMachine": 0.00375
+          }
+        ],
+        "lostBytes": 0
+      },
+      "recovery": {
+        "completed": true,
+        "errors": [],
+        "restoredParticipants": 5,
+        "elapsedMs": 34.421999999991385,
+        "bytes": 15728640,
+        "expectedBytes": 15728640,
+        "closures": [null, null, null, null, null]
+      },
+      "rss": [
+        {
+          "at": "2026-09-30T06:07:51.775Z",
+          "serverRssBytes": 282492928,
+          "generatorRssBytes": 144539648,
+          "sampleMs": 3.3924169999954756
+        },
+        {
+          "at": "2026-09-30T06:07:52.781Z",
+          "serverRssBytes": 324370432,
+          "generatorRssBytes": 144211968,
+          "sampleMs": 4.125625000000582
+        },
+        {
+          "at": "2026-09-30T06:07:53.790Z",
+          "serverRssBytes": 324796416,
+          "generatorRssBytes": 144637952,
+          "sampleMs": 9.366041999994195
+        },
+        {
+          "at": "2026-09-30T06:07:54.793Z",
+          "serverRssBytes": 324943872,
+          "generatorRssBytes": 144654336,
+          "sampleMs": 3.4607919999980368
+        },
+        {
+          "at": "2026-09-30T06:07:55.797Z",
+          "serverRssBytes": 325107712,
+          "generatorRssBytes": 144654336,
+          "sampleMs": 4.079542000006768
+        },
+        {
+          "at": "2026-09-30T06:07:56.804Z",
+          "serverRssBytes": 325304320,
+          "generatorRssBytes": 144670720,
+          "sampleMs": 7.072459000002709
+        },
+        {
+          "at": "2026-09-30T06:07:57.811Z",
+          "serverRssBytes": 325500928,
+          "generatorRssBytes": 144146432,
+          "sampleMs": 6.990041999990353
+        },
+        {
+          "at": "2026-09-30T06:07:58.815Z",
+          "serverRssBytes": 326762496,
+          "generatorRssBytes": 144146432,
+          "sampleMs": 3.0840420000022277
+        },
+        {
+          "at": "2026-09-30T06:07:59.819Z",
+          "serverRssBytes": 330317824,
+          "generatorRssBytes": 144146432,
+          "sampleMs": 3.2229579999984708
+        },
+        {
+          "at": "2026-09-30T06:08:00.826Z",
+          "serverRssBytes": 331579392,
+          "generatorRssBytes": 144064512,
+          "sampleMs": 7.317874999993364
+        },
+        {
+          "at": "2026-09-30T06:08:01.829Z",
+          "serverRssBytes": 333774848,
+          "generatorRssBytes": 144064512,
+          "sampleMs": 3.601457999990089
+        },
+        {
+          "at": "2026-09-30T06:08:02.834Z",
+          "serverRssBytes": 346898432,
+          "generatorRssBytes": 144064512,
+          "sampleMs": 2.8930419999960577
+        },
+        {
+          "at": "2026-09-30T06:08:03.837Z",
+          "serverRssBytes": 359563264,
+          "generatorRssBytes": 144064512,
+          "sampleMs": 3.0659169999998994
+        },
+        {
+          "at": "2026-09-30T06:08:04.844Z",
+          "serverRssBytes": 365330432,
+          "generatorRssBytes": 144064512,
+          "sampleMs": 6.386375000001863
+        },
+        {
+          "at": "2026-09-30T06:08:05.851Z",
+          "serverRssBytes": 365379584,
+          "generatorRssBytes": 144064512,
+          "sampleMs": 6.818374999988009
+        },
+        {
+          "at": "2026-09-30T06:08:06.856Z",
+          "serverRssBytes": 365395968,
+          "generatorRssBytes": 144064512,
+          "sampleMs": 3.4304169999959413
+        },
+        {
+          "at": "2026-09-30T06:08:07.864Z",
+          "serverRssBytes": 365461504,
+          "generatorRssBytes": 142884864,
+          "sampleMs": 7.30449999999837
+        },
+        {
+          "at": "2026-09-30T06:08:08.868Z",
+          "serverRssBytes": 360087552,
+          "generatorRssBytes": 140296192,
+          "sampleMs": 3.260207999992417
+        },
+        {
+          "at": "2026-09-30T06:08:09.875Z",
+          "serverRssBytes": 360087552,
+          "generatorRssBytes": 140296192,
+          "sampleMs": 6.566374999994878
+        },
+        {
+          "at": "2026-09-30T06:08:10.882Z",
+          "serverRssBytes": 360185856,
+          "generatorRssBytes": 140296192,
+          "sampleMs": 6.126124999995227
+        },
+        {
+          "at": "2026-09-30T06:08:11.888Z",
+          "serverRssBytes": 360300544,
+          "generatorRssBytes": 140296192,
+          "sampleMs": 6.810334000008879
+        },
+        {
+          "at": "2026-09-30T06:08:12.896Z",
+          "serverRssBytes": 360431616,
+          "generatorRssBytes": 140296192,
+          "sampleMs": 7.054999999993015
+        },
+        {
+          "at": "2026-09-30T06:08:13.902Z",
+          "serverRssBytes": 360611840,
+          "generatorRssBytes": 140296192,
+          "sampleMs": 6.0040420000004815
+        },
+        {
+          "at": "2026-09-30T06:08:14.909Z",
+          "serverRssBytes": 360792064,
+          "generatorRssBytes": 140296192,
+          "sampleMs": 6.890332999988459
+        },
+        {
+          "at": "2026-09-30T06:08:15.917Z",
+          "serverRssBytes": 360923136,
+          "generatorRssBytes": 140296192,
+          "sampleMs": 7.324875000005704
+        },
+        {
+          "at": "2026-09-30T06:08:16.927Z",
+          "serverRssBytes": 360955904,
+          "generatorRssBytes": 140296192,
+          "sampleMs": 8.73049999999057
+        },
+        {
+          "at": "2026-09-30T06:08:17.931Z",
+          "serverRssBytes": 365674496,
+          "generatorRssBytes": 144441344,
+          "sampleMs": 3.282582999992883
+        },
+        {
+          "at": "2026-09-30T06:08:18.940Z",
+          "serverRssBytes": 365674496,
+          "generatorRssBytes": 144441344,
+          "sampleMs": 8.033457999990787
+        },
+        {
+          "at": "2026-09-30T06:08:19.948Z",
+          "serverRssBytes": 365674496,
+          "generatorRssBytes": 144441344,
+          "sampleMs": 6.3047090000036405
+        },
+        {
+          "at": "2026-09-30T06:08:20.955Z",
+          "serverRssBytes": 365674496,
+          "generatorRssBytes": 144441344,
+          "sampleMs": 6.059500000003027
+        },
+        {
+          "at": "2026-09-30T06:08:21.962Z",
+          "serverRssBytes": 365674496,
+          "generatorRssBytes": 144441344,
+          "sampleMs": 5.739000000001397
+        },
+        {
+          "at": "2026-09-30T06:08:22.966Z",
+          "serverRssBytes": 366460928,
+          "generatorRssBytes": 144441344,
+          "sampleMs": 3.2146669999929145
+        }
+      ],
+      "rssFailures": [],
+      "allRecordingPressure": {},
+      "rawSha256": {
+        "result.json": "cad025c3c0c677f6fb842d8dad71e5d02ad5e4815136b3ac4b11686764893060",
+        "flight.json": "381560e92008218d7f88a0b00a6582cae70c6afbafdec8aab7f0175ac361f63e",
+        "server.jfr": "989bef713cfc4fa59158f97c59ae55a751a7991ac6b755e1e3386e2e3d405f30"
+      }
+    },
+    {
+      "scenario": {
+        "name": "replay-4-1",
+        "terminals": 4,
+        "hosts": 1,
+        "kibPerSecondPerTerminal": 256,
+        "seconds": 20,
+        "recording": true,
+        "compression": false,
+        "reconnect": true
+      },
+      "negotiatedExtensions": [""],
+      "completed": true,
+      "failures": [],
+      "environment": {
+        "node": "v26.3.1",
+        "os": "darwin 25.5.0",
+        "cpu": "Apple M4 Max",
+        "logicalCpus": 16,
+        "memoryBytes": 51539607552
+      },
+      "startMs": 1790748510370,
+      "endMs": 1790748530384,
+      "load": {
+        "completed": true,
+        "expectedFrames": 25600,
+        "receivedFrames": 25600,
+        "sentPayloadBytes": 20971520,
+        "elapsedMs": 20014.10287500001,
+        "maxScheduleLagMs": 13.479583000007551,
+        "gaps": 0,
+        "sequenceErrors": 0,
+        "output": {
+          "count": 25600,
+          "p95UpperMs": 2,
+          "maxMs": 10.276249999995343,
+          "over1000Ms": 0,
+          "nonzeroBuckets": [
+            [1, 24079],
+            [2, 1252],
+            [3, 135],
+            [4, 67],
+            [5, 41],
+            [6, 22],
+            [11, 4]
+          ]
+        },
+        "control": {
+          "count": 201,
+          "p95UpperMs": 2,
+          "maxMs": 5.78187499998603,
+          "over1000Ms": 0,
+          "nonzeroBuckets": [
+            [1, 172],
+            [2, 24],
+            [3, 2],
+            [5, 2],
+            [6, 1]
+          ]
+        }
+      },
+      "heap": [
+        {
+          "phase": "empty",
+          "at": "2026-09-30T06:08:25.357Z",
+          "usedBytes": 17316864,
+          "diagnosticMs": 184.23324999999022
+        },
+        {
+          "phase": "loaded",
+          "at": "2026-09-30T06:08:50.559Z",
+          "usedBytes": 20887552,
+          "diagnosticMs": 175.29829199999222
+        },
+        {
+          "phase": "released",
+          "at": "2026-09-30T06:08:55.776Z",
+          "usedBytes": 16954368,
+          "diagnosticMs": 174.56554199999664
+        }
+      ],
+      "flight": {
+        "queue": {
+          "count": 201,
+          "p95UpperMs": 1,
+          "maxMs": 1.438625,
+          "over1000Ms": 0,
+          "nonzeroBuckets": [
+            [1, 199],
+            [2, 2]
+          ]
+        },
+        "pressure": {},
+        "gc": [
+          {
+            "at": "2026-09-30T15:08:33.971396417+09:00",
+            "pauseMs": 4.47075,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T15:08:42.581171542+09:00",
+            "pauseMs": 0.764166,
+            "cause": "G1 Evacuation Pause"
+          }
+        ],
+        "heap": [
+          {
+            "at": "2026-09-30T15:08:33.971398292+09:00",
+            "when": "Before GC",
+            "usedBytes": 176784920
+          },
+          {
+            "at": "2026-09-30T15:08:33.975865958+09:00",
+            "when": "After GC",
+            "usedBytes": 21312344
+          },
+          {
+            "at": "2026-09-30T15:08:42.581173125+09:00",
+            "when": "Before GC",
+            "usedBytes": 176501592
+          },
+          {
+            "at": "2026-09-30T15:08:42.581935208+09:00",
+            "when": "After GC",
+            "usedBytes": 21456408
+          }
+        ],
+        "cpu": [
+          {
+            "at": "2026-09-30T15:08:31.138386042+09:00",
+            "jvmFractionOfMachine": 0.009375
+          },
+          {
+            "at": "2026-09-30T15:08:32.139815042+09:00",
+            "jvmFractionOfMachine": 0.005625
+          },
+          {
+            "at": "2026-09-30T15:08:33.141333458+09:00",
+            "jvmFractionOfMachine": 0.0061881188
+          },
+          {
+            "at": "2026-09-30T15:08:34.150922500+09:00",
+            "jvmFractionOfMachine": 0.011138613700000001
+          },
+          {
+            "at": "2026-09-30T15:08:35.154176958+09:00",
+            "jvmFractionOfMachine": 0.005
+          },
+          {
+            "at": "2026-09-30T15:08:36.155639750+09:00",
+            "jvmFractionOfMachine": 0.006875000000000001
+          },
+          {
+            "at": "2026-09-30T15:08:37.160880292+09:00",
+            "jvmFractionOfMachine": 0.0049504951
+          },
+          {
+            "at": "2026-09-30T15:08:38.163514333+09:00",
+            "jvmFractionOfMachine": 0.0125
+          },
+          {
+            "at": "2026-09-30T15:08:39.167935708+09:00",
+            "jvmFractionOfMachine": 0.00375
+          },
+          {
+            "at": "2026-09-30T15:08:40.173273333+09:00",
+            "jvmFractionOfMachine": 0.0043316832
+          },
+          {
+            "at": "2026-09-30T15:08:41.178392917+09:00",
+            "jvmFractionOfMachine": 0.005
+          },
+          {
+            "at": "2026-09-30T15:08:42.183481708+09:00",
+            "jvmFractionOfMachine": 0.0037128714
+          },
+          {
+            "at": "2026-09-30T15:08:43.184636083+09:00",
+            "jvmFractionOfMachine": 0.004375
+          },
+          {
+            "at": "2026-09-30T15:08:44.189814583+09:00",
+            "jvmFractionOfMachine": 0.0043316832
+          },
+          {
+            "at": "2026-09-30T15:08:45.195013792+09:00",
+            "jvmFractionOfMachine": 0.004375
+          },
+          {
+            "at": "2026-09-30T15:08:46.195693+09:00",
+            "jvmFractionOfMachine": 0.004375
+          },
+          {
+            "at": "2026-09-30T15:08:47.200251917+09:00",
+            "jvmFractionOfMachine": 0.0037128714
+          },
+          {
+            "at": "2026-09-30T15:08:48.200725750+09:00",
+            "jvmFractionOfMachine": 0.00375
+          },
+          {
+            "at": "2026-09-30T15:08:49.202858708+09:00",
+            "jvmFractionOfMachine": 0.004375
+          },
+          {
+            "at": "2026-09-30T15:08:50.203932250+09:00",
+            "jvmFractionOfMachine": 0.005
+          }
+        ],
+        "lostBytes": 0
+      },
+      "recovery": {
+        "completed": true,
+        "errors": [],
+        "restoredParticipants": 5,
+        "elapsedMs": 30.755124999996042,
+        "bytes": 20971520,
+        "expectedBytes": 20971520,
+        "closures": [null, null, null, null, null]
+      },
+      "rss": [
+        {
+          "at": "2026-09-30T06:08:24.639Z",
+          "serverRssBytes": 295272448,
+          "generatorRssBytes": 144801792,
+          "sampleMs": 4.833375000016531
+        },
+        {
+          "at": "2026-09-30T06:08:25.643Z",
+          "serverRssBytes": 351764480,
+          "generatorRssBytes": 146128896,
+          "sampleMs": 3.7277910000120755
+        },
+        {
+          "at": "2026-09-30T06:08:26.662Z",
+          "serverRssBytes": 351993856,
+          "generatorRssBytes": 146128896,
+          "sampleMs": 18.84304200002225
+        },
+        {
+          "at": "2026-09-30T06:08:27.666Z",
+          "serverRssBytes": 352256000,
+          "generatorRssBytes": 146145280,
+          "sampleMs": 3.2822919999889564
+        },
+        {
+          "at": "2026-09-30T06:08:28.685Z",
+          "serverRssBytes": 352403456,
+          "generatorRssBytes": 145997824,
+          "sampleMs": 18.12933300001896
+        },
+        {
+          "at": "2026-09-30T06:08:29.690Z",
+          "serverRssBytes": 353402880,
+          "generatorRssBytes": 146063360,
+          "sampleMs": 3.515958000003593
+        },
+        {
+          "at": "2026-09-30T06:08:30.694Z",
+          "serverRssBytes": 359219200,
+          "generatorRssBytes": 146243584,
+          "sampleMs": 3.3985000000102445
+        },
+        {
+          "at": "2026-09-30T06:08:31.697Z",
+          "serverRssBytes": 360792064,
+          "generatorRssBytes": 146276352,
+          "sampleMs": 3.348375000001397
+        },
+        {
+          "at": "2026-09-30T06:08:32.715Z",
+          "serverRssBytes": 366460928,
+          "generatorRssBytes": 146276352,
+          "sampleMs": 17.295542000007117
+        },
+        {
+          "at": "2026-09-30T06:08:33.738Z",
+          "serverRssBytes": 384253952,
+          "generatorRssBytes": 146276352,
+          "sampleMs": 20.946750000002794
+        },
+        {
+          "at": "2026-09-30T06:08:34.744Z",
+          "serverRssBytes": 393117696,
+          "generatorRssBytes": 146341888,
+          "sampleMs": 4.334624999988591
+        },
+        {
+          "at": "2026-09-30T06:08:35.779Z",
+          "serverRssBytes": 393297920,
+          "generatorRssBytes": 146063360,
+          "sampleMs": 34.15304199999082
+        },
+        {
+          "at": "2026-09-30T06:08:36.797Z",
+          "serverRssBytes": 393330688,
+          "generatorRssBytes": 146063360,
+          "sampleMs": 17.79099999999744
+        },
+        {
+          "at": "2026-09-30T06:08:37.805Z",
+          "serverRssBytes": 393347072,
+          "generatorRssBytes": 146063360,
+          "sampleMs": 6.604958000010811
+        },
+        {
+          "at": "2026-09-30T06:08:38.821Z",
+          "serverRssBytes": 393347072,
+          "generatorRssBytes": 146063360,
+          "sampleMs": 14.598375000001397
+        },
+        {
+          "at": "2026-09-30T06:08:39.824Z",
+          "serverRssBytes": 393314304,
+          "generatorRssBytes": 146063360,
+          "sampleMs": 3.398958000005223
+        },
+        {
+          "at": "2026-09-30T06:08:40.827Z",
+          "serverRssBytes": 393412608,
+          "generatorRssBytes": 146063360,
+          "sampleMs": 3.3462909999943804
+        },
+        {
+          "at": "2026-09-30T06:08:41.831Z",
+          "serverRssBytes": 393969664,
+          "generatorRssBytes": 145539072,
+          "sampleMs": 3.088084000017261
+        },
+        {
+          "at": "2026-09-30T06:08:42.833Z",
+          "serverRssBytes": 395264000,
+          "generatorRssBytes": 145539072,
+          "sampleMs": 2.8385420000122394
+        },
+        {
+          "at": "2026-09-30T06:08:43.837Z",
+          "serverRssBytes": 395280384,
+          "generatorRssBytes": 145539072,
+          "sampleMs": 2.9664169999887235
+        },
+        {
+          "at": "2026-09-30T06:08:44.840Z",
+          "serverRssBytes": 395280384,
+          "generatorRssBytes": 145539072,
+          "sampleMs": 3.44245800000499
+        },
+        {
+          "at": "2026-09-30T06:08:45.844Z",
+          "serverRssBytes": 395280384,
+          "generatorRssBytes": 145555456,
+          "sampleMs": 3.3247909999918193
+        },
+        {
+          "at": "2026-09-30T06:08:46.848Z",
+          "serverRssBytes": 395296768,
+          "generatorRssBytes": 145555456,
+          "sampleMs": 3.1634999999951106
+        },
+        {
+          "at": "2026-09-30T06:08:47.852Z",
+          "serverRssBytes": 395345920,
+          "generatorRssBytes": 145555456,
+          "sampleMs": 3.373374999995576
+        },
+        {
+          "at": "2026-09-30T06:08:48.856Z",
+          "serverRssBytes": 395345920,
+          "generatorRssBytes": 145555456,
+          "sampleMs": 3.4538330000068527
+        },
+        {
+          "at": "2026-09-30T06:08:49.861Z",
+          "serverRssBytes": 395378688,
+          "generatorRssBytes": 145637376,
+          "sampleMs": 4.207416999997804
+        },
+        {
+          "at": "2026-09-30T06:08:50.867Z",
+          "serverRssBytes": 400195584,
+          "generatorRssBytes": 157745152,
+          "sampleMs": 4.835916999989422
+        },
+        {
+          "at": "2026-09-30T06:08:51.873Z",
+          "serverRssBytes": 400195584,
+          "generatorRssBytes": 157745152,
+          "sampleMs": 5.152084000001196
+        },
+        {
+          "at": "2026-09-30T06:08:52.877Z",
+          "serverRssBytes": 400195584,
+          "generatorRssBytes": 157745152,
+          "sampleMs": 3.1282910000008997
+        },
+        {
+          "at": "2026-09-30T06:08:53.886Z",
+          "serverRssBytes": 400195584,
+          "generatorRssBytes": 157745152,
+          "sampleMs": 7.104334000003291
+        },
+        {
+          "at": "2026-09-30T06:08:54.893Z",
+          "serverRssBytes": 400195584,
+          "generatorRssBytes": 157745152,
+          "sampleMs": 6.549040999991121
+        },
+        {
+          "at": "2026-09-30T06:08:55.898Z",
+          "serverRssBytes": 400687104,
+          "generatorRssBytes": 157761536,
+          "sampleMs": 3.3285000000032596
+        }
+      ],
+      "rssFailures": [],
+      "allRecordingPressure": {},
+      "rawSha256": {
+        "result.json": "547faa5bff971556e1a5280b7e40da758c4e6c76fe8f2e13e4a58b7c3215a5d9",
+        "flight.json": "7396d5c3eb001fab2a95374e95087cabe52ecf5d745cce610ef8a8bbdb61cdfd",
+        "server.jfr": "4377208d0b4a7030dda02bb7b294bebd200df0b6d756c9d0ce7b38951d3ebd17"
+      }
+    },
+    {
+      "scenario": {
+        "name": "replay-4-2",
+        "terminals": 4,
+        "hosts": 1,
+        "kibPerSecondPerTerminal": 256,
+        "seconds": 20,
+        "recording": true,
+        "compression": false,
+        "reconnect": true
+      },
+      "negotiatedExtensions": [""],
+      "completed": true,
+      "failures": [],
+      "environment": {
+        "node": "v26.3.1",
+        "os": "darwin 25.5.0",
+        "cpu": "Apple M4 Max",
+        "logicalCpus": 16,
+        "memoryBytes": 51539607552
+      },
+      "startMs": 1790748543038,
+      "endMs": 1790748563062,
+      "load": {
+        "completed": true,
+        "expectedFrames": 25600,
+        "receivedFrames": 25600,
+        "sentPayloadBytes": 20971520,
+        "elapsedMs": 20022.89633300001,
+        "maxScheduleLagMs": 13.1636250000156,
+        "gaps": 0,
+        "sequenceErrors": 0,
+        "output": {
+          "count": 25600,
+          "p95UpperMs": 2,
+          "maxMs": 10.289166000002297,
+          "over1000Ms": 0,
+          "nonzeroBuckets": [
+            [1, 22354],
+            [2, 2509],
+            [3, 499],
+            [4, 66],
+            [5, 24],
+            [7, 47],
+            [8, 78],
+            [9, 16],
+            [11, 7]
+          ]
+        },
+        "control": {
+          "count": 201,
+          "p95UpperMs": 3,
+          "maxMs": 5.827667000005022,
+          "over1000Ms": 0,
+          "nonzeroBuckets": [
+            [1, 123],
+            [2, 59],
+            [3, 15],
+            [4, 3],
+            [6, 1]
+          ]
+        }
+      },
+      "heap": [
+        {
+          "phase": "empty",
+          "at": "2026-09-30T06:08:58.017Z",
+          "usedBytes": 17376256,
+          "diagnosticMs": 158.14875000002212
+        },
+        {
+          "phase": "loaded",
+          "at": "2026-09-30T06:09:23.237Z",
+          "usedBytes": 20704256,
+          "diagnosticMs": 175.747457999998
+        },
+        {
+          "phase": "released",
+          "at": "2026-09-30T06:09:28.483Z",
+          "usedBytes": 16987136,
+          "diagnosticMs": 186.01075000001583
+        }
+      ],
+      "flight": {
+        "queue": {
+          "count": 201,
+          "p95UpperMs": 1,
+          "maxMs": 2.416583,
+          "over1000Ms": 0,
+          "nonzeroBuckets": [
+            [1, 199],
+            [2, 1],
+            [3, 1]
+          ]
+        },
+        "pressure": {},
+        "gc": [
+          {
+            "at": "2026-09-30T15:09:06.639001167+09:00",
+            "pauseMs": 2.044958,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T15:09:15.259230625+09:00",
+            "pauseMs": 2.247709,
+            "cause": "G1 Evacuation Pause"
+          }
+        ],
+        "heap": [
+          {
+            "at": "2026-09-30T15:09:06.639003084+09:00",
+            "when": "Before GC",
+            "usedBytes": 176760504
+          },
+          {
+            "at": "2026-09-30T15:09:06.641045042+09:00",
+            "when": "After GC",
+            "usedBytes": 21571256
+          },
+          {
+            "at": "2026-09-30T15:09:15.259232459+09:00",
+            "when": "Before GC",
+            "usedBytes": 176760504
+          },
+          {
+            "at": "2026-09-30T15:09:15.261477125+09:00",
+            "when": "After GC",
+            "usedBytes": 21546232
+          }
+        ],
+        "cpu": [
+          {
+            "at": "2026-09-30T15:09:03.849690250+09:00",
+            "jvmFractionOfMachine": 0.009375
+          },
+          {
+            "at": "2026-09-30T15:09:04.854551959+09:00",
+            "jvmFractionOfMachine": 0.005569307
+          },
+          {
+            "at": "2026-09-30T15:09:05.857630667+09:00",
+            "jvmFractionOfMachine": 0.00625
+          },
+          {
+            "at": "2026-09-30T15:09:06.857998209+09:00",
+            "jvmFractionOfMachine": 0.0075
+          },
+          {
+            "at": "2026-09-30T15:09:07.860821334+09:00",
+            "jvmFractionOfMachine": 0.005569307
+          },
+          {
+            "at": "2026-09-30T15:09:08.865448667+09:00",
+            "jvmFractionOfMachine": 0.005
+          },
+          {
+            "at": "2026-09-30T15:09:09.868204542+09:00",
+            "jvmFractionOfMachine": 0.00875
+          },
+          {
+            "at": "2026-09-30T15:09:10.871671542+09:00",
+            "jvmFractionOfMachine": 0.0043316831
+          },
+          {
+            "at": "2026-09-30T15:09:11.872262834+09:00",
+            "jvmFractionOfMachine": 0.004375
+          },
+          {
+            "at": "2026-09-30T15:09:12.877906834+09:00",
+            "jvmFractionOfMachine": 0.004375
+          },
+          {
+            "at": "2026-09-30T15:09:13.880391375+09:00",
+            "jvmFractionOfMachine": 0.0049504951
+          },
+          {
+            "at": "2026-09-30T15:09:14.886233625+09:00",
+            "jvmFractionOfMachine": 0.004375
+          },
+          {
+            "at": "2026-09-30T15:09:15.886862959+09:00",
+            "jvmFractionOfMachine": 0.005
+          },
+          {
+            "at": "2026-09-30T15:09:16.888154959+09:00",
+            "jvmFractionOfMachine": 0.004375
+          },
+          {
+            "at": "2026-09-30T15:09:17.889991+09:00",
+            "jvmFractionOfMachine": 0.0037128712
+          },
+          {
+            "at": "2026-09-30T15:09:18.894847292+09:00",
+            "jvmFractionOfMachine": 0.005
+          },
+          {
+            "at": "2026-09-30T15:09:19.898117542+09:00",
+            "jvmFractionOfMachine": 0.005
+          },
+          {
+            "at": "2026-09-30T15:09:20.903371917+09:00",
+            "jvmFractionOfMachine": 0.0043316832
+          },
+          {
+            "at": "2026-09-30T15:09:21.908267459+09:00",
+            "jvmFractionOfMachine": 0.005
+          },
+          {
+            "at": "2026-09-30T15:09:22.912979084+09:00",
+            "jvmFractionOfMachine": 0.0049504951
+          }
+        ],
+        "lostBytes": 0
+      },
+      "recovery": {
+        "completed": true,
+        "errors": [],
+        "restoredParticipants": 5,
+        "elapsedMs": 42.625792000006186,
+        "bytes": 20971520,
+        "expectedBytes": 20971520,
+        "closures": [null, null, null, null, null]
+      },
+      "rss": [
+        {
+          "at": "2026-09-30T06:08:57.371Z",
+          "serverRssBytes": 300924928,
+          "generatorRssBytes": 157941760,
+          "sampleMs": 2.991542000003392
+        },
+        {
+          "at": "2026-09-30T06:08:58.375Z",
+          "serverRssBytes": 331923456,
+          "generatorRssBytes": 157941760,
+          "sampleMs": 3.455500000010943
+        },
+        {
+          "at": "2026-09-30T06:08:59.379Z",
+          "serverRssBytes": 332120064,
+          "generatorRssBytes": 156450816,
+          "sampleMs": 3.1378329999861307
+        },
+        {
+          "at": "2026-09-30T06:09:00.387Z",
+          "serverRssBytes": 332709888,
+          "generatorRssBytes": 156450816,
+          "sampleMs": 8.107208000001265
+        },
+        {
+          "at": "2026-09-30T06:09:01.398Z",
+          "serverRssBytes": 332988416,
+          "generatorRssBytes": 156450816,
+          "sampleMs": 10.10516700000153
+        },
+        {
+          "at": "2026-09-30T06:09:02.401Z",
+          "serverRssBytes": 334725120,
+          "generatorRssBytes": 156450816,
+          "sampleMs": 3.2583750000048894
+        },
+        {
+          "at": "2026-09-30T06:09:03.407Z",
+          "serverRssBytes": 337821696,
+          "generatorRssBytes": 156450816,
+          "sampleMs": 5.757500000006985
+        },
+        {
+          "at": "2026-09-30T06:09:04.417Z",
+          "serverRssBytes": 339148800,
+          "generatorRssBytes": 156467200,
+          "sampleMs": 10.056582999997772
+        },
+        {
+          "at": "2026-09-30T06:09:05.429Z",
+          "serverRssBytes": 350224384,
+          "generatorRssBytes": 156467200,
+          "sampleMs": 11.300749999994878
+        },
+        {
+          "at": "2026-09-30T06:09:06.447Z",
+          "serverRssBytes": 367738880,
+          "generatorRssBytes": 156467200,
+          "sampleMs": 18.068792000005487
+        },
+        {
+          "at": "2026-09-30T06:09:07.470Z",
+          "serverRssBytes": 376094720,
+          "generatorRssBytes": 156467200,
+          "sampleMs": 22.33650000000489
+        },
+        {
+          "at": "2026-09-30T06:09:08.484Z",
+          "serverRssBytes": 376160256,
+          "generatorRssBytes": 156467200,
+          "sampleMs": 14.572500000009313
+        },
+        {
+          "at": "2026-09-30T06:09:09.489Z",
+          "serverRssBytes": 376258560,
+          "generatorRssBytes": 156467200,
+          "sampleMs": 3.320417000009911
+        },
+        {
+          "at": "2026-09-30T06:09:10.493Z",
+          "serverRssBytes": 379043840,
+          "generatorRssBytes": 156467200,
+          "sampleMs": 3.359874999994645
+        },
+        {
+          "at": "2026-09-30T06:09:11.513Z",
+          "serverRssBytes": 379043840,
+          "generatorRssBytes": 156467200,
+          "sampleMs": 19.502332999982173
+        },
+        {
+          "at": "2026-09-30T06:09:12.518Z",
+          "serverRssBytes": 379011072,
+          "generatorRssBytes": 156467200,
+          "sampleMs": 3.702665999997407
+        },
+        {
+          "at": "2026-09-30T06:09:13.523Z",
+          "serverRssBytes": 379011072,
+          "generatorRssBytes": 156467200,
+          "sampleMs": 3.621332999988226
+        },
+        {
+          "at": "2026-09-30T06:09:14.540Z",
+          "serverRssBytes": 379338752,
+          "generatorRssBytes": 156467200,
+          "sampleMs": 16.750417000002926
+        },
+        {
+          "at": "2026-09-30T06:09:15.556Z",
+          "serverRssBytes": 380534784,
+          "generatorRssBytes": 156467200,
+          "sampleMs": 16.736999999993714
+        },
+        {
+          "at": "2026-09-30T06:09:16.581Z",
+          "serverRssBytes": 380551168,
+          "generatorRssBytes": 156598272,
+          "sampleMs": 23.033208000008017
+        },
+        {
+          "at": "2026-09-30T06:09:17.585Z",
+          "serverRssBytes": 380551168,
+          "generatorRssBytes": 156598272,
+          "sampleMs": 3.374207999993814
+        },
+        {
+          "at": "2026-09-30T06:09:18.602Z",
+          "serverRssBytes": 380567552,
+          "generatorRssBytes": 156598272,
+          "sampleMs": 16.60162499998114
+        },
+        {
+          "at": "2026-09-30T06:09:19.629Z",
+          "serverRssBytes": 380567552,
+          "generatorRssBytes": 156598272,
+          "sampleMs": 26.640584000007948
+        },
+        {
+          "at": "2026-09-30T06:09:20.648Z",
+          "serverRssBytes": 380600320,
+          "generatorRssBytes": 156598272,
+          "sampleMs": 18.8097500000149
+        },
+        {
+          "at": "2026-09-30T06:09:21.657Z",
+          "serverRssBytes": 380616704,
+          "generatorRssBytes": 156598272,
+          "sampleMs": 7.385708999994677
+        },
+        {
+          "at": "2026-09-30T06:09:22.680Z",
+          "serverRssBytes": 380649472,
+          "generatorRssBytes": 156598272,
+          "sampleMs": 22.351540999981808
+        },
+        {
+          "at": "2026-09-30T06:09:23.697Z",
+          "serverRssBytes": 385794048,
+          "generatorRssBytes": 159055872,
+          "sampleMs": 16.27158299999428
+        },
+        {
+          "at": "2026-09-30T06:09:24.701Z",
+          "serverRssBytes": 385794048,
+          "generatorRssBytes": 159055872,
+          "sampleMs": 3.5990420000161976
+        },
+        {
+          "at": "2026-09-30T06:09:25.721Z",
+          "serverRssBytes": 385794048,
+          "generatorRssBytes": 159055872,
+          "sampleMs": 19.25458300000173
+        },
+        {
+          "at": "2026-09-30T06:09:26.740Z",
+          "serverRssBytes": 385794048,
+          "generatorRssBytes": 159072256,
+          "sampleMs": 18.410250000015367
+        },
+        {
+          "at": "2026-09-30T06:09:27.745Z",
+          "serverRssBytes": 385712128,
+          "generatorRssBytes": 159072256,
+          "sampleMs": 3.3221250000060536
+        }
+      ],
+      "rssFailures": [],
+      "allRecordingPressure": {},
+      "rawSha256": {
+        "result.json": "7ce4c381ed576582a6a4343b9d8d69a5008372b085080d9cbd142209bf97c0d6",
+        "flight.json": "f4bc9ceb5b53fd297cf909d6b193ea10fd3db193d23e4c8e8802f813eca189b8",
+        "server.jfr": "1ecef126bb2866773593b82cd75f66c6a0aa605ee75d96c6078e9d1a7d5df61b"
+      }
+    },
+    {
+      "scenario": {
+        "name": "replay-4-3",
+        "terminals": 4,
+        "hosts": 1,
+        "kibPerSecondPerTerminal": 256,
+        "seconds": 20,
+        "recording": true,
+        "compression": false,
+        "reconnect": true
+      },
+      "negotiatedExtensions": [""],
+      "completed": true,
+      "failures": [],
+      "environment": {
+        "node": "v26.3.1",
+        "os": "darwin 25.5.0",
+        "cpu": "Apple M4 Max",
+        "logicalCpus": 16,
+        "memoryBytes": 51539607552
+      },
+      "startMs": 1790748575863,
+      "endMs": 1790748595886,
+      "load": {
+        "completed": true,
+        "expectedFrames": 25600,
+        "receivedFrames": 25600,
+        "sentPayloadBytes": 20971520,
+        "elapsedMs": 20022.663291000004,
+        "maxScheduleLagMs": 20.152625000016997,
+        "gaps": 0,
+        "sequenceErrors": 0,
+        "output": {
+          "count": 25600,
+          "p95UpperMs": 2,
+          "maxMs": 8.036624999978812,
+          "over1000Ms": 0,
+          "nonzeroBuckets": [
+            [1, 23397],
+            [2, 1762],
+            [3, 264],
+            [4, 97],
+            [5, 23],
+            [6, 20],
+            [7, 17],
+            [8, 16],
+            [9, 4]
+          ]
+        },
+        "control": {
+          "count": 201,
+          "p95UpperMs": 3,
+          "maxMs": 6.931916000001365,
+          "over1000Ms": 0,
+          "nonzeroBuckets": [
+            [1, 149],
+            [2, 40],
+            [3, 8],
+            [4, 2],
+            [5, 1],
+            [7, 1]
+          ]
+        }
+      },
+      "heap": [
+        {
+          "phase": "empty",
+          "at": "2026-09-30T06:09:30.852Z",
+          "usedBytes": 17413120,
+          "diagnosticMs": 207.53991699998733
+        },
+        {
+          "phase": "loaded",
+          "at": "2026-09-30T06:09:56.041Z",
+          "usedBytes": 20888576,
+          "diagnosticMs": 155.62216699999408
+        },
+        {
+          "phase": "released",
+          "at": "2026-09-30T06:10:01.265Z",
+          "usedBytes": 16984064,
+          "diagnosticMs": 167.2443750000093
+        }
+      ],
+      "flight": {
+        "queue": {
+          "count": 201,
+          "p95UpperMs": 1,
+          "maxMs": 2.192583,
+          "over1000Ms": 0,
+          "nonzeroBuckets": [
+            [1, 199],
+            [2, 1],
+            [3, 1]
+          ]
+        },
+        "pressure": {},
+        "gc": [
+          {
+            "at": "2026-09-30T15:09:39.464892250+09:00",
+            "pauseMs": 1.575041,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T15:09:48.073914541+09:00",
+            "pauseMs": 1.470709,
+            "cause": "G1 Evacuation Pause"
+          }
+        ],
+        "heap": [
+          {
+            "at": "2026-09-30T15:09:39.464894208+09:00",
+            "when": "Before GC",
+            "usedBytes": 176797064
+          },
+          {
+            "at": "2026-09-30T15:09:39.466466291+09:00",
+            "when": "After GC",
+            "usedBytes": 21516400
+          },
+          {
+            "at": "2026-09-30T15:09:48.073916291+09:00",
+            "when": "Before GC",
+            "usedBytes": 176705648
+          },
+          {
+            "at": "2026-09-30T15:09:48.075384375+09:00",
+            "when": "After GC",
+            "usedBytes": 21607816
+          }
+        ],
+        "cpu": [
+          {
+            "at": "2026-09-30T15:09:36.625027541+09:00",
+            "jvmFractionOfMachine": 0.0086633662
+          },
+          {
+            "at": "2026-09-30T15:09:37.626917166+09:00",
+            "jvmFractionOfMachine": 0.005625
+          },
+          {
+            "at": "2026-09-30T15:09:38.632418791+09:00",
+            "jvmFractionOfMachine": 0.0061881188
+          },
+          {
+            "at": "2026-09-30T15:09:39.633586750+09:00",
+            "jvmFractionOfMachine": 0.008125
+          },
+          {
+            "at": "2026-09-30T15:09:40.639056708+09:00",
+            "jvmFractionOfMachine": 0.005625
+          },
+          {
+            "at": "2026-09-30T15:09:41.644380583+09:00",
+            "jvmFractionOfMachine": 0.0061881188
+          },
+          {
+            "at": "2026-09-30T15:09:42.645935+09:00",
+            "jvmFractionOfMachine": 0.005
+          },
+          {
+            "at": "2026-09-30T15:09:43.651147333+09:00",
+            "jvmFractionOfMachine": 0.0105198027
+          },
+          {
+            "at": "2026-09-30T15:09:44.655986125+09:00",
+            "jvmFractionOfMachine": 0.004375
+          },
+          {
+            "at": "2026-09-30T15:09:45.658288250+09:00",
+            "jvmFractionOfMachine": 0.00375
+          },
+          {
+            "at": "2026-09-30T15:09:46.663601625+09:00",
+            "jvmFractionOfMachine": 0.006188119
+          },
+          {
+            "at": "2026-09-30T15:09:47.670012333+09:00",
+            "jvmFractionOfMachine": 0.0043316832
+          },
+          {
+            "at": "2026-09-30T15:09:48.675140708+09:00",
+            "jvmFractionOfMachine": 0.00625
+          },
+          {
+            "at": "2026-09-30T15:09:49.680882166+09:00",
+            "jvmFractionOfMachine": 0.0043316832
+          },
+          {
+            "at": "2026-09-30T15:09:50.684723916+09:00",
+            "jvmFractionOfMachine": 0.005
+          },
+          {
+            "at": "2026-09-30T15:09:51.694288250+09:00",
+            "jvmFractionOfMachine": 0.005569307
+          },
+          {
+            "at": "2026-09-30T15:09:52.699259666+09:00",
+            "jvmFractionOfMachine": 0.004375
+          },
+          {
+            "at": "2026-09-30T15:09:53.705028958+09:00",
+            "jvmFractionOfMachine": 0.0049504951
+          },
+          {
+            "at": "2026-09-30T15:09:54.710210416+09:00",
+            "jvmFractionOfMachine": 0.0043316832
+          },
+          {
+            "at": "2026-09-30T15:09:55.714777750+09:00",
+            "jvmFractionOfMachine": 0.005
+          }
+        ],
+        "lostBytes": 0
+      },
+      "recovery": {
+        "completed": true,
+        "errors": [],
+        "restoredParticipants": 5,
+        "elapsedMs": 43.27516699998523,
+        "bytes": 20971520,
+        "expectedBytes": 20971520,
+        "closures": [null, null, null, null, null]
+      },
+      "rss": [
+        {
+          "at": "2026-09-30T06:09:30.141Z",
+          "serverRssBytes": 313049088,
+          "generatorRssBytes": 159301632,
+          "sampleMs": 3.0394999999844003
+        },
+        {
+          "at": "2026-09-30T06:09:31.145Z",
+          "serverRssBytes": 356040704,
+          "generatorRssBytes": 160055296,
+          "sampleMs": 3.0869579999998678
+        },
+        {
+          "at": "2026-09-30T06:09:32.163Z",
+          "serverRssBytes": 356384768,
+          "generatorRssBytes": 160464896,
+          "sampleMs": 17.37575000000652
+        },
+        {
+          "at": "2026-09-30T06:09:33.180Z",
+          "serverRssBytes": 356892672,
+          "generatorRssBytes": 160497664,
+          "sampleMs": 17.512249999999767
+        },
+        {
+          "at": "2026-09-30T06:09:34.185Z",
+          "serverRssBytes": 357089280,
+          "generatorRssBytes": 160497664,
+          "sampleMs": 3.132625000027474
+        },
+        {
+          "at": "2026-09-30T06:09:35.190Z",
+          "serverRssBytes": 358072320,
+          "generatorRssBytes": 159842304,
+          "sampleMs": 4.897292000008747
+        },
+        {
+          "at": "2026-09-30T06:09:36.212Z",
+          "serverRssBytes": 361086976,
+          "generatorRssBytes": 159842304,
+          "sampleMs": 21.820333000010578
+        },
+        {
+          "at": "2026-09-30T06:09:37.218Z",
+          "serverRssBytes": 362479616,
+          "generatorRssBytes": 159842304,
+          "sampleMs": 4.648750000022119
+        },
+        {
+          "at": "2026-09-30T06:09:38.220Z",
+          "serverRssBytes": 370524160,
+          "generatorRssBytes": 159842304,
+          "sampleMs": 3.0077910000109114
+        },
+        {
+          "at": "2026-09-30T06:09:39.239Z",
+          "serverRssBytes": 388120576,
+          "generatorRssBytes": 159842304,
+          "sampleMs": 18.009499999985565
+        },
+        {
+          "at": "2026-09-30T06:09:40.254Z",
+          "serverRssBytes": 396886016,
+          "generatorRssBytes": 159842304,
+          "sampleMs": 13.7532910000009
+        },
+        {
+          "at": "2026-09-30T06:09:41.257Z",
+          "serverRssBytes": 397066240,
+          "generatorRssBytes": 159842304,
+          "sampleMs": 3.1610420000215527
+        },
+        {
+          "at": "2026-09-30T06:09:42.267Z",
+          "serverRssBytes": 397164544,
+          "generatorRssBytes": 159842304,
+          "sampleMs": 9.29725000000326
+        },
+        {
+          "at": "2026-09-30T06:09:43.279Z",
+          "serverRssBytes": 397230080,
+          "generatorRssBytes": 159842304,
+          "sampleMs": 11.273042000015266
+        },
+        {
+          "at": "2026-09-30T06:09:44.284Z",
+          "serverRssBytes": 397279232,
+          "generatorRssBytes": 159842304,
+          "sampleMs": 3.333666999998968
+        },
+        {
+          "at": "2026-09-30T06:09:45.287Z",
+          "serverRssBytes": 397230080,
+          "generatorRssBytes": 159842304,
+          "sampleMs": 3.6031249999941792
+        },
+        {
+          "at": "2026-09-30T06:09:46.304Z",
+          "serverRssBytes": 397246464,
+          "generatorRssBytes": 159842304,
+          "sampleMs": 15.09412500000326
+        },
+        {
+          "at": "2026-09-30T06:09:47.309Z",
+          "serverRssBytes": 397508608,
+          "generatorRssBytes": 159842304,
+          "sampleMs": 6.428291999996873
+        },
+        {
+          "at": "2026-09-30T06:09:48.321Z",
+          "serverRssBytes": 399278080,
+          "generatorRssBytes": 159842304,
+          "sampleMs": 10.523958999983734
+        },
+        {
+          "at": "2026-09-30T06:09:49.330Z",
+          "serverRssBytes": 399294464,
+          "generatorRssBytes": 159842304,
+          "sampleMs": 8.67750000001979
+        },
+        {
+          "at": "2026-09-30T06:09:50.336Z",
+          "serverRssBytes": 399294464,
+          "generatorRssBytes": 159842304,
+          "sampleMs": 6.273833999992348
+        },
+        {
+          "at": "2026-09-30T06:09:51.346Z",
+          "serverRssBytes": 399294464,
+          "generatorRssBytes": 159842304,
+          "sampleMs": 9.25129200000083
+        },
+        {
+          "at": "2026-09-30T06:09:52.350Z",
+          "serverRssBytes": 399310848,
+          "generatorRssBytes": 159842304,
+          "sampleMs": 3.6617909999913536
+        },
+        {
+          "at": "2026-09-30T06:09:53.356Z",
+          "serverRssBytes": 399327232,
+          "generatorRssBytes": 159842304,
+          "sampleMs": 5.925667000003159
+        },
+        {
+          "at": "2026-09-30T06:09:54.360Z",
+          "serverRssBytes": 399360000,
+          "generatorRssBytes": 159842304,
+          "sampleMs": 3.4369580000056885
+        },
+        {
+          "at": "2026-09-30T06:09:55.371Z",
+          "serverRssBytes": 399392768,
+          "generatorRssBytes": 159842304,
+          "sampleMs": 10.051582999993116
+        },
+        {
+          "at": "2026-09-30T06:09:56.380Z",
+          "serverRssBytes": 404848640,
+          "generatorRssBytes": 160104448,
+          "sampleMs": 6.621749999991152
+        },
+        {
+          "at": "2026-09-30T06:09:57.387Z",
+          "serverRssBytes": 404848640,
+          "generatorRssBytes": 160104448,
+          "sampleMs": 6.259041999990586
+        },
+        {
+          "at": "2026-09-30T06:09:58.395Z",
+          "serverRssBytes": 404848640,
+          "generatorRssBytes": 160104448,
+          "sampleMs": 6.4919170000066515
+        },
+        {
+          "at": "2026-09-30T06:09:59.401Z",
+          "serverRssBytes": 404848640,
+          "generatorRssBytes": 160104448,
+          "sampleMs": 5.594083000003593
+        },
+        {
+          "at": "2026-09-30T06:10:00.418Z",
+          "serverRssBytes": 404783104,
+          "generatorRssBytes": 160104448,
+          "sampleMs": 15.797583999985363
+        },
+        {
+          "at": "2026-09-30T06:10:01.421Z",
+          "serverRssBytes": 405716992,
+          "generatorRssBytes": 160104448,
+          "sampleMs": 3.0106249999953434
+        }
+      ],
+      "rssFailures": [],
+      "allRecordingPressure": {},
+      "rawSha256": {
+        "result.json": "74ccd381f3aa3812d1aa811803371691ab685b22a1b9f216fbdd89d15e498807",
+        "flight.json": "55a4a55de96c25fdb7cf9398ae48975ccb4571658ae93c6dbee80ecc203078bf",
+        "server.jfr": "171116e661dfb7b2b5e207166790e233e6af6aff5c221df8f6cd424a36d9472d"
+      }
+    },
+    {
+      "scenario": {
+        "name": "replay-16-1",
+        "terminals": 16,
+        "hosts": 1,
+        "kibPerSecondPerTerminal": 256,
+        "seconds": 20,
+        "recording": true,
+        "compression": false,
+        "reconnect": true
+      },
+      "negotiatedExtensions": [""],
+      "completed": true,
+      "failures": [],
+      "environment": {
+        "node": "v26.3.1",
+        "os": "darwin 25.5.0",
+        "cpu": "Apple M4 Max",
+        "logicalCpus": 16,
+        "memoryBytes": 51539607552
+      },
+      "startMs": 1790748608612,
+      "endMs": 1790748628625,
+      "load": {
+        "completed": true,
+        "expectedFrames": 102400,
+        "receivedFrames": 102400,
+        "sentPayloadBytes": 83886080,
+        "elapsedMs": 20012.70533299999,
+        "maxScheduleLagMs": 5.387374999991152,
+        "gaps": 0,
+        "sequenceErrors": 0,
+        "output": {
+          "count": 102400,
+          "p95UpperMs": 3,
+          "maxMs": 8.785834000009345,
+          "over1000Ms": 0,
+          "nonzeroBuckets": [
+            [1, 75410],
+            [2, 21165],
+            [3, 3890],
+            [4, 1142],
+            [5, 175],
+            [6, 241],
+            [7, 200],
+            [8, 75],
+            [9, 102]
+          ]
+        },
+        "control": {
+          "count": 201,
+          "p95UpperMs": 3,
+          "maxMs": 9.240915999980643,
+          "over1000Ms": 0,
+          "nonzeroBuckets": [
+            [1, 126],
+            [2, 59],
+            [3, 8],
+            [4, 3],
+            [6, 2],
+            [7, 2],
+            [10, 1]
+          ]
+        }
+      },
+      "heap": [
+        {
+          "phase": "empty",
+          "at": "2026-09-30T06:10:03.599Z",
+          "usedBytes": 17373184,
+          "diagnosticMs": 167.42104200000176
+        },
+        {
+          "phase": "loaded",
+          "at": "2026-09-30T06:10:28.811Z",
+          "usedBytes": 33550336,
+          "diagnosticMs": 185.73274999999558
+        },
+        {
+          "phase": "released",
+          "at": "2026-09-30T06:10:34.073Z",
+          "usedBytes": 16830464,
+          "diagnosticMs": 176.46958400000585
+        }
+      ],
+      "flight": {
+        "queue": {
+          "count": 201,
+          "p95UpperMs": 1,
+          "maxMs": 5.2836669999999994,
+          "over1000Ms": 0,
+          "nonzeroBuckets": [
+            [1, 198],
+            [2, 1],
+            [5, 1],
+            [6, 1]
+          ]
+        },
+        "pressure": {},
+        "gc": [
+          {
+            "at": "2026-09-30T15:10:09.793746125+09:00",
+            "pauseMs": 0.6614169999999999,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T15:10:11.793942792+09:00",
+            "pauseMs": 7.401750000000001,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T15:10:13.794654542+09:00",
+            "pauseMs": 1.93525,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T15:10:15.793039750+09:00",
+            "pauseMs": 0.7022499999999999,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T15:10:17.773823500+09:00",
+            "pauseMs": 2.512542,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T15:10:19.793414875+09:00",
+            "pauseMs": 0.804875,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T15:10:21.795191792+09:00",
+            "pauseMs": 2.469583,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T15:10:23.774038792+09:00",
+            "pauseMs": 2.707291,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T15:10:25.794314833+09:00",
+            "pauseMs": 2.177959,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T15:10:27.772461917+09:00",
+            "pauseMs": 2.064625,
+            "cause": "G1 Evacuation Pause"
+          }
+        ],
+        "heap": [
+          {
+            "at": "2026-09-30T15:10:09.793747625+09:00",
+            "when": "Before GC",
+            "usedBytes": 175708760
+          },
+          {
+            "at": "2026-09-30T15:10:09.794407208+09:00",
+            "when": "After GC",
+            "usedBytes": 35192512
+          },
+          {
+            "at": "2026-09-30T15:10:11.793945+09:00",
+            "when": "Before GC",
+            "usedBytes": 176750272
+          },
+          {
+            "at": "2026-09-30T15:10:11.801343208+09:00",
+            "when": "After GC",
+            "usedBytes": 34491896
+          },
+          {
+            "at": "2026-09-30T15:10:13.794656500+09:00",
+            "when": "Before GC",
+            "usedBytes": 176049656
+          },
+          {
+            "at": "2026-09-30T15:10:13.796588500+09:00",
+            "when": "After GC",
+            "usedBytes": 35026488
+          },
+          {
+            "at": "2026-09-30T15:10:15.793041292+09:00",
+            "when": "Before GC",
+            "usedBytes": 175535672
+          },
+          {
+            "at": "2026-09-30T15:10:15.793741458+09:00",
+            "when": "After GC",
+            "usedBytes": 35252056
+          },
+          {
+            "at": "2026-09-30T15:10:17.773825208+09:00",
+            "when": "Before GC",
+            "usedBytes": 176809816
+          },
+          {
+            "at": "2026-09-30T15:10:17.776334750+09:00",
+            "when": "After GC",
+            "usedBytes": 34677272
+          },
+          {
+            "at": "2026-09-30T15:10:19.793416417+09:00",
+            "when": "Before GC",
+            "usedBytes": 177283608
+          },
+          {
+            "at": "2026-09-30T15:10:19.794218917+09:00",
+            "when": "After GC",
+            "usedBytes": 35727912
+          },
+          {
+            "at": "2026-09-30T15:10:21.795193625+09:00",
+            "when": "Before GC",
+            "usedBytes": 177285672
+          },
+          {
+            "at": "2026-09-30T15:10:21.797660417+09:00",
+            "when": "After GC",
+            "usedBytes": 35215992
+          },
+          {
+            "at": "2026-09-30T15:10:23.774040417+09:00",
+            "when": "Before GC",
+            "usedBytes": 176773752
+          },
+          {
+            "at": "2026-09-30T15:10:23.776744750+09:00",
+            "when": "After GC",
+            "usedBytes": 34765752
+          },
+          {
+            "at": "2026-09-30T15:10:25.794317+09:00",
+            "when": "Before GC",
+            "usedBytes": 177372088
+          },
+          {
+            "at": "2026-09-30T15:10:25.796491250+09:00",
+            "when": "After GC",
+            "usedBytes": 35304456
+          },
+          {
+            "at": "2026-09-30T15:10:27.772463750+09:00",
+            "when": "Before GC",
+            "usedBytes": 176862216
+          },
+          {
+            "at": "2026-09-30T15:10:27.774525208+09:00",
+            "when": "After GC",
+            "usedBytes": 35310632
+          }
+        ],
+        "cpu": [
+          {
+            "at": "2026-09-30T15:10:09.416278042+09:00",
+            "jvmFractionOfMachine": 0.014375
+          },
+          {
+            "at": "2026-09-30T15:10:10.419390167+09:00",
+            "jvmFractionOfMachine": 0.015625
+          },
+          {
+            "at": "2026-09-30T15:10:11.424629208+09:00",
+            "jvmFractionOfMachine": 0.0129950497
+          },
+          {
+            "at": "2026-09-30T15:10:12.429939292+09:00",
+            "jvmFractionOfMachine": 0.021658416
+          },
+          {
+            "at": "2026-09-30T15:10:13.435440167+09:00",
+            "jvmFractionOfMachine": 0.011875
+          },
+          {
+            "at": "2026-09-30T15:10:14.437838875+09:00",
+            "jvmFractionOfMachine": 0.0125
+          },
+          {
+            "at": "2026-09-30T15:10:15.440481958+09:00",
+            "jvmFractionOfMachine": 0.011757426
+          },
+          {
+            "at": "2026-09-30T15:10:16.445375583+09:00",
+            "jvmFractionOfMachine": 0.0125
+          },
+          {
+            "at": "2026-09-30T15:10:17.450712250+09:00",
+            "jvmFractionOfMachine": 0.012376238
+          },
+          {
+            "at": "2026-09-30T15:10:18.455938458+09:00",
+            "jvmFractionOfMachine": 0.0125
+          },
+          {
+            "at": "2026-09-30T15:10:19.457995833+09:00",
+            "jvmFractionOfMachine": 0.0125
+          },
+          {
+            "at": "2026-09-30T15:10:20.463255208+09:00",
+            "jvmFractionOfMachine": 0.0136138617
+          },
+          {
+            "at": "2026-09-30T15:10:21.469760750+09:00",
+            "jvmFractionOfMachine": 0.011757426
+          },
+          {
+            "at": "2026-09-30T15:10:22.475634083+09:00",
+            "jvmFractionOfMachine": 0.01125
+          },
+          {
+            "at": "2026-09-30T15:10:23.481631208+09:00",
+            "jvmFractionOfMachine": 0.011757426
+          },
+          {
+            "at": "2026-09-30T15:10:24.486916417+09:00",
+            "jvmFractionOfMachine": 0.0125
+          },
+          {
+            "at": "2026-09-30T15:10:25.489162250+09:00",
+            "jvmFractionOfMachine": 0.010624999999999999
+          },
+          {
+            "at": "2026-09-30T15:10:26.492922792+09:00",
+            "jvmFractionOfMachine": 0.0117574255
+          },
+          {
+            "at": "2026-09-30T15:10:27.496824125+09:00",
+            "jvmFractionOfMachine": 0.01125
+          },
+          {
+            "at": "2026-09-30T15:10:28.502159958+09:00",
+            "jvmFractionOfMachine": 0.0123762375
+          }
+        ],
+        "lostBytes": 0
+      },
+      "recovery": {
+        "completed": true,
+        "errors": [],
+        "restoredParticipants": 5,
+        "elapsedMs": 73.25354200002039,
+        "bytes": 83886080,
+        "expectedBytes": 83886080,
+        "closures": [null, null, null, null, null]
+      },
+      "rss": [
+        {
+          "at": "2026-09-30T06:10:02.938Z",
+          "serverRssBytes": 283295744,
+          "generatorRssBytes": 160284672,
+          "sampleMs": 4.133666999987327
+        },
+        {
+          "at": "2026-09-30T06:10:03.942Z",
+          "serverRssBytes": 331988992,
+          "generatorRssBytes": 163479552,
+          "sampleMs": 3.4230839999800082
+        },
+        {
+          "at": "2026-09-30T06:10:04.945Z",
+          "serverRssBytes": 337379328,
+          "generatorRssBytes": 164085760,
+          "sampleMs": 2.967792000010377
+        },
+        {
+          "at": "2026-09-30T06:10:05.950Z",
+          "serverRssBytes": 376291328,
+          "generatorRssBytes": 164741120,
+          "sampleMs": 3.129791999992449
+        },
+        {
+          "at": "2026-09-30T06:10:06.959Z",
+          "serverRssBytes": 376619008,
+          "generatorRssBytes": 164741120,
+          "sampleMs": 9.654915999999503
+        },
+        {
+          "at": "2026-09-30T06:10:07.965Z",
+          "serverRssBytes": 385613824,
+          "generatorRssBytes": 164757504,
+          "sampleMs": 6.852249999996275
+        },
+        {
+          "at": "2026-09-30T06:10:08.977Z",
+          "serverRssBytes": 385794048,
+          "generatorRssBytes": 164855808,
+          "sampleMs": 11.280709000013303
+        },
+        {
+          "at": "2026-09-30T06:10:09.979Z",
+          "serverRssBytes": 386416640,
+          "generatorRssBytes": 164986880,
+          "sampleMs": 2.8340420000022277
+        },
+        {
+          "at": "2026-09-30T06:10:10.984Z",
+          "serverRssBytes": 386433024,
+          "generatorRssBytes": 165003264,
+          "sampleMs": 3.467540999990888
+        },
+        {
+          "at": "2026-09-30T06:10:11.993Z",
+          "serverRssBytes": 387153920,
+          "generatorRssBytes": 165052416,
+          "sampleMs": 8.71695799997542
+        },
+        {
+          "at": "2026-09-30T06:10:13.002Z",
+          "serverRssBytes": 388038656,
+          "generatorRssBytes": 165052416,
+          "sampleMs": 7.9154169999819715
+        },
+        {
+          "at": "2026-09-30T06:10:14.009Z",
+          "serverRssBytes": 388481024,
+          "generatorRssBytes": 165052416,
+          "sampleMs": 7.35683400000562
+        },
+        {
+          "at": "2026-09-30T06:10:15.017Z",
+          "serverRssBytes": 388481024,
+          "generatorRssBytes": 165052416,
+          "sampleMs": 7.357916999986628
+        },
+        {
+          "at": "2026-09-30T06:10:16.022Z",
+          "serverRssBytes": 388825088,
+          "generatorRssBytes": 164528128,
+          "sampleMs": 3.815459000004921
+        },
+        {
+          "at": "2026-09-30T06:10:17.030Z",
+          "serverRssBytes": 389103616,
+          "generatorRssBytes": 164528128,
+          "sampleMs": 7.294250000006286
+        },
+        {
+          "at": "2026-09-30T06:10:18.038Z",
+          "serverRssBytes": 389758976,
+          "generatorRssBytes": 164528128,
+          "sampleMs": 6.50929100002395
+        },
+        {
+          "at": "2026-09-30T06:10:19.041Z",
+          "serverRssBytes": 389775360,
+          "generatorRssBytes": 164528128,
+          "sampleMs": 3.182082999992417
+        },
+        {
+          "at": "2026-09-30T06:10:20.045Z",
+          "serverRssBytes": 389988352,
+          "generatorRssBytes": 164675584,
+          "sampleMs": 3.578917000006186
+        },
+        {
+          "at": "2026-09-30T06:10:21.049Z",
+          "serverRssBytes": 390021120,
+          "generatorRssBytes": 164675584,
+          "sampleMs": 3.170332999987295
+        },
+        {
+          "at": "2026-09-30T06:10:22.060Z",
+          "serverRssBytes": 390053888,
+          "generatorRssBytes": 164675584,
+          "sampleMs": 10.625208999990718
+        },
+        {
+          "at": "2026-09-30T06:10:23.064Z",
+          "serverRssBytes": 390103040,
+          "generatorRssBytes": 164675584,
+          "sampleMs": 3.194874999986496
+        },
+        {
+          "at": "2026-09-30T06:10:24.067Z",
+          "serverRssBytes": 390316032,
+          "generatorRssBytes": 164675584,
+          "sampleMs": 3.308707999996841
+        },
+        {
+          "at": "2026-09-30T06:10:25.071Z",
+          "serverRssBytes": 390316032,
+          "generatorRssBytes": 164675584,
+          "sampleMs": 3.2400840000191238
+        },
+        {
+          "at": "2026-09-30T06:10:26.078Z",
+          "serverRssBytes": 390430720,
+          "generatorRssBytes": 164675584,
+          "sampleMs": 6.525792000000365
+        },
+        {
+          "at": "2026-09-30T06:10:27.087Z",
+          "serverRssBytes": 390430720,
+          "generatorRssBytes": 164675584,
+          "sampleMs": 7.774334000016097
+        },
+        {
+          "at": "2026-09-30T06:10:28.090Z",
+          "serverRssBytes": 390479872,
+          "generatorRssBytes": 164675584,
+          "sampleMs": 2.847833999985596
+        },
+        {
+          "at": "2026-09-30T06:10:29.094Z",
+          "serverRssBytes": 404439040,
+          "generatorRssBytes": 178307072,
+          "sampleMs": 2.956084000004921
+        },
+        {
+          "at": "2026-09-30T06:10:30.106Z",
+          "serverRssBytes": 404439040,
+          "generatorRssBytes": 178307072,
+          "sampleMs": 11.717917000001762
+        },
+        {
+          "at": "2026-09-30T06:10:31.115Z",
+          "serverRssBytes": 404439040,
+          "generatorRssBytes": 178307072,
+          "sampleMs": 7.343167000013636
+        },
+        {
+          "at": "2026-09-30T06:10:32.123Z",
+          "serverRssBytes": 404439040,
+          "generatorRssBytes": 178307072,
+          "sampleMs": 6.674125000019558
+        },
+        {
+          "at": "2026-09-30T06:10:33.137Z",
+          "serverRssBytes": 404439040,
+          "generatorRssBytes": 178307072,
+          "sampleMs": 13.272666000004392
+        },
+        {
+          "at": "2026-09-30T06:10:34.141Z",
+          "serverRssBytes": 404570112,
+          "generatorRssBytes": 178307072,
+          "sampleMs": 3.21645899998839
+        }
+      ],
+      "rssFailures": [],
+      "allRecordingPressure": {},
+      "rawSha256": {
+        "result.json": "07116cebc07cbb7ad6dacdca0ec3c25eaa7a247aa2e9ae4df8b4e79b5c7b175f",
+        "flight.json": "eb09d8af56c764294ff34dea46c271e879c46f66ed02e21774bef00b370ff27d",
+        "server.jfr": "97693afdf50eb667ad40ac29c58ffb598e47057e04fe62fe335d610ef1fd099d"
+      }
+    },
+    {
+      "scenario": {
+        "name": "replay-16-2",
+        "terminals": 16,
+        "hosts": 1,
+        "kibPerSecondPerTerminal": 256,
+        "seconds": 20,
+        "recording": true,
+        "compression": false,
+        "reconnect": true
+      },
+      "negotiatedExtensions": [""],
+      "completed": true,
+      "failures": [],
+      "environment": {
+        "node": "v26.3.1",
+        "os": "darwin 25.5.0",
+        "cpu": "Apple M4 Max",
+        "logicalCpus": 16,
+        "memoryBytes": 51539607552
+      },
+      "startMs": 1790748641305,
+      "endMs": 1790748661318,
+      "load": {
+        "completed": true,
+        "expectedFrames": 102400,
+        "receivedFrames": 102400,
+        "sentPayloadBytes": 83886080,
+        "elapsedMs": 20013.21775000001,
+        "maxScheduleLagMs": 3.4898340000072494,
+        "gaps": 0,
+        "sequenceErrors": 0,
+        "output": {
+          "count": 102400,
+          "p95UpperMs": 1,
+          "maxMs": 3.782041999977082,
+          "over1000Ms": 0,
+          "nonzeroBuckets": [
+            [1, 101260],
+            [2, 899],
+            [3, 161],
+            [4, 80]
+          ]
+        },
+        "control": {
+          "count": 201,
+          "p95UpperMs": 1,
+          "maxMs": 3.5282910000532866,
+          "over1000Ms": 0,
+          "nonzeroBuckets": [
+            [1, 197],
+            [2, 3],
+            [4, 1]
+          ]
+        }
+      },
+      "heap": [
+        {
+          "phase": "empty",
+          "at": "2026-09-30T06:10:36.292Z",
+          "usedBytes": 17233920,
+          "diagnosticMs": 193.53441600000951
+        },
+        {
+          "phase": "loaded",
+          "at": "2026-09-30T06:11:01.534Z",
+          "usedBytes": 33519616,
+          "diagnosticMs": 215.57774999999674
+        },
+        {
+          "phase": "released",
+          "at": "2026-09-30T06:11:06.874Z",
+          "usedBytes": 16829440,
+          "diagnosticMs": 189.9519159999909
+        }
+      ],
+      "flight": {
+        "queue": {
+          "count": 201,
+          "p95UpperMs": 1,
+          "maxMs": 0.284666,
+          "over1000Ms": 0,
+          "nonzeroBuckets": [[1, 201]]
+        },
+        "pressure": {},
+        "gc": [
+          {
+            "at": "2026-09-30T15:10:42.517144958+09:00",
+            "pauseMs": 0.895375,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T15:10:44.497060625+09:00",
+            "pauseMs": 0.774042,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T15:10:46.486372250+09:00",
+            "pauseMs": 0.882792,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T15:10:48.456524417+09:00",
+            "pauseMs": 0.782541,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T15:10:50.436832458+09:00",
+            "pauseMs": 0.748167,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T15:10:52.415341750+09:00",
+            "pauseMs": 0.762667,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T15:10:54.415608+09:00",
+            "pauseMs": 0.744917,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T15:10:56.406607167+09:00",
+            "pauseMs": 0.6702499999999999,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T15:10:58.385337458+09:00",
+            "pauseMs": 0.8262919999999999,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T15:11:00.356618375+09:00",
+            "pauseMs": 0.784208,
+            "cause": "G1 Evacuation Pause"
+          }
+        ],
+        "heap": [
+          {
+            "at": "2026-09-30T15:10:42.517146417+09:00",
+            "when": "Before GC",
+            "usedBytes": 176673216
+          },
+          {
+            "at": "2026-09-30T15:10:42.518039500+09:00",
+            "when": "After GC",
+            "usedBytes": 35147624
+          },
+          {
+            "at": "2026-09-30T15:10:44.497061750+09:00",
+            "when": "Before GC",
+            "usedBytes": 175656808
+          },
+          {
+            "at": "2026-09-30T15:10:44.497834+09:00",
+            "when": "After GC",
+            "usedBytes": 35600472
+          },
+          {
+            "at": "2026-09-30T15:10:46.486373875+09:00",
+            "when": "Before GC",
+            "usedBytes": 176109656
+          },
+          {
+            "at": "2026-09-30T15:10:46.487254375+09:00",
+            "when": "After GC",
+            "usedBytes": 35779400
+          },
+          {
+            "at": "2026-09-30T15:10:48.456525417+09:00",
+            "when": "Before GC",
+            "usedBytes": 177337160
+          },
+          {
+            "at": "2026-09-30T15:10:48.457306458+09:00",
+            "when": "After GC",
+            "usedBytes": 35921784
+          },
+          {
+            "at": "2026-09-30T15:10:50.436833708+09:00",
+            "when": "Before GC",
+            "usedBytes": 177479544
+          },
+          {
+            "at": "2026-09-30T15:10:50.437580125+09:00",
+            "when": "After GC",
+            "usedBytes": 36453184
+          },
+          {
+            "at": "2026-09-30T15:10:52.415343167+09:00",
+            "when": "Before GC",
+            "usedBytes": 175913792
+          },
+          {
+            "at": "2026-09-30T15:10:52.416103667+09:00",
+            "when": "After GC",
+            "usedBytes": 36271160
+          },
+          {
+            "at": "2026-09-30T15:10:54.415609667+09:00",
+            "when": "Before GC",
+            "usedBytes": 177828920
+          },
+          {
+            "at": "2026-09-30T15:10:54.416352208+09:00",
+            "when": "After GC",
+            "usedBytes": 36450616
+          },
+          {
+            "at": "2026-09-30T15:10:56.406608208+09:00",
+            "when": "Before GC",
+            "usedBytes": 178008376
+          },
+          {
+            "at": "2026-09-30T15:10:56.407276750+09:00",
+            "when": "After GC",
+            "usedBytes": 35805072
+          },
+          {
+            "at": "2026-09-30T15:10:58.385339167+09:00",
+            "when": "Before GC",
+            "usedBytes": 177362832
+          },
+          {
+            "at": "2026-09-30T15:10:58.386162708+09:00",
+            "when": "After GC",
+            "usedBytes": 37301992
+          },
+          {
+            "at": "2026-09-30T15:11:00.356624958+09:00",
+            "when": "Before GC",
+            "usedBytes": 177811176
+          },
+          {
+            "at": "2026-09-30T15:11:00.357402042+09:00",
+            "when": "After GC",
+            "usedBytes": 36818824
+          }
+        ],
+        "cpu": [
+          {
+            "at": "2026-09-30T15:10:42.091327292+09:00",
+            "jvmFractionOfMachine": 0.0160891085
+          },
+          {
+            "at": "2026-09-30T15:10:43.092046500+09:00",
+            "jvmFractionOfMachine": 0.011875
+          },
+          {
+            "at": "2026-09-30T15:10:44.097274375+09:00",
+            "jvmFractionOfMachine": 0.011875
+          },
+          {
+            "at": "2026-09-30T15:10:45.101949625+09:00",
+            "jvmFractionOfMachine": 0.0123762377
+          },
+          {
+            "at": "2026-09-30T15:10:46.107141208+09:00",
+            "jvmFractionOfMachine": 0.019375
+          },
+          {
+            "at": "2026-09-30T15:10:47.111945542+09:00",
+            "jvmFractionOfMachine": 0.010519802
+          },
+          {
+            "at": "2026-09-30T15:10:48.117189208+09:00",
+            "jvmFractionOfMachine": 0.010625
+          },
+          {
+            "at": "2026-09-30T15:10:49.117610667+09:00",
+            "jvmFractionOfMachine": 0.0125
+          },
+          {
+            "at": "2026-09-30T15:10:50.122863333+09:00",
+            "jvmFractionOfMachine": 0.009900990299999999
+          },
+          {
+            "at": "2026-09-30T15:10:51.128047167+09:00",
+            "jvmFractionOfMachine": 0.0125
+          },
+          {
+            "at": "2026-09-30T15:10:52.133234+09:00",
+            "jvmFractionOfMachine": 0.011138613799999999
+          },
+          {
+            "at": "2026-09-30T15:10:53.138416333+09:00",
+            "jvmFractionOfMachine": 0.010625
+          },
+          {
+            "at": "2026-09-30T15:10:54.143732292+09:00",
+            "jvmFractionOfMachine": 0.011757426
+          },
+          {
+            "at": "2026-09-30T15:10:55.148900292+09:00",
+            "jvmFractionOfMachine": 0.010624999999999999
+          },
+          {
+            "at": "2026-09-30T15:10:56.154084958+09:00",
+            "jvmFractionOfMachine": 0.011138614
+          },
+          {
+            "at": "2026-09-30T15:10:57.156336375+09:00",
+            "jvmFractionOfMachine": 0.01125
+          },
+          {
+            "at": "2026-09-30T15:10:58.159514625+09:00",
+            "jvmFractionOfMachine": 0.01125
+          },
+          {
+            "at": "2026-09-30T15:10:59.164736333+09:00",
+            "jvmFractionOfMachine": 0.011757426
+          },
+          {
+            "at": "2026-09-30T15:11:00.167741125+09:00",
+            "jvmFractionOfMachine": 0.01
+          },
+          {
+            "at": "2026-09-30T15:11:01.174474+09:00",
+            "jvmFractionOfMachine": 0.010519802
+          }
+        ],
+        "lostBytes": 0
+      },
+      "recovery": {
+        "completed": true,
+        "errors": [],
+        "restoredParticipants": 5,
+        "elapsedMs": 115.46750000002794,
+        "bytes": 83886080,
+        "expectedBytes": 83886080,
+        "closures": [null, null, null, null, null]
+      },
+      "rss": [
+        {
+          "at": "2026-09-30T06:10:35.621Z",
+          "serverRssBytes": 300400640,
+          "generatorRssBytes": 178536448,
+          "sampleMs": 2.8035829999716952
+        },
+        {
+          "at": "2026-09-30T06:10:36.629Z",
+          "serverRssBytes": 335511552,
+          "generatorRssBytes": 184434688,
+          "sampleMs": 6.374707999988459
+        },
+        {
+          "at": "2026-09-30T06:10:37.634Z",
+          "serverRssBytes": 340115456,
+          "generatorRssBytes": 184434688,
+          "sampleMs": 4.0745829999796115
+        },
+        {
+          "at": "2026-09-30T06:10:38.639Z",
+          "serverRssBytes": 381452288,
+          "generatorRssBytes": 184860672,
+          "sampleMs": 4.975500000000466
+        },
+        {
+          "at": "2026-09-30T06:10:39.644Z",
+          "serverRssBytes": 320946176,
+          "generatorRssBytes": 174276608,
+          "sampleMs": 4.230582999996841
+        },
+        {
+          "at": "2026-09-30T06:10:40.648Z",
+          "serverRssBytes": 326352896,
+          "generatorRssBytes": 172883968,
+          "sampleMs": 3.327333000022918
+        },
+        {
+          "at": "2026-09-30T06:10:41.651Z",
+          "serverRssBytes": 328482816,
+          "generatorRssBytes": 173129728,
+          "sampleMs": 3.2527920000138693
+        },
+        {
+          "at": "2026-09-30T06:10:42.655Z",
+          "serverRssBytes": 328990720,
+          "generatorRssBytes": 176685056,
+          "sampleMs": 2.885999999998603
+        },
+        {
+          "at": "2026-09-30T06:10:43.659Z",
+          "serverRssBytes": 329089024,
+          "generatorRssBytes": 176963584,
+          "sampleMs": 4.259749999968335
+        },
+        {
+          "at": "2026-09-30T06:10:44.663Z",
+          "serverRssBytes": 329777152,
+          "generatorRssBytes": 176979968,
+          "sampleMs": 3.4158750000060536
+        },
+        {
+          "at": "2026-09-30T06:10:45.667Z",
+          "serverRssBytes": 334905344,
+          "generatorRssBytes": 176979968,
+          "sampleMs": 3.109541000041645
+        },
+        {
+          "at": "2026-09-30T06:10:46.675Z",
+          "serverRssBytes": 335331328,
+          "generatorRssBytes": 161120256,
+          "sampleMs": 8.154083999979775
+        },
+        {
+          "at": "2026-09-30T06:10:47.685Z",
+          "serverRssBytes": 335511552,
+          "generatorRssBytes": 161153024,
+          "sampleMs": 10.371042000013404
+        },
+        {
+          "at": "2026-09-30T06:10:48.689Z",
+          "serverRssBytes": 336248832,
+          "generatorRssBytes": 158466048,
+          "sampleMs": 3.2765830000280403
+        },
+        {
+          "at": "2026-09-30T06:10:49.694Z",
+          "serverRssBytes": 336805888,
+          "generatorRssBytes": 161218560,
+          "sampleMs": 4.477375000016764
+        },
+        {
+          "at": "2026-09-30T06:10:50.699Z",
+          "serverRssBytes": 337068032,
+          "generatorRssBytes": 161218560,
+          "sampleMs": 3.610458000039216
+        },
+        {
+          "at": "2026-09-30T06:10:51.703Z",
+          "serverRssBytes": 337215488,
+          "generatorRssBytes": 161087488,
+          "sampleMs": 3.0346250000293367
+        },
+        {
+          "at": "2026-09-30T06:10:52.708Z",
+          "serverRssBytes": 337379328,
+          "generatorRssBytes": 160727040,
+          "sampleMs": 3.9626669999561273
+        },
+        {
+          "at": "2026-09-30T06:10:53.713Z",
+          "serverRssBytes": 337395712,
+          "generatorRssBytes": 171212800,
+          "sampleMs": 4.311332999961451
+        },
+        {
+          "at": "2026-09-30T06:10:54.717Z",
+          "serverRssBytes": 337936384,
+          "generatorRssBytes": 171769856,
+          "sampleMs": 3.1445419999654405
+        },
+        {
+          "at": "2026-09-30T06:10:55.720Z",
+          "serverRssBytes": 337936384,
+          "generatorRssBytes": 172965888,
+          "sampleMs": 2.7784580000443384
+        },
+        {
+          "at": "2026-09-30T06:10:56.724Z",
+          "serverRssBytes": 338182144,
+          "generatorRssBytes": 172982272,
+          "sampleMs": 3.765125000034459
+        },
+        {
+          "at": "2026-09-30T06:10:57.728Z",
+          "serverRssBytes": 338198528,
+          "generatorRssBytes": 172982272,
+          "sampleMs": 3.5542920000152662
+        },
+        {
+          "at": "2026-09-30T06:10:58.732Z",
+          "serverRssBytes": 338690048,
+          "generatorRssBytes": 172982272,
+          "sampleMs": 3.1570420000352897
+        },
+        {
+          "at": "2026-09-30T06:10:59.738Z",
+          "serverRssBytes": 338837504,
+          "generatorRssBytes": 176078848,
+          "sampleMs": 4.4369580000056885
+        },
+        {
+          "at": "2026-09-30T06:11:00.745Z",
+          "serverRssBytes": 339361792,
+          "generatorRssBytes": 176111616,
+          "sampleMs": 8.246082999976352
+        },
+        {
+          "at": "2026-09-30T06:11:01.751Z",
+          "serverRssBytes": 375996416,
+          "generatorRssBytes": 197083136,
+          "sampleMs": 5.026833000010811
+        },
+        {
+          "at": "2026-09-30T06:11:02.755Z",
+          "serverRssBytes": 375996416,
+          "generatorRssBytes": 197083136,
+          "sampleMs": 3.217000000004191
+        },
+        {
+          "at": "2026-09-30T06:11:03.760Z",
+          "serverRssBytes": 375996416,
+          "generatorRssBytes": 197083136,
+          "sampleMs": 3.820000000006985
+        },
+        {
+          "at": "2026-09-30T06:11:04.764Z",
+          "serverRssBytes": 375996416,
+          "generatorRssBytes": 197083136,
+          "sampleMs": 3.6242919999640435
+        },
+        {
+          "at": "2026-09-30T06:11:05.784Z",
+          "serverRssBytes": 375996416,
+          "generatorRssBytes": 197115904,
+          "sampleMs": 20.75320899998769
+        },
+        {
+          "at": "2026-09-30T06:11:06.790Z",
+          "serverRssBytes": 376143872,
+          "generatorRssBytes": 197115904,
+          "sampleMs": 5.973832999996375
+        }
+      ],
+      "rssFailures": [],
+      "allRecordingPressure": {},
+      "rawSha256": {
+        "result.json": "312babd58c9e8e99189552eb46d15baf5aab34aaf048c02e3345fb60dc8cf34e",
+        "flight.json": "cc2d0a84881acc7e41aee7f48ba9067e63df8fb7be002fc3f435024b6c5f4af6",
+        "server.jfr": "a2cc314d2efc5043a2d0ba4c54673e1eb1e40971fa32dbd22e4cd26092f1cb6b"
+      }
+    },
+    {
+      "scenario": {
+        "name": "replay-16-3",
+        "terminals": 16,
+        "hosts": 1,
+        "kibPerSecondPerTerminal": 256,
+        "seconds": 20,
+        "recording": true,
+        "compression": false,
+        "reconnect": true
+      },
+      "negotiatedExtensions": [""],
+      "completed": true,
+      "failures": [],
+      "environment": {
+        "node": "v26.3.1",
+        "os": "darwin 25.5.0",
+        "cpu": "Apple M4 Max",
+        "logicalCpus": 16,
+        "memoryBytes": 51539607552
+      },
+      "startMs": 1790748674601,
+      "endMs": 1790748694624,
+      "load": {
+        "completed": true,
+        "expectedFrames": 102400,
+        "receivedFrames": 102400,
+        "sentPayloadBytes": 83886080,
+        "elapsedMs": 20021.775000000023,
+        "maxScheduleLagMs": 43.623334000003524,
+        "gaps": 0,
+        "sequenceErrors": 0,
+        "output": {
+          "count": 102400,
+          "p95UpperMs": 2,
+          "maxMs": 40.54737500002375,
+          "over1000Ms": 0,
+          "nonzeroBuckets": [
+            [1, 96154],
+            [2, 4991],
+            [3, 536],
+            [4, 93],
+            [5, 6],
+            [6, 8],
+            [7, 96],
+            [8, 42],
+            [9, 67],
+            [10, 44],
+            [11, 38],
+            [12, 94],
+            [14, 34],
+            [15, 6],
+            [16, 13],
+            [19, 16],
+            [20, 87],
+            [21, 25],
+            [34, 26],
+            [36, 9],
+            [39, 14],
+            [41, 1]
+          ]
+        },
+        "control": {
+          "count": 201,
+          "p95UpperMs": 2,
+          "maxMs": 13.048958000028506,
+          "over1000Ms": 0,
+          "nonzeroBuckets": [
+            [1, 184],
+            [2, 12],
+            [3, 4],
+            [14, 1]
+          ]
+        }
+      },
+      "heap": [
+        {
+          "phase": "empty",
+          "at": "2026-09-30T06:11:09.589Z",
+          "usedBytes": 17408000,
+          "diagnosticMs": 194.67399999999907
+        },
+        {
+          "phase": "loaded",
+          "at": "2026-09-30T06:11:34.790Z",
+          "usedBytes": 33554432,
+          "diagnosticMs": 166.49870900000678
+        },
+        {
+          "phase": "released",
+          "at": "2026-09-30T06:11:40.050Z",
+          "usedBytes": 16866304,
+          "diagnosticMs": 164.94187499996042
+        }
+      ],
+      "flight": {
+        "queue": {
+          "count": 201,
+          "p95UpperMs": 1,
+          "maxMs": 1.139291,
+          "over1000Ms": 0,
+          "nonzeroBuckets": [
+            [1, 198],
+            [2, 3]
+          ]
+        },
+        "pressure": {},
+        "gc": [
+          {
+            "at": "2026-09-30T15:11:15.824068584+09:00",
+            "pauseMs": 0.9175,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T15:11:17.813356167+09:00",
+            "pauseMs": 0.743,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T15:11:19.782914667+09:00",
+            "pauseMs": 1.133708,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T15:11:21.761754042+09:00",
+            "pauseMs": 2.4203330000000003,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T15:11:23.762003625+09:00",
+            "pauseMs": 0.8858339999999999,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T15:11:25.732886625+09:00",
+            "pauseMs": 1.1314170000000001,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T15:11:27.722560334+09:00",
+            "pauseMs": 0.956666,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T15:11:29.702607625+09:00",
+            "pauseMs": 0.818459,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T15:11:31.672627959+09:00",
+            "pauseMs": 0.993416,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T15:11:33.652808709+09:00",
+            "pauseMs": 1.017708,
+            "cause": "G1 Evacuation Pause"
+          }
+        ],
+        "heap": [
+          {
+            "at": "2026-09-30T15:11:15.824070209+09:00",
+            "when": "Before GC",
+            "usedBytes": 176792200
+          },
+          {
+            "at": "2026-09-30T15:11:15.824985459+09:00",
+            "when": "After GC",
+            "usedBytes": 35375632
+          },
+          {
+            "at": "2026-09-30T15:11:17.813357250+09:00",
+            "when": "Before GC",
+            "usedBytes": 175884808
+          },
+          {
+            "at": "2026-09-30T15:11:17.814098459+09:00",
+            "when": "After GC",
+            "usedBytes": 35943768
+          },
+          {
+            "at": "2026-09-30T15:11:19.782916+09:00",
+            "when": "Before GC",
+            "usedBytes": 175404376
+          },
+          {
+            "at": "2026-09-30T15:11:19.784047792+09:00",
+            "when": "After GC",
+            "usedBytes": 35815928
+          },
+          {
+            "at": "2026-09-30T15:11:21.761755584+09:00",
+            "when": "Before GC",
+            "usedBytes": 177373688
+          },
+          {
+            "at": "2026-09-30T15:11:21.764173375+09:00",
+            "when": "After GC",
+            "usedBytes": 36025720
+          },
+          {
+            "at": "2026-09-30T15:11:23.762004834+09:00",
+            "when": "Before GC",
+            "usedBytes": 176534904
+          },
+          {
+            "at": "2026-09-30T15:11:23.762888709+09:00",
+            "when": "After GC",
+            "usedBytes": 36993240
+          },
+          {
+            "at": "2026-09-30T15:11:25.732887875+09:00",
+            "when": "Before GC",
+            "usedBytes": 176453848
+          },
+          {
+            "at": "2026-09-30T15:11:25.734017292+09:00",
+            "when": "After GC",
+            "usedBytes": 36980904
+          },
+          {
+            "at": "2026-09-30T15:11:27.722561542+09:00",
+            "when": "Before GC",
+            "usedBytes": 177490088
+          },
+          {
+            "at": "2026-09-30T15:11:27.723516250+09:00",
+            "when": "After GC",
+            "usedBytes": 36851864
+          },
+          {
+            "at": "2026-09-30T15:11:29.702608959+09:00",
+            "when": "Before GC",
+            "usedBytes": 178409624
+          },
+          {
+            "at": "2026-09-30T15:11:29.703425625+09:00",
+            "when": "After GC",
+            "usedBytes": 37696648
+          },
+          {
+            "at": "2026-09-30T15:11:31.672629250+09:00",
+            "when": "Before GC",
+            "usedBytes": 178205832
+          },
+          {
+            "at": "2026-09-30T15:11:31.673620709+09:00",
+            "when": "After GC",
+            "usedBytes": 36531240
+          },
+          {
+            "at": "2026-09-30T15:11:33.652810292+09:00",
+            "when": "Before GC",
+            "usedBytes": 177040424
+          },
+          {
+            "at": "2026-09-30T15:11:33.653825417+09:00",
+            "when": "After GC",
+            "usedBytes": 38133112
+          }
+        ],
+        "cpu": [
+          {
+            "at": "2026-09-30T15:11:15.375767625+09:00",
+            "jvmFractionOfMachine": 0.015
+          },
+          {
+            "at": "2026-09-30T15:11:16.380030334+09:00",
+            "jvmFractionOfMachine": 0.009900990299999999
+          },
+          {
+            "at": "2026-09-30T15:11:17.385708917+09:00",
+            "jvmFractionOfMachine": 0.008125
+          },
+          {
+            "at": "2026-09-30T15:11:18.390566834+09:00",
+            "jvmFractionOfMachine": 0.015470297000000001
+          },
+          {
+            "at": "2026-09-30T15:11:19.392723042+09:00",
+            "jvmFractionOfMachine": 0.009375000000000001
+          },
+          {
+            "at": "2026-09-30T15:11:20.393088625+09:00",
+            "jvmFractionOfMachine": 0.009375
+          },
+          {
+            "at": "2026-09-30T15:11:21.395036375+09:00",
+            "jvmFractionOfMachine": 0.01
+          },
+          {
+            "at": "2026-09-30T15:11:22.402416959+09:00",
+            "jvmFractionOfMachine": 0.009282178299999999
+          },
+          {
+            "at": "2026-09-30T15:11:23.413238750+09:00",
+            "jvmFractionOfMachine": 0.0086633663
+          },
+          {
+            "at": "2026-09-30T15:11:24.418585084+09:00",
+            "jvmFractionOfMachine": 0.00875
+          },
+          {
+            "at": "2026-09-30T15:11:25.418928167+09:00",
+            "jvmFractionOfMachine": 0.01
+          },
+          {
+            "at": "2026-09-30T15:11:26.420334875+09:00",
+            "jvmFractionOfMachine": 0.009282178299999999
+          },
+          {
+            "at": "2026-09-30T15:11:27.424844917+09:00",
+            "jvmFractionOfMachine": 0.008125
+          },
+          {
+            "at": "2026-09-30T15:11:28.427753750+09:00",
+            "jvmFractionOfMachine": 0.009375000000000001
+          },
+          {
+            "at": "2026-09-30T15:11:29.432633500+09:00",
+            "jvmFractionOfMachine": 0.0080445546
+          },
+          {
+            "at": "2026-09-30T15:11:30.434585209+09:00",
+            "jvmFractionOfMachine": 0.01
+          },
+          {
+            "at": "2026-09-30T15:11:31.439821875+09:00",
+            "jvmFractionOfMachine": 0.009900990299999999
+          },
+          {
+            "at": "2026-09-30T15:11:32.443616834+09:00",
+            "jvmFractionOfMachine": 0.00875
+          },
+          {
+            "at": "2026-09-30T15:11:33.444150459+09:00",
+            "jvmFractionOfMachine": 0.01125
+          },
+          {
+            "at": "2026-09-30T15:11:34.444773542+09:00",
+            "jvmFractionOfMachine": 0.009375000000000001
+          }
+        ],
+        "lostBytes": 0
+      },
+      "recovery": {
+        "completed": true,
+        "errors": [],
+        "restoredParticipants": 5,
+        "elapsedMs": 82.20937499997672,
+        "bytes": 83886080,
+        "expectedBytes": 83886080,
+        "closures": [null, null, null, null, null]
+      },
+      "rss": [
+        {
+          "at": "2026-09-30T06:11:08.869Z",
+          "serverRssBytes": 289030144,
+          "generatorRssBytes": 197623808,
+          "sampleMs": 3.627290999982506
+        },
+        {
+          "at": "2026-09-30T06:11:09.872Z",
+          "serverRssBytes": 326647808,
+          "generatorRssBytes": 197574656,
+          "sampleMs": 3.320333000039682
+        },
+        {
+          "at": "2026-09-30T06:11:10.877Z",
+          "serverRssBytes": 333086720,
+          "generatorRssBytes": 197591040,
+          "sampleMs": 3.522832999995444
+        },
+        {
+          "at": "2026-09-30T06:11:11.886Z",
+          "serverRssBytes": 376455168,
+          "generatorRssBytes": 197705728,
+          "sampleMs": 8.877875000005588
+        },
+        {
+          "at": "2026-09-30T06:11:12.898Z",
+          "serverRssBytes": 376864768,
+          "generatorRssBytes": 197689344,
+          "sampleMs": 12.148875000013504
+        },
+        {
+          "at": "2026-09-30T06:11:13.904Z",
+          "serverRssBytes": 385155072,
+          "generatorRssBytes": 197672960,
+          "sampleMs": 4.003250000008848
+        },
+        {
+          "at": "2026-09-30T06:11:14.907Z",
+          "serverRssBytes": 386842624,
+          "generatorRssBytes": 197754880,
+          "sampleMs": 3.449499999987893
+        },
+        {
+          "at": "2026-09-30T06:11:15.911Z",
+          "serverRssBytes": 387366912,
+          "generatorRssBytes": 197935104,
+          "sampleMs": 3.1272079999907874
+        },
+        {
+          "at": "2026-09-30T06:11:16.916Z",
+          "serverRssBytes": 387432448,
+          "generatorRssBytes": 197951488,
+          "sampleMs": 3.4079170000040904
+        },
+        {
+          "at": "2026-09-30T06:11:17.920Z",
+          "serverRssBytes": 388349952,
+          "generatorRssBytes": 197951488,
+          "sampleMs": 3.563458999968134
+        },
+        {
+          "at": "2026-09-30T06:11:18.928Z",
+          "serverRssBytes": 388415488,
+          "generatorRssBytes": 197951488,
+          "sampleMs": 7.007999999972526
+        },
+        {
+          "at": "2026-09-30T06:11:19.935Z",
+          "serverRssBytes": 388661248,
+          "generatorRssBytes": 197984256,
+          "sampleMs": 7.053875000041444
+        },
+        {
+          "at": "2026-09-30T06:11:20.940Z",
+          "serverRssBytes": 388661248,
+          "generatorRssBytes": 197984256,
+          "sampleMs": 3.9353750000009313
+        },
+        {
+          "at": "2026-09-30T06:11:21.959Z",
+          "serverRssBytes": 389365760,
+          "generatorRssBytes": 192233472,
+          "sampleMs": 19.061833999992814
+        },
+        {
+          "at": "2026-09-30T06:11:22.974Z",
+          "serverRssBytes": 389464064,
+          "generatorRssBytes": 194527232,
+          "sampleMs": 14.44320899999002
+        },
+        {
+          "at": "2026-09-30T06:11:23.979Z",
+          "serverRssBytes": 389644288,
+          "generatorRssBytes": 199000064,
+          "sampleMs": 3.2765830000280403
+        },
+        {
+          "at": "2026-09-30T06:11:24.984Z",
+          "serverRssBytes": 389660672,
+          "generatorRssBytes": 199573504,
+          "sampleMs": 4.428333999996539
+        },
+        {
+          "at": "2026-09-30T06:11:25.997Z",
+          "serverRssBytes": 389939200,
+          "generatorRssBytes": 199573504,
+          "sampleMs": 13.376083999988623
+        },
+        {
+          "at": "2026-09-30T06:11:27.002Z",
+          "serverRssBytes": 389939200,
+          "generatorRssBytes": 199573504,
+          "sampleMs": 4.367458999971859
+        },
+        {
+          "at": "2026-09-30T06:11:28.008Z",
+          "serverRssBytes": 390512640,
+          "generatorRssBytes": 199622656,
+          "sampleMs": 4.60429099999601
+        },
+        {
+          "at": "2026-09-30T06:11:29.016Z",
+          "serverRssBytes": 390529024,
+          "generatorRssBytes": 199622656,
+          "sampleMs": 6.604292000003625
+        },
+        {
+          "at": "2026-09-30T06:11:30.020Z",
+          "serverRssBytes": 391036928,
+          "generatorRssBytes": 203210752,
+          "sampleMs": 3.19579100003466
+        },
+        {
+          "at": "2026-09-30T06:11:31.024Z",
+          "serverRssBytes": 391036928,
+          "generatorRssBytes": 203964416,
+          "sampleMs": 3.9852499999688007
+        },
+        {
+          "at": "2026-09-30T06:11:32.029Z",
+          "serverRssBytes": 391249920,
+          "generatorRssBytes": 203964416,
+          "sampleMs": 5.163916999998037
+        },
+        {
+          "at": "2026-09-30T06:11:33.034Z",
+          "serverRssBytes": 391266304,
+          "generatorRssBytes": 203964416,
+          "sampleMs": 3.589375000039581
+        },
+        {
+          "at": "2026-09-30T06:11:34.038Z",
+          "serverRssBytes": 391610368,
+          "generatorRssBytes": 206176256,
+          "sampleMs": 3.1658750000060536
+        },
+        {
+          "at": "2026-09-30T06:11:35.042Z",
+          "serverRssBytes": 412385280,
+          "generatorRssBytes": 208601088,
+          "sampleMs": 3.202958000008948
+        },
+        {
+          "at": "2026-09-30T06:11:36.048Z",
+          "serverRssBytes": 412385280,
+          "generatorRssBytes": 208601088,
+          "sampleMs": 4.403416999964975
+        },
+        {
+          "at": "2026-09-30T06:11:37.067Z",
+          "serverRssBytes": 412385280,
+          "generatorRssBytes": 208601088,
+          "sampleMs": 18.354749999998603
+        },
+        {
+          "at": "2026-09-30T06:11:38.078Z",
+          "serverRssBytes": 412385280,
+          "generatorRssBytes": 199557120,
+          "sampleMs": 9.57408300001407
+        },
+        {
+          "at": "2026-09-30T06:11:39.083Z",
+          "serverRssBytes": 412385280,
+          "generatorRssBytes": 195723264,
+          "sampleMs": 3.30883300001733
+        },
+        {
+          "at": "2026-09-30T06:11:40.087Z",
+          "serverRssBytes": 412663808,
+          "generatorRssBytes": 195739648,
+          "sampleMs": 3.182334000011906
+        }
+      ],
+      "rssFailures": [],
+      "allRecordingPressure": {},
+      "rawSha256": {
+        "result.json": "775bfe560a4f5fb3bbcb433f39dfb25750c34b4caa58cd7c4cea9ec152b965cf",
+        "flight.json": "9ebd02348531679ba45c3d85dfe2bda3cb30b382606593976be1bd88c711aa77",
+        "server.jfr": "c0ccab7b63ab0641a3b1ab9085194668de4c2829e5b95c1381b7f9cb226344a2"
+      }
+    }
+  ]
+}

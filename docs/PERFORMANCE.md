@@ -339,3 +339,44 @@ TLS/native·JVM 기본 비용을 포함하지 않고 payload 공유도 반영하
 위험 예측에는 live 지연뿐 아니라 replay 거절, control queue 대기, drop, GC 후 잔류 heap,
 RSS 증가를 함께 사용한다. 이번에는 live 지연이 낮아도 복구가 먼저 실패했다. 아직 측정하지 않은
 다중 room, 작은 frame 폭주, durable write 경합, 원격망, 장시간 연결 churn의 안전선은 남겨 둔다.
+
+## T10.4 — 연결별 예산을 유지한 workspace 복구
+
+T10.3의 4-terminal 실패를 수정한 뒤 같은 `recovery` profile로 재측정한다.
+조건은 압축 비활성·1 MiB retained history/terminal·참가자 5명 동시 재접속이며,
+3→4→16 terminal 각 새 서버 3회, 첫 실패 뒤 더 큰 단계 중단 규칙을 유지한다.
+20초 출력 부하와 진단을 마친 뒤 reconnect를 측정하며 전체 수신 byte 수·sequence·sync를 검사한다.
+별도 느린 수신자 1명 격리도 포함한다. 실제 Connector·PTY·브라우저 시험과는 구분한다.
+
+수정은 terminal별 최종 sync write가 완료되고 예약을 반납한 뒤 다음 history를 선택하는 방식이다.
+한 연결의 입장 복구가 한 번에 모든 history를 붙잡지 않으며, 아직 선택하지 않은 terminal은 ID만
+보관한다. 기존 replay 4 MiB·65,536 frames·16 requests와 5초 write timeout은 바꾸지 않았다.
+terminal 하나의 history가 설정에 의해 그 예산을 넘으면 기존처럼 거절한다.
+전역 terminal 수·retained history 총량 및 명시적 resync 요청 폭주는 별도의 제한 대상이다.
+
+실행 snapshot은 `36f7568`이다. T10.3 recovery와 harness source는 같고 제품 JAR은 다르다.
+불변 JAR·source hash와 실패 원본을 남기며 다른 로컬 빌드·테스트와 겹치지 않게 실행한다.
+
+같은 macOS·M4 Max·Java 21·최대 heap 512 MiB 환경에서 **10개 시나리오 모두 완료**했다.
+[개별 관측 JSON](performance/recovery.json)에 조건·소스/JAR hash·histogram·RSS·GC·heap·CPU·실패 목록을 보존한다.
+
+| terminal 수 × 동시 재접속자 | 반복 결과 | 전체 복구 시간            | 수신 payload/회 |
+| --------------------------- | --------- | ------------------------- | --------------- |
+| 3 × 5명                     | 3/3 성공  | 32.22 / 31.73 / 34.42 ms  | 15 MiB          |
+| 4 × 5명                     | 3/3 성공  | 30.76 / 42.63 / 43.28 ms  | 20 MiB          |
+| 16 × 5명                    | 3/3 성공  | 73.25 / 115.47 / 82.21 ms | 80 MiB          |
+
+이전 같은 recovery 조건의 4 terminal은 첫 실행에서 전원 실패했다. 수정 후에는 9회의 재접속
+모두 5명이 terminal별 1 MiB와 연속된 sequence·sync를 복구했다. 전체 JFR recording에서
+`replay:rejected`는 0개였다. 통과한 최대 16개를 제품 최대 수용량으로 선언하지 않는다.
+
+압축 없는 느린 수신자 시험도 정상 5명이 모든 102,400 frame을 받았고 느린 연결만 종료됐다
+(클라이언트 관측 1006). timed load의 `live-drop`과 `outbound:rejected` 각각 192개,
+전체 recording 각각 4,861개는 같은 frame에 대한 두 관찰이므로 합산하지 않는다.
+
+16-terminal 실행의 RSS 관찰 최대는 반복별 385.8 / 363.8 / 393.5 MiB,
+강제 GC 후 heap은 빈 상태 16.4–16.6 → history 적재 32.0 → 해제 16.0–16.1 MiB였다.
+RSS 수집 실패·JFR DataLoss는 없었고 frame 수·histogram 합계·제어 응답/queue event 수를 대조했다.
+이것은 같은 짧은 부하의 복구 결함 수정 근거이며 장시간 누수·원격망·다중 room 검증은 아니다.
+T10.3의 수정 전 임시 3-terminal 후보는 이제 실패 회피 기준으로 사용할 필요가 없지만,
+전역 admission 정책을 강제하고 운영 상한을 검증하는 작업은 여전히 #15에 남아 있다.

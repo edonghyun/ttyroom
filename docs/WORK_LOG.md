@@ -425,3 +425,30 @@ fixture가 프로세스·소켓·JFR·RSS 관찰을 소유하며, 실패도 결�
 더 큰 복구 단계는 중단하고 [T10.4](https://github.com/edonghyun/ttyroom/issues/14)에 수정·검증 범위를
 등록했다. 이번 변경은 계측·재현·예산 후보까지이며 복구 정책 변경과 전역 admission 강제는 포함하지 않는다.
 [측정 결과와 공개 JSON](PERFORMANCE.md#t103-측정-결과--출력보다-먼저-드러난-복구-한도)에 실패까지 보존한다.
+
+## 터미널별 sync 완료에 따른 workspace 복구
+
+T10.4 ([작업 #14](https://github.com/edonghyun/ttyroom/issues/14)). full history 여러 개를 입장 시
+동시에 예약하던 방식이 연결별 4 MiB replay 예산과 충돌했다. 한 history 예약만 허용하는 application
+peer로 입장 연결이 닫히는 assertion RED를 먼저 확인했다. 실제 이전 JAR에서도 4/16 terminal의
+입장·재접속 계약 두 개가 첫 복구 중 연결 종료로 실패했다.
+
+`RoomSessions`는 입장 대상 terminal ID만 기다리고 한 terminal의 sync write가 끝나면 다음 history를
+선택한다. `SocketSender`는 완료된 예약을 반납하고 transport monitor 밖에서 완료를 호출한다.
+room monitor 안에서 네트워크 drain을 기다리지 않는다. 기존 byte/frame/request 예산과 write timeout은 유지한다.
+
+아직 선택하지 않은 terminal의 출력은 room history에 반영하고 직접 보내지 않는다. snapshot 선택 이후
+출력은 같은 terminal의 sync 뒤에 정렬된다. pending terminal의 resync는 예정된 복구로 충족한다.
+복구 history는 terminal별 선택 시점의 retained 출력이며 전체 workspace의 단일 시점 snapshot은 아니다.
+연결 교체·종료·credential 취소 시 pending ID를 해제하고 늦은 완료가 새 연결이나 취소된 주체에 영향을
+주지 않도록 현재 membership을 확인한다. 전역 개수/retained history 강제는 별도 #15로 남긴다.
+
+리뷰에서는 첫 예약 거절을 callback 내부에서 삼키면 입장 반환값이 바뀌는 회귀를 찾아 기존 계약으로
+되돌렸다. 이후 예약 실패는 해당 참가자만 닫고 cleanup을 예약한다. sync write 실패·취소의 완료 금지,
+예약 반납 이후 다음 history 접수, 콜백의 transport lock 미보유, pending 출력·중복 resync·늦은 완료를
+추가 회귀 테스트로 확인했다. 이 추가 사례까지 모두 RED부터 작성했다고 주장하지 않는다.
+
+최초 인증 suite에서 기존 host 취소 테스트 한 번이 timeout됐다. 실행 중 JAR 재빌드가 겹쳤기 때문에
+비교 조건이 불안정했다. 원인을 확정하지 않고 실패 로그를 보존했으며, 불변 JAR로 전체 suite를 다시
+실행해 24개 통과를 확인했다. 최종 검증과 같은 recovery profile의 재측정은 [검증 기록](VERIFICATION.md),
+[성능 안내](PERFORMANCE.md)에 기록한다.

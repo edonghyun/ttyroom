@@ -1,5 +1,25 @@
 # 검증 기록
 
+## 2026-09-30 여러 터미널 복구 T10.4
+
+- Java 전체 **496개 통과**, 실패·오류·skip 0. 순차 history 예약, 복구 중 출력, pending resync,
+  늦은 연결 교체/종료/취소 콜백, 예약 실패 격리, sync 완료·실패·취소를 포함한다.
+- TS 단위 **590개**, 타입·포맷·의존성 경계 검사 통과.
+- 불변 JAR·최대 heap 512 MiB에서 인증·취소·수신 격리·workspace 복구 **24개 통과**.
+  추가한 4/16 terminal 프로세스 테스트는 payload·sequence·sync 순서와 실제 재접속 후 요청 처리를 확인한다.
+- `artifacts/t10-4/admission-red.log`에 application assertion RED, `process-red.log`에 이전 JAR의
+  두 복구 실패를 보존했다. Java GREEN과 전체 회귀, 실제 프로세스 GREEN도 같은 디렉터리에 있다.
+- 최초 인증 실행의 host 취소 timeout 1건은 `authentication.log`, 불변 JAR 전체 성공은
+  `authentication-final.log`에 구분해 남겼다. 실행 중 JAR 재빌드가 겹친 것이 관찰됐지만
+  timeout의 원인을 확정하지 않았다.
+
+- 동일 recovery profile **10/10 성공**: 느린 수신자 격리 1회, 3/4/16 terminal × 5명 동시 재접속 각 3회.
+  replay 거절·수신 누락·순서 오류·RSS 수집 실패·JFR DataLoss 0. 개별 관측은
+  [복구 JSON](performance/recovery.json)에 보존한다.
+
+재측정 조건·결과는 [성능 안내](PERFORMANCE.md), 최종 커밋의 공개 CI는
+[작업 #14](https://github.com/edonghyun/ttyroom/issues/14)에 기록한다.
+
 ## 2026-09-30 자원 계측과 복구 실패 경계 T10.3
 
 - Java 전체 **487개 통과**, 실패·오류·skip 0. 실제 queue 대기·거절과 느린 송신자의 drop event를 검증한다.
