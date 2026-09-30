@@ -1,5 +1,18 @@
 # 검증 기록
 
+## 2026-09-30 수신 자원 한도와 참가자 fanout T10.2
+
+- Java 전체 **485개 통과**, 실패·오류·skip 0. UTF-8 분할, 누적 한도, 기한 연장 방지,
+  늦은 timer, 연결 종료, 1 MiB control inbox 배선·폐기를 포함한다.
+- TS 단위 **584개**, 타입·Prettier·의존성 경계 검사 통과.
+- 실제 Spring 최대 heap 512 MiB 인증·자원 격리 **22개 통과**. 기존 정상 흐름 외에
+  256 KiB 경계 hello, 과대 메시지 1009, 미완성 text/binary 1008, 다른 참가자의 요청 처리를 확인했다.
+- `artifacts/t10-2/utf8-red.log`는 구현 전 UTF-8 한도 assertion 실패,
+  `isolation-red.log`는 수정 전 JAR에서 4개 종료 대기 실패다. GREEN 및 전체 회귀 로그도 같은 디렉터리에 있다.
+- 최대 heap 512 MiB 참가자 1·5·10명 각 3회, **9회 완료**. 입력 180·동시 복구 45개 완료, RSS 수집 실패 0.
+  Java 송신 어댑터 측정도 4개 시나리오 × 별도 JVM 3회 통과했다.
+- 성능 조건·원본·결과는 [성능 측정](PERFORMANCE.md)에 모은다. 지연 수치는 correctness CI gate가 아니다.
+
 ## 2026-09-30 성능 측정과 수신 버퍼 T10.1
 
 macOS·Java 21·Node 26에서 실행했다. 측정 조건·환경·전후 수치는 [성능 안내](PERFORMANCE.md),

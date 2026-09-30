@@ -1,0 +1,4084 @@
+{
+  "schemaVersion": 1,
+  "notes": [
+    "Short local fanout runs, not production capacity or an OOM threshold.",
+    "1 Connector, 1 PTY, 1 input writer. Other participants observe the same output. Reloads are simultaneous.",
+    "Timing measures all participant DOMs. RSS excludes Chromium, PTY children and OS caches; it is not JVM live heap.",
+    "Build taken from the recorded revision plus a dirty source snapshot; runtime and measurement source hashes are verified. Full manifests, adapter runs and immutable JAR are in ignored artifacts/t10-2/fanout."
+  ],
+  "build": {
+    "startedAt": "2026-09-30T03:00:28.883Z",
+    "revision": "94246fcffb58cc3d95259adb81b2434e7adf3bb6",
+    "profile": "fanout",
+    "dirty": true,
+    "node": "v26.3.1",
+    "java": "openjdk 21.0.12.1 2026-08-18 LTS\nOpenJDK Runtime Environment Temurin-21.0.12.1+1 (build 21.0.12.1+1-LTS)\nOpenJDK 64-Bit Server VM Temurin-21.0.12.1+1 (build 21.0.12.1+1-LTS, mixed mode, sharing)",
+    "jarSha256": "5f34a02b3dbc66cf6134172ab8095df08c5f6d10be2009cadf9124bec6d35d67",
+    "sourceSha256": {
+      "backend/src/main/java/dev/ttyroom/TtyRoomApplication.java": "44bec30f2d1a4d6646f005f7fa5a396b68fdbc18798d6a9308923c519caeac9c",
+      "backend/src/main/java/dev/ttyroom/adapter/config/ServerSettings.java": "74b443a83c59e9fbe438ab727cbae7fb3d7078ddd97fd99fa7765bdad27b2519",
+      "backend/src/main/java/dev/ttyroom/adapter/http/HealthController.java": "eae72dff87f2442ec1938879a60467861a84de937f4f67ae27a8b8e6eb80269a",
+      "backend/src/main/java/dev/ttyroom/adapter/http/RoomController.java": "dc3788a64ce381081566030dff64d8b41c2f3bd61cd282aa2cd2e5d051d0fea6",
+      "backend/src/main/java/dev/ttyroom/adapter/http/StaticWebController.java": "163f2220c85e4bf8c3275d199314ad912c6c5d259c3de21bc5ba8c4ae72d3a5a",
+      "backend/src/main/java/dev/ttyroom/adapter/sqlite/SqliteRoomStore.java": "842ae5e4bee1d3f8adba9c89770b8bbbee71cd64513b3ef127134f89e5b24f3c",
+      "backend/src/main/java/dev/ttyroom/adapter/sqlite/StoredRoomJson.java": "755efea8902441870a1a3557bfa40b1055da42d111e0a38384f4ce3ab8412ee0",
+      "backend/src/main/java/dev/ttyroom/adapter/ws/ControlInbox.java": "bc5a6863d0a10e3505be77864bcf07a5a2e28aa72de512401b0ad1b0260fcea3",
+      "backend/src/main/java/dev/ttyroom/adapter/ws/IncomingMessages.java": "f95d80bbc6a1267ab67da9e6544cb986954cd35329259c9eac115f74265d14af",
+      "backend/src/main/java/dev/ttyroom/adapter/ws/InputWire.java": "70149fdff7b08dd4b867db8262a7408ff4c4a70710aa2996171e164b0292785e",
+      "backend/src/main/java/dev/ttyroom/adapter/ws/OutputWire.java": "2b45df50c534a30e74334c2f68504bee7fd008c9bf9737c3765c61936d8375cf",
+      "backend/src/main/java/dev/ttyroom/adapter/ws/RoomProtocol.java": "034339b761c89c801638ee8bd49e351f3ed3fb388b3ed4013e2ecbbb1b245b78",
+      "backend/src/main/java/dev/ttyroom/adapter/ws/RoomSocketHandler.java": "e31bc065c40149c6f76fab26865fa2de91605ef3f380ea4c0a9872c3c97d9821",
+      "backend/src/main/java/dev/ttyroom/adapter/ws/SocketSender.java": "cb1fb2e53221e4b81ed8b157f8fe04c4ecdf3715ce81c689c21315d10bc5255d",
+      "backend/src/main/java/dev/ttyroom/adapter/ws/WebSocketConfiguration.java": "b0698830073fbddaa2561546adfd3fef3ea84e048660a581bfdcf1b4a9b0fdc1",
+      "backend/src/main/java/dev/ttyroom/application/CursorPosition.java": "7ca89bee1e849aaee96ee16a42fb5da16bb39ce88cec69c964567b5030a6e8bd",
+      "backend/src/main/java/dev/ttyroom/application/ExpiryTimers.java": "1b51b429304316a17d1f4d373e9c2604ef609788685e3ec20a3681dad29987eb",
+      "backend/src/main/java/dev/ttyroom/application/HostCommand.java": "e6280e1c86ac4ea06ccdddac3676090dc4306d2eeae7834463d28329ea52355a",
+      "backend/src/main/java/dev/ttyroom/application/InputFrame.java": "5c19638c263db02684e510e8cfc76e32df1cf78a25d175da46ddc4a6a2271b96",
+      "backend/src/main/java/dev/ttyroom/application/OutputFrame.java": "684c89fb2ac9b21472a66cc8f92259c99cfd08f135f1fd21a61eb1cf1b26f52c",
+      "backend/src/main/java/dev/ttyroom/application/ParticipantCommand.java": "39c1b004a2d0b46f5c55ffd11ce49e519cf904682ccedf4614ed7708cd468d29",
+      "backend/src/main/java/dev/ttyroom/application/RoomCredentials.java": "6c0f9dea71d7e492dff09553676e94b307e4658f1b45d3798433de9d741427c2",
+      "backend/src/main/java/dev/ttyroom/application/RoomDirectory.java": "c698bc14e18964b8d442c0bc54da8099da34d6fd2fa0f36f64bd87b589478e09",
+      "backend/src/main/java/dev/ttyroom/application/RoomNotice.java": "d94e7cddd221f40d9f09fae913d33a12f57bead46b655db8d86f328d05720da6",
+      "backend/src/main/java/dev/ttyroom/application/RoomSessions.java": "fdde4e4884279f6e7e006d76dfd844632d207a15cba0b32bb91f9e8ea473091f",
+      "backend/src/main/java/dev/ttyroom/application/RoomStore.java": "f4cbab0f75618183541f33b9b0deb404eea6ccf9284f02afd3e3bef936a169cb",
+      "backend/src/main/java/dev/ttyroom/application/TerminalOutput.java": "fd838be6ecc7d35762b005830e0e3278fb4632b0bd11cc9da8e6aae3a1453f05",
+      "backend/src/main/java/dev/ttyroom/domain/HostPresence.java": "9e8d37a1782a45cba6b66bbbb7fadf50ee9bc4ed19a41586a9a69ccb55b1b3be",
+      "backend/src/main/java/dev/ttyroom/domain/LeaseControl.java": "4d3820c2d3355a2905242f548d36a5fb90de123dfce49d07aaf273b965753160",
+      "backend/src/main/java/dev/ttyroom/domain/RoomControl.java": "683e483997faaa35721c742841b521a85f2d097df632c7b6d290c1d138e92556",
+      "backend/src/main/java/dev/ttyroom/domain/TerminalWorkspace.java": "8f1fce4b0895dbab04c1e104cb97bda848ae620e3fbe22271fa47167c9024d54",
+      "backend/src/main/resources/application.properties": "90eb8ce3fa4d4048cfcc38cdb8142361f7758e9ade5ce5433cda8eb130f392b8",
+      "connector/src/cli.spec.ts": "a5d8a5d4602360756334857a82d8c6747bcdfe9e5be7fbf7ed33a3b5c1a4cbe8",
+      "connector/src/cli.ts": "de664a5006f9d6b5a461bf056cbb82b7e060768fcd5b0377e78894be4f80ffc5",
+      "connector/src/connector-app.spec.ts": "715fdf7bf4d6b34934a4208d8d94ab75345a8e5e9506061b75901a532c8a33e3",
+      "connector/src/connector-app.ts": "31d4e4772ff0d40764a257eaa53b951a39375feab5de6843df1ce78ec6ca6284",
+      "connector/src/index.ts": "0e32bc17836b045487934eba98d6a0d57c9d966f4d8393fc7d09fe8db9df76d3",
+      "connector/src/meta-collector.integration.spec.ts": "bd8ee4ed0264baa23b6d0746a09d4e1be8d502e28c48924c4e71d13ccba4218c",
+      "connector/src/meta-collector.ts": "c0b42937b59f2585310971c40a7fc4037060f596e2194218f017e5595f67b375",
+      "connector/src/output-replay-buffer.spec.ts": "e60ddc77bcde88a4e8b0a6361e494af9efd3634d50fe478b432d00e73fc42e98",
+      "connector/src/output-replay-buffer.ts": "0dc2530a48c876eab7b9cb419cca3815d8fbedaefcb8651c6dea8e3587b5f9d7",
+      "connector/src/package.integration.spec.ts": "af49c5b428ac5b8eeb006869a0e065489f009f89dbfc6d02f90459dd65b381b5",
+      "connector/src/ports/connector-transport.ts": "1a6628c138f8c7205155ac3a853ea244dcf74ef1c2772eba29e41aa3d5663814",
+      "connector/src/pty-manager.integration.spec.ts": "b3ccf144816c3bea2d7b8bf900856b118fa70ec45b591763fcf776ba393822b4",
+      "connector/src/pty-manager.ts": "fe11edaa304d6e058e3f86984c0cb618605b0d5113e5f99641a693a825e43e65",
+      "connector/src/rate-limiter.spec.ts": "f3b55d1c604958b237e7d0bb84d9501912aaa81d0740181d389b2181cd087a30",
+      "connector/src/rate-limiter.ts": "e83cdf2bc3e406153c0894fb7443dd52b0879183858790152aaa61fd629a4794",
+      "connector/src/read-credential.spec.ts": "fece286264079f7abf8398380537d952166c67322927f32b144c9e63292d8eda",
+      "connector/src/read-credential.ts": "606d61209c0b74bde3a1bda8d5dda729ebe6164264b2990791d181f96d5737e3",
+      "connector/src/run-connector.ts": "59f6abb2882750e25a3930335ee6afbc53de52711dc3d46382cefc68fe120d65",
+      "connector/src/session.spec.ts": "8ad0ca6cfa5a5e1d2fbb5d15cb60a2e7986648693e1cd3c2f3c99c8ad0059de5",
+      "connector/src/session.ts": "62e2c9bf566f04d037d6730639d6d3da4fc21b456c973c84f17bcaa934cb3895",
+      "connector/src/system-clock.ts": "e24bfd79945ff917649008489030a6bdbdf23d94730dbb1e9eb0a5e130929224",
+      "connector/src/test/fake-clock.ts": "82eb4095252f348747546880431915553463a7305299037a9368c2fcad6bbc67",
+      "connector/src/test/fake-connector-transport.ts": "8ea85be1afc30c485c08e0878850c7330fdaa9903421f9f65cc67a105505be26",
+      "connector/src/test/wait-until.ts": "47f6616878dd98bedb2cf0ea129b463c7f1f5dfc346f0dedd5bc197d7fd9e3e7",
+      "connector/src/ws-connector-transport.ts": "8687623b1965bf659017943b415fa7711f6be78d37c8ab48caa21228b6707492",
+      "e2e/src/performance-report.ts": "c9178bbd2da6b6583611ac550c29512e903996e0b8120e747b5a82a86cc1c239",
+      "protocol/src/data-frame.spec.ts": "71470943a9c2e5a2e357fed19ee687c617572dc79d5ddf1b9893ea7b3ee267d1",
+      "protocol/src/data-frame.ts": "a14cbf88dc38932146c451f65c4ec93da3a8d96f22d854a596809e9099602199",
+      "protocol/src/index.ts": "3a2d0a379cb2509df952dde0cbe21fb52eb219aa2f495409d4698614dda3e0b3",
+      "protocol/src/messages.spec.ts": "a1ffb20450b84c73c1c0947b54322d39ca6cd70355747293ec50b7bc21ff800f",
+      "protocol/src/messages.ts": "d5cb96fc48883d38de637f96f9436e968b1957bf2191c9ee9c3ff1fc597d17db",
+      "protocol/src/protocol-doc-drift.spec.ts": "6937b2953d3e0b2eaf13a4c7b117a95ce55c6dd324901fa12af14147b324dbf1",
+      "protocol/src/wire-fixtures.spec.ts": "262f8ec04923d79e2476e67df1b6c5631e1b11a629e5e6c38b9536d1fc59b7ee",
+      "scripts/measure-performance.sh": "9c3be4911da10664640e53d7d0ddba74743f08340f732ff2180cf351c21fea1d",
+      "web/e2e/performance/process-memory.ts": "1b63d042e5f0e00e6419dcb337496ca174f278372786c644aad728ed4edff9ad",
+      "web/e2e/performance/terminal.performance.ts": "c63f0fe07959feb5a0d586190867bb1584c7494606e1d12039b442ea07bcc8f6",
+      "web/playwright.performance.config.ts": "ba563a1275186e253f18f8cf62357c49637d9282404c4f6d3c602c44ed8b9ed6",
+      "web/src/app/browser-ci-build-contract.spec.ts": "a26e974b7517e179eadf9d901de5b815d0c2b601572a2d9f7535a4f63b0087df",
+      "web/src/app/create-web-app.spec.tsx": "8b8604d555339641e5d0e1866b01baa5f2e8433ca4e08a75037d87bc75f3aa17",
+      "web/src/app/create-web-app.ts": "9dab22382a9887ef0815ef6f4568348ebcf90801341056a0805bbaf1646f4d4e",
+      "web/src/app/registration.spec.ts": "1a1ea5e53d8a946f56a96850c08feaf6a48e21eade4d76e13b8e5378d6b78e2a",
+      "web/src/app/room-api.spec.ts": "48ca34f6d7ce92a49f2f5e3024901f336b97ba8be44923ebcd7f32d287ef466b",
+      "web/src/app/room-api.ts": "59be1f8eddfb1d08cd5c8399a01773ed188169bf11b6d5624aaec4d945904e06",
+      "web/src/app/room-app.spec.tsx": "43f8f9f6dec997be10823dde14325f96ce5bdc5206bf296d8437911eb5988c23",
+      "web/src/app/room-app.tsx": "54b380402f853de4cd787a1e1f0fff761cb141778b275f2876f5352d480533d3",
+      "web/src/app/room-identity.spec.ts": "737d96ff2e57fb1b75db87cf5b768689cb252efa5ac0811df2f24b09a3e7e065",
+      "web/src/app/room-identity.ts": "76b4d91196ea82bf8efb8ced7b7f98fd7b3e4d9bcf32a5b7e6ebc9bce58f7aed",
+      "web/src/app/room-management.spec.ts": "045a935e88ae6945eef02812817bdefeb41b592a9636bab0f08b9f7ed47fed64",
+      "web/src/app/room-management.ts": "95653fce04bec4eb9850da9883fd097fbeb82bdb066c170ca0da5ab9e49d4c1d",
+      "web/src/app/room-route.spec.ts": "9ec01e2a94985c430a13f1350241c27df511213702e88cb829f1b43180407a3c",
+      "web/src/app/room-route.ts": "97e9fc17105778c6821cabdfeac87e4a6e95ec6889b1e0245dc63af4d6e60359",
+      "web/src/app/tab-identity-claim.spec.ts": "6f20b01e747ac12d04c7c9d1430e9c65b39bcd3b1d256e0fc3e2d063a2b20387",
+      "web/src/app/tab-identity-claim.ts": "9e913b403cb7d601259e1fde51bd61e38f4cb70273f9fda5c36bc74277fa45ae",
+      "web/src/collaboration/cursor-reporter.spec.ts": "d8c53aa4436f3e3b5dd813125bbc345ca2ce3be41349564be7d9279db7debd54",
+      "web/src/collaboration/cursor-reporter.ts": "51a2402da9bce47f28b459ec83b49869d529d505ebcd3f61f95424533a5961cb",
+      "web/src/collaboration/participant-cursor-motion.spec.ts": "e292bb2b0484c7f97ca443ea93df7fa4513d7f86b94ec591d130943374092764",
+      "web/src/collaboration/participant-cursor-motion.ts": "113dfc97688c843dab9f3f6dce27f5fb11f681a9d9faf2fd25b69eb4ddc0d52e",
+      "web/src/layout/layout-repository.spec.ts": "4266b794002c648486408fcdf09d7c5bb3f59ba60c864668d8b9dd0c6db7a3a7",
+      "web/src/layout/layout-repository.ts": "5ac134cc78508f56a9ba6a36b5a72cc69a1dab5a9ec06c2588fb00bbedbb5aa1",
+      "web/src/main.tsx": "56737a374125567783659988a7c3896a54344a3e2975ff363796f661aa7e5f89",
+      "web/src/projection/room-projection.spec.ts": "2d116fdb162d025e3c305b116bc40c56e380f79057b7aa39f7ea158e1e80a545",
+      "web/src/projection/room-projection.ts": "eb7c7cef39aec55eb526dc3d5343bdb183b9dd216c1840333c974bf7cc11ef5e",
+      "web/src/session/room-session.spec.ts": "6735013682e49d417eb5d79269de6750845adce78e8c9fdf88bb8f7c56eefb5a",
+      "web/src/session/room-session.ts": "5a67bce7bdfef7ccc2356c347c6d43509005e342f15faf689f558ad5b3152447",
+      "web/src/terminal/terminal-adapter.ts": "869ba38f8370dd2a10f4d40936152e9c918831df1784b02d3d9dd7414d1f7da4",
+      "web/src/terminal/terminal-controller.spec.ts": "96e307a14428b8bce5a868e0ff8be6e70f4980c49a9ebbfbfad9499b6781b55b",
+      "web/src/terminal/terminal-controller.ts": "35e72a85f0cf668352af2666576a0b86273122adb5331d54bd05899fe637f4c2",
+      "web/src/terminal/xterm-adapter.spec.ts": "ce091801718b78190047af94d235293d0b6428d886ef22b46d2ede85657e2025",
+      "web/src/terminal/xterm-adapter.ts": "71a9bb4ec05367856960ce2d1dc1c44634f6e46a34b91464d4e1cf1cab110104",
+      "web/src/test/dispose-participants.spec.ts": "0ed3e98fd16f5020b5a6ac5b5226dfe34a7cff425e55398de02f06459b131967",
+      "web/src/test/dispose-participants.ts": "92768db9c8ea11170925b38374a1051304cedea64a01c4924bb498ce1cebd0e2",
+      "web/src/test/fake-browser-socket.ts": "283d775c47aed783b306c25aed454aaf2b2523ad044d2378f1d461bb1eec3da9",
+      "web/src/test/fake-terminal-adapter.ts": "8a9882711551ea2232cc96c1647b21334b80ef1698c99f777e93c684865e7850",
+      "web/src/transport/browser-socket.ts": "5684b97a56a79c3d149a5f25fa05747870295d0245f2dc423577449709d1cef8",
+      "web/src/transport/browser-transport.spec.ts": "0ab17d346fbbe9401133f0da33e10f093270db5cdb7ab9d9d383e30357474ede",
+      "web/src/transport/browser-transport.ts": "33d30d99af0ccbc10773f11ac7e64a3e26576789e7a7d12ca458eb99be6f165b",
+      "web/src/ui/App.spec.tsx": "4a83a128ac7569a8dbee352801ceee5d8af6ade4f3e169e992d794e438267f38",
+      "web/src/ui/App.tsx": "d541d817683c54d7312d3eff8eac2f978b2f4f2d0ec208fa13bc6ddb56674d6f",
+      "web/src/ui/app.css": "bb09364ee6a1580c3ac41c6445fca19b83c752b9175d6fa72da725595ee6cd72",
+      "web/src/ui/chrome/Dock.spec.tsx": "9db361570f924f87c08a6f4deec336b92629d85a2de74872ccaeb85585b167e4",
+      "web/src/ui/chrome/Dock.tsx": "d0ad44489133ee8b29dadf05b48425aefe6e8cd2c4a3dbb5e30a9f2fd110a82a",
+      "web/src/ui/chrome/Overview.spec.tsx": "943339e433d2f973546972af5b14162584f873823658c212b7812f30a3d128e5",
+      "web/src/ui/chrome/Overview.tsx": "3773a7b89ecd00862c55001b68ce6b35001a14a892adefc7a801004dbda0a806",
+      "web/src/ui/chrome/TopBar.spec.tsx": "a8cdb5015d5034a633d9aaf24181e3ab935cd0c1d337141ac6d6fea28fe1e590",
+      "web/src/ui/chrome/TopBar.tsx": "fd5d0325bada9b1ec126f39a3ee3eec500710101d67ed9d7c1d7f76d6bdff196",
+      "web/src/ui/chrome/WorkspaceCameraControls.tsx": "62aa19208ea33c337045c3a3958243bc7c783328d17c37cf077d6b66dd21b531",
+      "web/src/ui/overlays/AddHostDrawer.spec.tsx": "c218c40ba2937c79512e9552562cc92906e5a14d0eec3238e2ef982634d5eb55",
+      "web/src/ui/overlays/AddHostDrawer.tsx": "70ff9600da86319761b2342cb85805cc65797df2ccc1ffe3e77e81c396378115",
+      "web/src/ui/overlays/CloseTerminalDialog.spec.tsx": "714442a9057397014d598cfb87a5cade733c6d02dd2f68ca501a9af4ce56fec0",
+      "web/src/ui/overlays/CloseTerminalDialog.tsx": "6fadf9b11457787ba3f55803b48875a0f09e47e521e04286ebe286ff7dc1ebef",
+      "web/src/ui/overlays/ConnectionBanner.spec.tsx": "5a8eca113b4388dc8d5d9f837c442deceb42356daff7682c670886fd1459bc07",
+      "web/src/ui/overlays/ConnectionBanner.tsx": "e17e0a2f2ca933f895bd86c12d06ce94929fcf9ec501ce97d7f7169afbc58ab0",
+      "web/src/ui/overlays/RenameTerminalDialog.spec.tsx": "7ffccf697656b53bb8179ebeaacf5433b5018c6f37c5cfe892637a0d98f6d45f",
+      "web/src/ui/overlays/RenameTerminalDialog.tsx": "0de490b6cf57e06dd8a71d5a1d70a7bd8cabfa1d0ebeb3f45bf662ebbdae36b2",
+      "web/src/ui/overlays/ToastRegion.spec.tsx": "979321988f8f33be37c5c6d72a0044cb31ddcdf058d48d741180a31c11ff20b2",
+      "web/src/ui/overlays/ToastRegion.tsx": "89c7a58c447acb0c5483735f51aac7be07f8585ba71faf12f6c2ecd600948d9a",
+      "web/src/ui/room/RoomEntry.spec.tsx": "785d6fcb52129ea4f2cfffb2d2fb786504fda6f843d8e2f73240e7d2c9f0fbb8",
+      "web/src/ui/room/RoomEntry.tsx": "fb80f73e3786bd52185673b1e1fe95b150225972dbfa453fa81b8129ab2c8ab7",
+      "web/src/ui/room/RoomGone.spec.tsx": "0fd71512d3404562fbbf80df57b77a99ad9f7238822b7817daa03bef8a2a2c5d",
+      "web/src/ui/room/RoomGone.tsx": "b78979fe3b4860fa7164884efd833ae55034487faf6b1ba5d610c891940a0e7b",
+      "web/src/ui/room/RoomWorkspace.spec.tsx": "5e6b4363d8cedd6e70814619e7294f8653219d417176edde77a9d5f21e0bb009",
+      "web/src/ui/room/RoomWorkspace.tsx": "a8b42db05e06bbd56bde5b8ca83cd277b158cfccdb6acdf75bb56ba19ef64c67",
+      "web/src/ui/terminal/ParticipantCursorLayer.spec.tsx": "2417c795b7717ad98413a475761aebccfc94129a313bf1489c9dc1fb7f0d3025",
+      "web/src/ui/terminal/ParticipantCursorLayer.tsx": "22c7494e09f08e07779cffdf1012f2a43f96fe3325b91e9494ad8a0e319dfa73",
+      "web/src/ui/terminal/TerminalScene.spec.tsx": "8ce556a2f724a32bf983430e777c0ca36ec06a4b6e651ce7a67780ee6d556e63",
+      "web/src/ui/terminal/TerminalScene.tsx": "e0e81c3c0be77b8665e2bbc29f0772dbbf9559d83f18639bfe1890c588bec1ae",
+      "web/src/ui/terminal/TerminalStatus.spec.tsx": "dc3fcfdfb4d6f3f86c84a932923087bdf3bf9d85cc12c697090876290740c381",
+      "web/src/ui/terminal/TerminalStatus.tsx": "eddc324f8a8428ab0c99d60fe291b1ee058cadc5fce1baba06200d653338019b",
+      "web/src/ui/terminal/TerminalWindow.spec.tsx": "a1aae9485d3a1dbcc9af1ca62a32680fd10c393ac439ae15a7b12c6ad1b4e161",
+      "web/src/ui/terminal/TerminalWindow.tsx": "4b255148f1347a81711773cd6f44f601b39a6dddd97ed8b33869471185d83550",
+      "web/src/ui/theme.css": "7cc80d0b2a5c233ab7e2d62ce3211b29c30b590b017031d1aefea29abf185331",
+      "web/src/ui/use-dismissible-menu.ts": "9980708339197c1e4286986deaffd71d04987f017fb01b359d58cb371c1d1105",
+      "web/src/ui/use-workspace-camera.ts": "7b4be7608091e50220d619a63c4d4a7375fea90965630efcdb61c9d8a0c8037f",
+      "web/src/ui/use-workspace-keyboard.spec.tsx": "0e74259b8618ff5aed485aa0ec2f8c52b2bf539448d324fee7454d80e095e6be",
+      "web/src/ui/use-workspace-keyboard.ts": "1f7b0026845d98efc5e0e41a03d043376c3b23f25ab383df7171800e0f4fa25c",
+      "web/src/ui/workspace-camera.spec.ts": "323d35ed71e617edee08fec0a30d54c8afd46fcf9600db8296ac6fb88331125f",
+      "web/src/ui/workspace-camera.ts": "6e3b26fe78c4895d753515e4f9183cbf3e240c0b078f1067efcca366cd81ecbb",
+      "web/src/windows/window-geometry.spec.ts": "1461c9216370a53ac3458bdf7d2a67417b08148deffd1a213128cb34ca0fbf9d",
+      "web/src/windows/window-geometry.ts": "033039993ea18c81abc2b6d82199d0e28385f0a2db8e84537f108b9185bac55d",
+      "web/src/windows/window-manager.spec.ts": "aff81f75b1edbce51cc84c69c5e044fd77d9d13f80e7b7d6ce44e00ae09d030d",
+      "web/src/windows/window-manager.ts": "9d7f0cbede31f1aa5965178f93d27ad2824d0c771b7dfbe37a0f0741aa94c086"
+    },
+    "serverJvmArguments": ["-Xms256m", "-Xmx512m"],
+    "repeats": 3
+  },
+  "browser": [
+    {
+      "scope": "loopback Spring v8 + SQLite + Connector + zsh PTY + Chromium DOM observation",
+      "completed": true,
+      "profile": "fanout",
+      "observation": "Input to all participant DOMs; simultaneous reload to all participant DOMs",
+      "environment": {
+        "node": "v26.3.1",
+        "chromium": "151.0.7922.34",
+        "os": "darwin 25.5.0",
+        "cpu": "Apple M4 Max",
+        "logicalCpus": 16,
+        "totalMemoryBytes": 51539607552
+      },
+      "load": {
+        "participants": 1,
+        "connectors": 1,
+        "terminals": 1,
+        "warmupInputs": 5,
+        "measuredInputs": 20,
+        "historyBytes": 524288,
+        "reloads": 5,
+        "rssIntervalMs": 200
+      },
+      "timings": [
+        {
+          "operation": "warmup-input",
+          "startedAtMs": 3821.947041,
+          "elapsedMs": 145.15237500000012,
+          "succeeded": true
+        },
+        {
+          "operation": "warmup-input",
+          "startedAtMs": 3967.104041,
+          "elapsedMs": 137.2283339999999,
+          "succeeded": true
+        },
+        {
+          "operation": "warmup-input",
+          "startedAtMs": 4104.335041,
+          "elapsedMs": 131.3163340000001,
+          "succeeded": true
+        },
+        {
+          "operation": "warmup-input",
+          "startedAtMs": 4235.654125,
+          "elapsedMs": 133.28891600000043,
+          "succeeded": true
+        },
+        {
+          "operation": "warmup-input",
+          "startedAtMs": 4368.946,
+          "elapsedMs": 133.1952080000001,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 4502.144875,
+          "elapsedMs": 132.90262499999972,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 4635.051208,
+          "elapsedMs": 131.43545799999993,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 4766.490208,
+          "elapsedMs": 126.72749999999996,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 4893.221291,
+          "elapsedMs": 132.77033399999982,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 5026.003375,
+          "elapsedMs": 123.07741600000008,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 5149.087041,
+          "elapsedMs": 128.6000840000006,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 5277.69225,
+          "elapsedMs": 138.78066599999966,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 5416.477,
+          "elapsedMs": 126.68666600000051,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 5543.169,
+          "elapsedMs": 131.58920800000033,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 5674.762291,
+          "elapsedMs": 122.64120900000034,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 5797.408875,
+          "elapsedMs": 128.11495800000012,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 5925.529125,
+          "elapsedMs": 126.99345799999992,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 6052.5275,
+          "elapsedMs": 129.3307909999994,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 6181.863791,
+          "elapsedMs": 129.6278339999999,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 6311.497,
+          "elapsedMs": 132.95937499999945,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 6444.460833,
+          "elapsedMs": 130.91183300000012,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 6575.377875,
+          "elapsedMs": 127.90104100000008,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 6703.28475,
+          "elapsedMs": 131.74004100000002,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 6835.031166,
+          "elapsedMs": 131.90941699999985,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 6966.945875,
+          "elapsedMs": 126.92624999999953,
+          "succeeded": true
+        },
+        {
+          "operation": "prepare-history",
+          "startedAtMs": 7093.877291,
+          "elapsedMs": 465.28170899999986,
+          "succeeded": true
+        },
+        {
+          "operation": "reload-replay",
+          "startedAtMs": 7559.162541,
+          "elapsedMs": 806.5189590000009,
+          "succeeded": true
+        },
+        {
+          "operation": "reload-replay",
+          "startedAtMs": 8365.685041,
+          "elapsedMs": 800.155166999999,
+          "succeeded": true
+        },
+        {
+          "operation": "reload-replay",
+          "startedAtMs": 9165.843958,
+          "elapsedMs": 797.3752920000006,
+          "succeeded": true
+        },
+        {
+          "operation": "reload-replay",
+          "startedAtMs": 9963.223875,
+          "elapsedMs": 807.0697909999999,
+          "succeeded": true
+        },
+        {
+          "operation": "reload-replay",
+          "startedAtMs": 10770.299625,
+          "elapsedMs": 802.4400409999998,
+          "succeeded": true
+        }
+      ],
+      "distributions": {
+        "input": {
+          "succeeded": 20,
+          "failed": 0,
+          "p50Ms": 129.3307909999994,
+          "p95Ms": 132.95937499999945,
+          "maxMs": 138.78066599999966
+        },
+        "reload-replay": {
+          "succeeded": 5,
+          "failed": 0,
+          "p50Ms": 802.4400409999998,
+          "p95Ms": 807.0697909999999,
+          "maxMs": 807.0697909999999
+        }
+      },
+      "rss": {
+        "samples": [
+          {
+            "observedAtMs": 3393.2185,
+            "serverKiB": 305504,
+            "connectorKiB": 59712
+          },
+          {
+            "observedAtMs": 3621.172208,
+            "serverKiB": 306032,
+            "connectorKiB": 59712
+          },
+          {
+            "observedAtMs": 3851.198833,
+            "serverKiB": 306784,
+            "connectorKiB": 60032
+          },
+          {
+            "observedAtMs": 4080.552666,
+            "serverKiB": 307024,
+            "connectorKiB": 62224
+          },
+          {
+            "observedAtMs": 4309.859583,
+            "serverKiB": 307168,
+            "connectorKiB": 63072
+          },
+          {
+            "observedAtMs": 4542.980166,
+            "serverKiB": 307680,
+            "connectorKiB": 63728
+          },
+          {
+            "observedAtMs": 4773.8395,
+            "serverKiB": 308240,
+            "connectorKiB": 65728
+          },
+          {
+            "observedAtMs": 5002.122125,
+            "serverKiB": 308272,
+            "connectorKiB": 65744
+          },
+          {
+            "observedAtMs": 5237.757166,
+            "serverKiB": 308288,
+            "connectorKiB": 65776
+          },
+          {
+            "observedAtMs": 5467.049,
+            "serverKiB": 308288,
+            "connectorKiB": 69824
+          },
+          {
+            "observedAtMs": 5697.326791,
+            "serverKiB": 308288,
+            "connectorKiB": 69856
+          },
+          {
+            "observedAtMs": 5927.144916,
+            "serverKiB": 308336,
+            "connectorKiB": 69872
+          },
+          {
+            "observedAtMs": 6156.146958,
+            "serverKiB": 308320,
+            "connectorKiB": 69872
+          },
+          {
+            "observedAtMs": 6386.524458,
+            "serverKiB": 308272,
+            "connectorKiB": 69888
+          },
+          {
+            "observedAtMs": 6615.433291,
+            "serverKiB": 308336,
+            "connectorKiB": 69904
+          },
+          {
+            "observedAtMs": 6844.791625,
+            "serverKiB": 308352,
+            "connectorKiB": 72544
+          },
+          {
+            "observedAtMs": 7072.499041,
+            "serverKiB": 308352,
+            "connectorKiB": 72560
+          },
+          {
+            "observedAtMs": 7302.045625,
+            "serverKiB": 308640,
+            "connectorKiB": 82528
+          },
+          {
+            "observedAtMs": 7529.9695,
+            "serverKiB": 308640,
+            "connectorKiB": 82528
+          },
+          {
+            "observedAtMs": 7760.327791,
+            "serverKiB": 314272,
+            "connectorKiB": 82576
+          },
+          {
+            "observedAtMs": 7988.084375,
+            "serverKiB": 314288,
+            "connectorKiB": 82576
+          },
+          {
+            "observedAtMs": 8216.895708,
+            "serverKiB": 314288,
+            "connectorKiB": 82576
+          },
+          {
+            "observedAtMs": 8444.840333,
+            "serverKiB": 314384,
+            "connectorKiB": 82576
+          },
+          {
+            "observedAtMs": 8672.085875,
+            "serverKiB": 334672,
+            "connectorKiB": 82576
+          },
+          {
+            "observedAtMs": 8899.822875,
+            "serverKiB": 334688,
+            "connectorKiB": 82928
+          },
+          {
+            "observedAtMs": 9128.829416,
+            "serverKiB": 334688,
+            "connectorKiB": 82928
+          },
+          {
+            "observedAtMs": 9358.20225,
+            "serverKiB": 350336,
+            "connectorKiB": 82944
+          },
+          {
+            "observedAtMs": 9611.437125,
+            "serverKiB": 350336,
+            "connectorKiB": 82944
+          },
+          {
+            "observedAtMs": 9837.955166,
+            "serverKiB": 350336,
+            "connectorKiB": 82944
+          },
+          {
+            "observedAtMs": 10067.828125,
+            "serverKiB": 350352,
+            "connectorKiB": 82944
+          },
+          {
+            "observedAtMs": 10295.430666,
+            "serverKiB": 350464,
+            "connectorKiB": 82960
+          },
+          {
+            "observedAtMs": 10521.614458,
+            "serverKiB": 350464,
+            "connectorKiB": 82960
+          },
+          {
+            "observedAtMs": 10748.370125,
+            "serverKiB": 350464,
+            "connectorKiB": 82960
+          },
+          {
+            "observedAtMs": 10975.931916,
+            "serverKiB": 350560,
+            "connectorKiB": 82960
+          },
+          {
+            "observedAtMs": 11204.907458,
+            "serverKiB": 350560,
+            "connectorKiB": 82960
+          },
+          {
+            "observedAtMs": 11433.832875,
+            "serverKiB": 350560,
+            "connectorKiB": 82960
+          }
+        ],
+        "failures": []
+      }
+    },
+    {
+      "scope": "loopback Spring v8 + SQLite + Connector + zsh PTY + Chromium DOM observation",
+      "completed": true,
+      "profile": "fanout",
+      "observation": "Input to all participant DOMs; simultaneous reload to all participant DOMs",
+      "environment": {
+        "node": "v26.3.1",
+        "chromium": "151.0.7922.34",
+        "os": "darwin 25.5.0",
+        "cpu": "Apple M4 Max",
+        "logicalCpus": 16,
+        "totalMemoryBytes": 51539607552
+      },
+      "load": {
+        "participants": 1,
+        "connectors": 1,
+        "terminals": 1,
+        "warmupInputs": 5,
+        "measuredInputs": 20,
+        "historyBytes": 524288,
+        "reloads": 5,
+        "rssIntervalMs": 200
+      },
+      "timings": [
+        {
+          "operation": "warmup-input",
+          "startedAtMs": 2462.104958,
+          "elapsedMs": 146.58541700000023,
+          "succeeded": true
+        },
+        {
+          "operation": "warmup-input",
+          "startedAtMs": 2608.69625,
+          "elapsedMs": 131.53079200000002,
+          "succeeded": true
+        },
+        {
+          "operation": "warmup-input",
+          "startedAtMs": 2740.229333,
+          "elapsedMs": 128.08524999999963,
+          "succeeded": true
+        },
+        {
+          "operation": "warmup-input",
+          "startedAtMs": 2868.318125,
+          "elapsedMs": 133.522375,
+          "succeeded": true
+        },
+        {
+          "operation": "warmup-input",
+          "startedAtMs": 3001.84325,
+          "elapsedMs": 133.99616700000024,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 3135.84375,
+          "elapsedMs": 135.1271670000001,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 3270.974167,
+          "elapsedMs": 129.15970800000014,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 3400.143042,
+          "elapsedMs": 125.8272079999997,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 3525.974167,
+          "elapsedMs": 135.07320800000025,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 3661.053875,
+          "elapsedMs": 133.39008299999978,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 3794.450333,
+          "elapsedMs": 132.45458400000007,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 3926.909958,
+          "elapsedMs": 139.06545899999992,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 4065.9805,
+          "elapsedMs": 126.40262500000017,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 4192.387708,
+          "elapsedMs": 136.48908399999982,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 4328.881083,
+          "elapsedMs": 131.43716700000004,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 4460.324167,
+          "elapsedMs": 130.70575000000008,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 4591.035333,
+          "elapsedMs": 126.89229200000045,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 4717.933125,
+          "elapsedMs": 131.42054200000075,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 4849.359083,
+          "elapsedMs": 122.56374999999935,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 4971.927792,
+          "elapsedMs": 129.89474999999948,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 5101.828333,
+          "elapsedMs": 131.81137499999932,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 5233.64525,
+          "elapsedMs": 127.33008300000074,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 5360.980458,
+          "elapsedMs": 131.8411669999996,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 5492.827625,
+          "elapsedMs": 134.89037499999995,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 5627.724083,
+          "elapsedMs": 129.90129199999956,
+          "succeeded": true
+        },
+        {
+          "operation": "prepare-history",
+          "startedAtMs": 5757.630375,
+          "elapsedMs": 463.52095800000006,
+          "succeeded": true
+        },
+        {
+          "operation": "reload-replay",
+          "startedAtMs": 6221.155375,
+          "elapsedMs": 808.7290419999999,
+          "succeeded": true
+        },
+        {
+          "operation": "reload-replay",
+          "startedAtMs": 7029.888,
+          "elapsedMs": 801.3142500000004,
+          "succeeded": true
+        },
+        {
+          "operation": "reload-replay",
+          "startedAtMs": 7831.205583,
+          "elapsedMs": 647.4581669999998,
+          "succeeded": true
+        },
+        {
+          "operation": "reload-replay",
+          "startedAtMs": 8478.667792,
+          "elapsedMs": 757.0266659999998,
+          "succeeded": true
+        },
+        {
+          "operation": "reload-replay",
+          "startedAtMs": 9235.697375,
+          "elapsedMs": 750.172125000001,
+          "succeeded": true
+        }
+      ],
+      "distributions": {
+        "input": {
+          "succeeded": 20,
+          "failed": 0,
+          "p50Ms": 131.42054200000075,
+          "p95Ms": 136.48908399999982,
+          "maxMs": 139.06545899999992
+        },
+        "reload-replay": {
+          "succeeded": 5,
+          "failed": 0,
+          "p50Ms": 757.0266659999998,
+          "p95Ms": 808.7290419999999,
+          "maxMs": 808.7290419999999
+        }
+      },
+      "rss": {
+        "samples": [
+          {
+            "observedAtMs": 2064.225458,
+            "serverKiB": 313056,
+            "connectorKiB": 59856
+          },
+          {
+            "observedAtMs": 2292.94575,
+            "serverKiB": 313504,
+            "connectorKiB": 59856
+          },
+          {
+            "observedAtMs": 2521.668917,
+            "serverKiB": 314400,
+            "connectorKiB": 61168
+          },
+          {
+            "observedAtMs": 2756.696417,
+            "serverKiB": 314528,
+            "connectorKiB": 62688
+          },
+          {
+            "observedAtMs": 2987.704375,
+            "serverKiB": 314736,
+            "connectorKiB": 63648
+          },
+          {
+            "observedAtMs": 3215.826417,
+            "serverKiB": 315168,
+            "connectorKiB": 65440
+          },
+          {
+            "observedAtMs": 3447.03775,
+            "serverKiB": 315728,
+            "connectorKiB": 65856
+          },
+          {
+            "observedAtMs": 3677.263042,
+            "serverKiB": 315728,
+            "connectorKiB": 65872
+          },
+          {
+            "observedAtMs": 3906.115625,
+            "serverKiB": 315760,
+            "connectorKiB": 65904
+          },
+          {
+            "observedAtMs": 4135.392583,
+            "serverKiB": 315776,
+            "connectorKiB": 69936
+          },
+          {
+            "observedAtMs": 4366.110417,
+            "serverKiB": 315792,
+            "connectorKiB": 69952
+          },
+          {
+            "observedAtMs": 4599.327958,
+            "serverKiB": 315792,
+            "connectorKiB": 69968
+          },
+          {
+            "observedAtMs": 4832.688083,
+            "serverKiB": 315744,
+            "connectorKiB": 69968
+          },
+          {
+            "observedAtMs": 5064.788125,
+            "serverKiB": 315760,
+            "connectorKiB": 69984
+          },
+          {
+            "observedAtMs": 5293.187292,
+            "serverKiB": 315808,
+            "connectorKiB": 72640
+          },
+          {
+            "observedAtMs": 5522.62625,
+            "serverKiB": 315824,
+            "connectorKiB": 72656
+          },
+          {
+            "observedAtMs": 5752.343625,
+            "serverKiB": 315824,
+            "connectorKiB": 72672
+          },
+          {
+            "observedAtMs": 5979.483667,
+            "serverKiB": 316272,
+            "connectorKiB": 82240
+          },
+          {
+            "observedAtMs": 6208.005167,
+            "serverKiB": 316272,
+            "connectorKiB": 82240
+          },
+          {
+            "observedAtMs": 6438.150583,
+            "serverKiB": 322576,
+            "connectorKiB": 82256
+          },
+          {
+            "observedAtMs": 6666.07625,
+            "serverKiB": 322576,
+            "connectorKiB": 82256
+          },
+          {
+            "observedAtMs": 6894.783958,
+            "serverKiB": 322576,
+            "connectorKiB": 82256
+          },
+          {
+            "observedAtMs": 7126.062333,
+            "serverKiB": 322496,
+            "connectorKiB": 82256
+          },
+          {
+            "observedAtMs": 7355.544958,
+            "serverKiB": 342224,
+            "connectorKiB": 82464
+          },
+          {
+            "observedAtMs": 7583.574875,
+            "serverKiB": 342224,
+            "connectorKiB": 82592
+          },
+          {
+            "observedAtMs": 7813.276167,
+            "serverKiB": 342224,
+            "connectorKiB": 82592
+          },
+          {
+            "observedAtMs": 8043.289167,
+            "serverKiB": 358288,
+            "connectorKiB": 82608
+          },
+          {
+            "observedAtMs": 8270.379875,
+            "serverKiB": 358288,
+            "connectorKiB": 82608
+          },
+          {
+            "observedAtMs": 8497.42025,
+            "serverKiB": 358288,
+            "connectorKiB": 82608
+          },
+          {
+            "observedAtMs": 8723.22675,
+            "serverKiB": 358528,
+            "connectorKiB": 82624
+          },
+          {
+            "observedAtMs": 8949.656292,
+            "serverKiB": 358528,
+            "connectorKiB": 82624
+          },
+          {
+            "observedAtMs": 9181.417792,
+            "serverKiB": 358528,
+            "connectorKiB": 82624
+          },
+          {
+            "observedAtMs": 9407.771875,
+            "serverKiB": 358624,
+            "connectorKiB": 82624
+          },
+          {
+            "observedAtMs": 9633.8015,
+            "serverKiB": 358624,
+            "connectorKiB": 82624
+          },
+          {
+            "observedAtMs": 9862.240375,
+            "serverKiB": 358624,
+            "connectorKiB": 82624
+          }
+        ],
+        "failures": []
+      }
+    },
+    {
+      "scope": "loopback Spring v8 + SQLite + Connector + zsh PTY + Chromium DOM observation",
+      "completed": true,
+      "profile": "fanout",
+      "observation": "Input to all participant DOMs; simultaneous reload to all participant DOMs",
+      "environment": {
+        "node": "v26.3.1",
+        "chromium": "151.0.7922.34",
+        "os": "darwin 25.5.0",
+        "cpu": "Apple M4 Max",
+        "logicalCpus": 16,
+        "totalMemoryBytes": 51539607552
+      },
+      "load": {
+        "participants": 1,
+        "connectors": 1,
+        "terminals": 1,
+        "warmupInputs": 5,
+        "measuredInputs": 20,
+        "historyBytes": 524288,
+        "reloads": 5,
+        "rssIntervalMs": 200
+      },
+      "timings": [
+        {
+          "operation": "warmup-input",
+          "startedAtMs": 2649.922208,
+          "elapsedMs": 137.11641700000018,
+          "succeeded": true
+        },
+        {
+          "operation": "warmup-input",
+          "startedAtMs": 2787.047042,
+          "elapsedMs": 138.64495799999986,
+          "succeeded": true
+        },
+        {
+          "operation": "warmup-input",
+          "startedAtMs": 2925.694583,
+          "elapsedMs": 129.78237500000023,
+          "succeeded": true
+        },
+        {
+          "operation": "warmup-input",
+          "startedAtMs": 3055.479542,
+          "elapsedMs": 131.48124999999982,
+          "succeeded": true
+        },
+        {
+          "operation": "warmup-input",
+          "startedAtMs": 3186.963792,
+          "elapsedMs": 135.09283300000016,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 3322.059625,
+          "elapsedMs": 131.77937500000007,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 3453.842,
+          "elapsedMs": 126.8755000000001,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 3580.720917,
+          "elapsedMs": 130.017875,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 3710.7425,
+          "elapsedMs": 127.67162499999995,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 3838.422042,
+          "elapsedMs": 135.19533299999966,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 3973.62225,
+          "elapsedMs": 133.13612500000045,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 4106.762292,
+          "elapsedMs": 136.766791,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 4243.543958,
+          "elapsedMs": 127.23262499999964,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 4370.782083,
+          "elapsedMs": 132.70449999999983,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 4503.492,
+          "elapsedMs": 124.68470799999977,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 4628.182125,
+          "elapsedMs": 126.8628749999998,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 4755.050167,
+          "elapsedMs": 133.9792499999994,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 4889.034667,
+          "elapsedMs": 130.3494579999997,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 5019.390042,
+          "elapsedMs": 124.89995799999997,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 5144.294792,
+          "elapsedMs": 129.79408300000068,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 5274.094208,
+          "elapsedMs": 130.8588749999999,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 5404.958292,
+          "elapsedMs": 132.23008299999947,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 5537.195875,
+          "elapsedMs": 138.40595799999937,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 5675.606542,
+          "elapsedMs": 129.71645799999988,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 5805.328458,
+          "elapsedMs": 132.0896670000002,
+          "succeeded": true
+        },
+        {
+          "operation": "prepare-history",
+          "startedAtMs": 5937.4225,
+          "elapsedMs": 463.447083,
+          "succeeded": true
+        },
+        {
+          "operation": "reload-replay",
+          "startedAtMs": 6400.87275,
+          "elapsedMs": 771.0464579999998,
+          "succeeded": true
+        },
+        {
+          "operation": "reload-replay",
+          "startedAtMs": 7171.922208,
+          "elapsedMs": 764.6792500000001,
+          "succeeded": true
+        },
+        {
+          "operation": "reload-replay",
+          "startedAtMs": 7936.604542,
+          "elapsedMs": 764.6897909999998,
+          "succeeded": true
+        },
+        {
+          "operation": "reload-replay",
+          "startedAtMs": 8701.297042,
+          "elapsedMs": 762.0212909999991,
+          "succeeded": true
+        },
+        {
+          "operation": "reload-replay",
+          "startedAtMs": 9463.32575,
+          "elapsedMs": 748.7058749999997,
+          "succeeded": true
+        }
+      ],
+      "distributions": {
+        "input": {
+          "succeeded": 20,
+          "failed": 0,
+          "p50Ms": 130.3494579999997,
+          "p95Ms": 136.766791,
+          "maxMs": 138.40595799999937
+        },
+        "reload-replay": {
+          "succeeded": 5,
+          "failed": 0,
+          "p50Ms": 764.6792500000001,
+          "p95Ms": 771.0464579999998,
+          "maxMs": 771.0464579999998
+        }
+      },
+      "rss": {
+        "samples": [
+          {
+            "observedAtMs": 2264.10425,
+            "serverKiB": 312544,
+            "connectorKiB": 59808
+          },
+          {
+            "observedAtMs": 2494.760333,
+            "serverKiB": 315648,
+            "connectorKiB": 59808
+          },
+          {
+            "observedAtMs": 2725.45175,
+            "serverKiB": 316304,
+            "connectorKiB": 60912
+          },
+          {
+            "observedAtMs": 2957.741125,
+            "serverKiB": 316416,
+            "connectorKiB": 62192
+          },
+          {
+            "observedAtMs": 3190.252875,
+            "serverKiB": 316704,
+            "connectorKiB": 63088
+          },
+          {
+            "observedAtMs": 3420.453,
+            "serverKiB": 317184,
+            "connectorKiB": 65232
+          },
+          {
+            "observedAtMs": 3648.509083,
+            "serverKiB": 317664,
+            "connectorKiB": 65344
+          },
+          {
+            "observedAtMs": 3880.416375,
+            "serverKiB": 317664,
+            "connectorKiB": 65360
+          },
+          {
+            "observedAtMs": 4109.7255,
+            "serverKiB": 317696,
+            "connectorKiB": 65376
+          },
+          {
+            "observedAtMs": 4339.708667,
+            "serverKiB": 317696,
+            "connectorKiB": 68192
+          },
+          {
+            "observedAtMs": 4571.492792,
+            "serverKiB": 317712,
+            "connectorKiB": 68256
+          },
+          {
+            "observedAtMs": 4801.27175,
+            "serverKiB": 317712,
+            "connectorKiB": 68256
+          },
+          {
+            "observedAtMs": 5032.680792,
+            "serverKiB": 317712,
+            "connectorKiB": 68288
+          },
+          {
+            "observedAtMs": 5263.033167,
+            "serverKiB": 317760,
+            "connectorKiB": 68304
+          },
+          {
+            "observedAtMs": 5494.066542,
+            "serverKiB": 317760,
+            "connectorKiB": 70960
+          },
+          {
+            "observedAtMs": 5723.127,
+            "serverKiB": 317760,
+            "connectorKiB": 70976
+          },
+          {
+            "observedAtMs": 5956.046875,
+            "serverKiB": 317760,
+            "connectorKiB": 70992
+          },
+          {
+            "observedAtMs": 6186.068042,
+            "serverKiB": 318208,
+            "connectorKiB": 77232
+          },
+          {
+            "observedAtMs": 6434.0705,
+            "serverKiB": 318208,
+            "connectorKiB": 77232
+          },
+          {
+            "observedAtMs": 6669.60575,
+            "serverKiB": 323488,
+            "connectorKiB": 77232
+          },
+          {
+            "observedAtMs": 6900.022792,
+            "serverKiB": 323488,
+            "connectorKiB": 77232
+          },
+          {
+            "observedAtMs": 7133.699458,
+            "serverKiB": 323488,
+            "connectorKiB": 77232
+          },
+          {
+            "observedAtMs": 7360.936833,
+            "serverKiB": 334176,
+            "connectorKiB": 77232
+          },
+          {
+            "observedAtMs": 7590.935125,
+            "serverKiB": 334176,
+            "connectorKiB": 77536
+          },
+          {
+            "observedAtMs": 7824.306833,
+            "serverKiB": 334032,
+            "connectorKiB": 77552
+          },
+          {
+            "observedAtMs": 8061.320917,
+            "serverKiB": 334400,
+            "connectorKiB": 77552
+          },
+          {
+            "observedAtMs": 8291.076333,
+            "serverKiB": 360528,
+            "connectorKiB": 77552
+          },
+          {
+            "observedAtMs": 8521.1155,
+            "serverKiB": 360528,
+            "connectorKiB": 77552
+          },
+          {
+            "observedAtMs": 8751.801375,
+            "serverKiB": 360544,
+            "connectorKiB": 77552
+          },
+          {
+            "observedAtMs": 8980.827958,
+            "serverKiB": 360720,
+            "connectorKiB": 77568
+          },
+          {
+            "observedAtMs": 9210.008042,
+            "serverKiB": 360720,
+            "connectorKiB": 77568
+          },
+          {
+            "observedAtMs": 9437.32675,
+            "serverKiB": 360720,
+            "connectorKiB": 77568
+          },
+          {
+            "observedAtMs": 9667.205542,
+            "serverKiB": 360848,
+            "connectorKiB": 77568
+          },
+          {
+            "observedAtMs": 9893.973583,
+            "serverKiB": 360864,
+            "connectorKiB": 77568
+          },
+          {
+            "observedAtMs": 10130.89975,
+            "serverKiB": 360864,
+            "connectorKiB": 77568
+          }
+        ],
+        "failures": []
+      }
+    },
+    {
+      "scope": "loopback Spring v8 + SQLite + Connector + zsh PTY + Chromium DOM observation",
+      "completed": true,
+      "profile": "fanout",
+      "observation": "Input to all participant DOMs; simultaneous reload to all participant DOMs",
+      "environment": {
+        "node": "v26.3.1",
+        "chromium": "151.0.7922.34",
+        "os": "darwin 25.5.0",
+        "cpu": "Apple M4 Max",
+        "logicalCpus": 16,
+        "totalMemoryBytes": 51539607552
+      },
+      "load": {
+        "participants": 10,
+        "connectors": 1,
+        "terminals": 1,
+        "warmupInputs": 5,
+        "measuredInputs": 20,
+        "historyBytes": 524288,
+        "reloads": 5,
+        "rssIntervalMs": 200
+      },
+      "timings": [
+        {
+          "operation": "warmup-input",
+          "startedAtMs": 28274.394875,
+          "elapsedMs": 182.88341599999694,
+          "succeeded": true
+        },
+        {
+          "operation": "warmup-input",
+          "startedAtMs": 28457.280625,
+          "elapsedMs": 162.95008299999972,
+          "succeeded": true
+        },
+        {
+          "operation": "warmup-input",
+          "startedAtMs": 28620.232458,
+          "elapsedMs": 172.0358750000014,
+          "succeeded": true
+        },
+        {
+          "operation": "warmup-input",
+          "startedAtMs": 28792.270125,
+          "elapsedMs": 161.58645800000158,
+          "succeeded": true
+        },
+        {
+          "operation": "warmup-input",
+          "startedAtMs": 28953.858458,
+          "elapsedMs": 167.84770800000115,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 29121.708041,
+          "elapsedMs": 162.17491699999664,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 29283.885666,
+          "elapsedMs": 168.80312500000218,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 29452.691083,
+          "elapsedMs": 158.62824999999793,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 29611.321041,
+          "elapsedMs": 156.90204200000153,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 29768.225708,
+          "elapsedMs": 169.109457999999,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 29937.337,
+          "elapsedMs": 163.66029100000014,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 30100.99925,
+          "elapsedMs": 181.8824999999997,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 30282.883791,
+          "elapsedMs": 158.59820899999977,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 30441.483791,
+          "elapsedMs": 154.42691700000069,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 30595.912916,
+          "elapsedMs": 149.8589589999974,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 30745.774083,
+          "elapsedMs": 157.80204199999935,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 30903.578833,
+          "elapsedMs": 151.22291699999914,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 31054.803375,
+          "elapsedMs": 160.2487910000018,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 31215.0545,
+          "elapsedMs": 160.63908300000185,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 31375.69575,
+          "elapsedMs": 153.62216600000102,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 31529.319916,
+          "elapsedMs": 160.96983399999954,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 31690.291583,
+          "elapsedMs": 169.66812500000015,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 31859.961625,
+          "elapsedMs": 151.0950410000005,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 32011.059041,
+          "elapsedMs": 153.85116700000071,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 32164.913041,
+          "elapsedMs": 155.79083399999945,
+          "succeeded": true
+        },
+        {
+          "operation": "prepare-history",
+          "startedAtMs": 32320.706125,
+          "elapsedMs": 2045.0170830000025,
+          "succeeded": true
+        },
+        {
+          "operation": "reload-replay",
+          "startedAtMs": 34365.725291,
+          "elapsedMs": 1097.0129589999997,
+          "succeeded": true
+        },
+        {
+          "operation": "reload-replay",
+          "startedAtMs": 35462.740375,
+          "elapsedMs": 1149.741915999999,
+          "succeeded": true
+        },
+        {
+          "operation": "reload-replay",
+          "startedAtMs": 36612.484458,
+          "elapsedMs": 1032.0705420000013,
+          "succeeded": true
+        },
+        {
+          "operation": "reload-replay",
+          "startedAtMs": 37644.557666,
+          "elapsedMs": 1003.4620419999992,
+          "succeeded": true
+        },
+        {
+          "operation": "reload-replay",
+          "startedAtMs": 38648.021625,
+          "elapsedMs": 1037.6066659999997,
+          "succeeded": true
+        }
+      ],
+      "distributions": {
+        "input": {
+          "succeeded": 20,
+          "failed": 0,
+          "p50Ms": 158.59820899999977,
+          "p95Ms": 169.66812500000015,
+          "maxMs": 181.8824999999997
+        },
+        "reload-replay": {
+          "succeeded": 5,
+          "failed": 0,
+          "p50Ms": 1037.6066659999997,
+          "p95Ms": 1149.741915999999,
+          "maxMs": 1149.741915999999
+        }
+      },
+      "rss": {
+        "samples": [
+          {
+            "observedAtMs": 24526.475416,
+            "serverKiB": 310432,
+            "connectorKiB": 59872
+          },
+          {
+            "observedAtMs": 24755.908125,
+            "serverKiB": 310816,
+            "connectorKiB": 59872
+          },
+          {
+            "observedAtMs": 24994.82725,
+            "serverKiB": 311472,
+            "connectorKiB": 60144
+          },
+          {
+            "observedAtMs": 25225.836583,
+            "serverKiB": 311504,
+            "connectorKiB": 60144
+          },
+          {
+            "observedAtMs": 25455.535166,
+            "serverKiB": 311712,
+            "connectorKiB": 60160
+          },
+          {
+            "observedAtMs": 25686.207291,
+            "serverKiB": 311872,
+            "connectorKiB": 60160
+          },
+          {
+            "observedAtMs": 25915.9285,
+            "serverKiB": 312176,
+            "connectorKiB": 60160
+          },
+          {
+            "observedAtMs": 26144.611541,
+            "serverKiB": 312256,
+            "connectorKiB": 60176
+          },
+          {
+            "observedAtMs": 26374.359125,
+            "serverKiB": 312320,
+            "connectorKiB": 60176
+          },
+          {
+            "observedAtMs": 26602.185875,
+            "serverKiB": 312656,
+            "connectorKiB": 60192
+          },
+          {
+            "observedAtMs": 26833.160166,
+            "serverKiB": 312752,
+            "connectorKiB": 60192
+          },
+          {
+            "observedAtMs": 27061.259375,
+            "serverKiB": 312960,
+            "connectorKiB": 60256
+          },
+          {
+            "observedAtMs": 27291.14175,
+            "serverKiB": 313728,
+            "connectorKiB": 60272
+          },
+          {
+            "observedAtMs": 27521.676083,
+            "serverKiB": 313792,
+            "connectorKiB": 60272
+          },
+          {
+            "observedAtMs": 27751.310916,
+            "serverKiB": 314144,
+            "connectorKiB": 60272
+          },
+          {
+            "observedAtMs": 27980.24825,
+            "serverKiB": 314432,
+            "connectorKiB": 60288
+          },
+          {
+            "observedAtMs": 28209.756791,
+            "serverKiB": 314560,
+            "connectorKiB": 60288
+          },
+          {
+            "observedAtMs": 28439.480625,
+            "serverKiB": 316064,
+            "connectorKiB": 61200
+          },
+          {
+            "observedAtMs": 28695.761041,
+            "serverKiB": 316528,
+            "connectorKiB": 62416
+          },
+          {
+            "observedAtMs": 28927.021375,
+            "serverKiB": 317088,
+            "connectorKiB": 63184
+          },
+          {
+            "observedAtMs": 29181.231125,
+            "serverKiB": 317296,
+            "connectorKiB": 63744
+          },
+          {
+            "observedAtMs": 29410.0975,
+            "serverKiB": 318032,
+            "connectorKiB": 65008
+          },
+          {
+            "observedAtMs": 29661.167666,
+            "serverKiB": 318192,
+            "connectorKiB": 65008
+          },
+          {
+            "observedAtMs": 29891.524083,
+            "serverKiB": 319920,
+            "connectorKiB": 65072
+          },
+          {
+            "observedAtMs": 30124.386875,
+            "serverKiB": 321472,
+            "connectorKiB": 65728
+          },
+          {
+            "observedAtMs": 30357.582208,
+            "serverKiB": 322368,
+            "connectorKiB": 66544
+          },
+          {
+            "observedAtMs": 30585.859916,
+            "serverKiB": 322960,
+            "connectorKiB": 66544
+          },
+          {
+            "observedAtMs": 30823.3445,
+            "serverKiB": 324000,
+            "connectorKiB": 66624
+          },
+          {
+            "observedAtMs": 31055.112041,
+            "serverKiB": 324624,
+            "connectorKiB": 66624
+          },
+          {
+            "observedAtMs": 31290.402333,
+            "serverKiB": 331760,
+            "connectorKiB": 66640
+          },
+          {
+            "observedAtMs": 31518.108875,
+            "serverKiB": 336160,
+            "connectorKiB": 66656
+          },
+          {
+            "observedAtMs": 31763.004291,
+            "serverKiB": 343008,
+            "connectorKiB": 66736
+          },
+          {
+            "observedAtMs": 31990.618833,
+            "serverKiB": 357072,
+            "connectorKiB": 69392
+          },
+          {
+            "observedAtMs": 32230.014875,
+            "serverKiB": 357184,
+            "connectorKiB": 69408
+          },
+          {
+            "observedAtMs": 32576.53475,
+            "serverKiB": 357328,
+            "connectorKiB": 70032
+          },
+          {
+            "observedAtMs": 32896.395125,
+            "serverKiB": 357440,
+            "connectorKiB": 71568
+          },
+          {
+            "observedAtMs": 33233.090625,
+            "serverKiB": 357632,
+            "connectorKiB": 71600
+          },
+          {
+            "observedAtMs": 33462.184666,
+            "serverKiB": 363088,
+            "connectorKiB": 72736
+          },
+          {
+            "observedAtMs": 33691.784791,
+            "serverKiB": 363088,
+            "connectorKiB": 72736
+          },
+          {
+            "observedAtMs": 33919.490583,
+            "serverKiB": 363088,
+            "connectorKiB": 72736
+          },
+          {
+            "observedAtMs": 34150.522958,
+            "serverKiB": 363088,
+            "connectorKiB": 72736
+          },
+          {
+            "observedAtMs": 34396.885125,
+            "serverKiB": 363088,
+            "connectorKiB": 72736
+          },
+          {
+            "observedAtMs": 35320.828958,
+            "serverKiB": 364592,
+            "connectorKiB": 72832
+          },
+          {
+            "observedAtMs": 35547.829625,
+            "serverKiB": 367760,
+            "connectorKiB": 73040
+          },
+          {
+            "observedAtMs": 36444.399958,
+            "serverKiB": 368256,
+            "connectorKiB": 73120
+          },
+          {
+            "observedAtMs": 36674.632375,
+            "serverKiB": 374272,
+            "connectorKiB": 73120
+          },
+          {
+            "observedAtMs": 37597.842625,
+            "serverKiB": 374480,
+            "connectorKiB": 73200
+          },
+          {
+            "observedAtMs": 38589.927708,
+            "serverKiB": 374816,
+            "connectorKiB": 73280
+          },
+          {
+            "observedAtMs": 39573.820291,
+            "serverKiB": 375008,
+            "connectorKiB": 73360
+          }
+        ],
+        "failures": []
+      }
+    },
+    {
+      "scope": "loopback Spring v8 + SQLite + Connector + zsh PTY + Chromium DOM observation",
+      "completed": true,
+      "profile": "fanout",
+      "observation": "Input to all participant DOMs; simultaneous reload to all participant DOMs",
+      "environment": {
+        "node": "v26.3.1",
+        "chromium": "151.0.7922.34",
+        "os": "darwin 25.5.0",
+        "cpu": "Apple M4 Max",
+        "logicalCpus": 16,
+        "totalMemoryBytes": 51539607552
+      },
+      "load": {
+        "participants": 10,
+        "connectors": 1,
+        "terminals": 1,
+        "warmupInputs": 5,
+        "measuredInputs": 20,
+        "historyBytes": 524288,
+        "reloads": 5,
+        "rssIntervalMs": 200
+      },
+      "timings": [
+        {
+          "operation": "warmup-input",
+          "startedAtMs": 26494.83275,
+          "elapsedMs": 185.78291699999681,
+          "succeeded": true
+        },
+        {
+          "operation": "warmup-input",
+          "startedAtMs": 26680.618167,
+          "elapsedMs": 169.04458299999897,
+          "succeeded": true
+        },
+        {
+          "operation": "warmup-input",
+          "startedAtMs": 26849.664417,
+          "elapsedMs": 166.21337499999936,
+          "succeeded": true
+        },
+        {
+          "operation": "warmup-input",
+          "startedAtMs": 27015.879708,
+          "elapsedMs": 167.82045899999866,
+          "succeeded": true
+        },
+        {
+          "operation": "warmup-input",
+          "startedAtMs": 27183.701792,
+          "elapsedMs": 154.3584579999988,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 27338.062542,
+          "elapsedMs": 161.70766600000206,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 27499.77275,
+          "elapsedMs": 166.68212499999936,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 27666.457125,
+          "elapsedMs": 155.82420799999818,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 27822.283458,
+          "elapsedMs": 157.76620899999762,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 27980.052,
+          "elapsedMs": 155.28404199999932,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 28135.338208,
+          "elapsedMs": 163.26637499999924,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 28298.607,
+          "elapsedMs": 187.2306669999998,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 28485.840292,
+          "elapsedMs": 156.51516600000105,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 28642.357708,
+          "elapsedMs": 149.78087500000038,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 28792.140708,
+          "elapsedMs": 157.16262500000084,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 28949.306833,
+          "elapsedMs": 156.77516699999978,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 29106.084458,
+          "elapsedMs": 150.4535419999993,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 29256.540208,
+          "elapsedMs": 158.69658400000117,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 29415.239875,
+          "elapsedMs": 152.66141699999935,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 29567.903292,
+          "elapsedMs": 162.48183300000164,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 29730.387917,
+          "elapsedMs": 162.53591600000073,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 29892.928833,
+          "elapsedMs": 165.9332089999989,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 30058.865042,
+          "elapsedMs": 156.54862499999945,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 30215.417,
+          "elapsedMs": 147.51533299999937,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 30362.935458,
+          "elapsedMs": 156.78441699999894,
+          "succeeded": true
+        },
+        {
+          "operation": "prepare-history",
+          "startedAtMs": 30519.722167,
+          "elapsedMs": 2081.4243749999987,
+          "succeeded": true
+        },
+        {
+          "operation": "reload-replay",
+          "startedAtMs": 32601.149625,
+          "elapsedMs": 1194.3823330000014,
+          "succeeded": true
+        },
+        {
+          "operation": "reload-replay",
+          "startedAtMs": 33795.5345,
+          "elapsedMs": 1213.747457999998,
+          "succeeded": true
+        },
+        {
+          "operation": "reload-replay",
+          "startedAtMs": 35009.283917,
+          "elapsedMs": 1053.1295000000027,
+          "succeeded": true
+        },
+        {
+          "operation": "reload-replay",
+          "startedAtMs": 36062.416042,
+          "elapsedMs": 1072.8810410000006,
+          "succeeded": true
+        },
+        {
+          "operation": "reload-replay",
+          "startedAtMs": 37135.299625,
+          "elapsedMs": 1136.9514580000032,
+          "succeeded": true
+        }
+      ],
+      "distributions": {
+        "input": {
+          "succeeded": 20,
+          "failed": 0,
+          "p50Ms": 156.78441699999894,
+          "p95Ms": 166.68212499999936,
+          "maxMs": 187.2306669999998
+        },
+        "reload-replay": {
+          "succeeded": 5,
+          "failed": 0,
+          "p50Ms": 1136.9514580000032,
+          "p95Ms": 1213.747457999998,
+          "maxMs": 1213.747457999998
+        }
+      },
+      "rss": {
+        "samples": [
+          {
+            "observedAtMs": 22856.720458,
+            "serverKiB": 306800,
+            "connectorKiB": 60144
+          },
+          {
+            "observedAtMs": 23088.235083,
+            "serverKiB": 307120,
+            "connectorKiB": 60144
+          },
+          {
+            "observedAtMs": 23317.74975,
+            "serverKiB": 307856,
+            "connectorKiB": 60464
+          },
+          {
+            "observedAtMs": 23547.560083,
+            "serverKiB": 307920,
+            "connectorKiB": 60464
+          },
+          {
+            "observedAtMs": 23774.853708,
+            "serverKiB": 308048,
+            "connectorKiB": 60464
+          },
+          {
+            "observedAtMs": 24004.094458,
+            "serverKiB": 308144,
+            "connectorKiB": 60464
+          },
+          {
+            "observedAtMs": 24234.684167,
+            "serverKiB": 308480,
+            "connectorKiB": 60480
+          },
+          {
+            "observedAtMs": 24465.7725,
+            "serverKiB": 308592,
+            "connectorKiB": 60480
+          },
+          {
+            "observedAtMs": 24694.074792,
+            "serverKiB": 309168,
+            "connectorKiB": 60512
+          },
+          {
+            "observedAtMs": 24924.084792,
+            "serverKiB": 309312,
+            "connectorKiB": 60512
+          },
+          {
+            "observedAtMs": 25153.790208,
+            "serverKiB": 309520,
+            "connectorKiB": 60544
+          },
+          {
+            "observedAtMs": 25387.125458,
+            "serverKiB": 309616,
+            "connectorKiB": 60544
+          },
+          {
+            "observedAtMs": 25616.920625,
+            "serverKiB": 310000,
+            "connectorKiB": 60576
+          },
+          {
+            "observedAtMs": 25846.085917,
+            "serverKiB": 310384,
+            "connectorKiB": 60576
+          },
+          {
+            "observedAtMs": 26078.517167,
+            "serverKiB": 310464,
+            "connectorKiB": 60576
+          },
+          {
+            "observedAtMs": 26310.007667,
+            "serverKiB": 311008,
+            "connectorKiB": 60592
+          },
+          {
+            "observedAtMs": 26574.37625,
+            "serverKiB": 311296,
+            "connectorKiB": 60608
+          },
+          {
+            "observedAtMs": 26806.050167,
+            "serverKiB": 313168,
+            "connectorKiB": 62688
+          },
+          {
+            "observedAtMs": 27074.092083,
+            "serverKiB": 313488,
+            "connectorKiB": 62976
+          },
+          {
+            "observedAtMs": 27307.068375,
+            "serverKiB": 314496,
+            "connectorKiB": 63984
+          },
+          {
+            "observedAtMs": 27565.825208,
+            "serverKiB": 314640,
+            "connectorKiB": 65264
+          },
+          {
+            "observedAtMs": 27796.33475,
+            "serverKiB": 315536,
+            "connectorKiB": 65264
+          },
+          {
+            "observedAtMs": 28043.037167,
+            "serverKiB": 315952,
+            "connectorKiB": 65296
+          },
+          {
+            "observedAtMs": 28276.32675,
+            "serverKiB": 318528,
+            "connectorKiB": 65936
+          },
+          {
+            "observedAtMs": 28534.352792,
+            "serverKiB": 320176,
+            "connectorKiB": 66944
+          },
+          {
+            "observedAtMs": 28765.906208,
+            "serverKiB": 320768,
+            "connectorKiB": 67056
+          },
+          {
+            "observedAtMs": 29011.341542,
+            "serverKiB": 321504,
+            "connectorKiB": 67072
+          },
+          {
+            "observedAtMs": 29242.55275,
+            "serverKiB": 321856,
+            "connectorKiB": 67104
+          },
+          {
+            "observedAtMs": 29485.042458,
+            "serverKiB": 327520,
+            "connectorKiB": 67104
+          },
+          {
+            "observedAtMs": 29717.06525,
+            "serverKiB": 332368,
+            "connectorKiB": 67120
+          },
+          {
+            "observedAtMs": 29963.72375,
+            "serverKiB": 339376,
+            "connectorKiB": 67120
+          },
+          {
+            "observedAtMs": 30194.40775,
+            "serverKiB": 354656,
+            "connectorKiB": 69776
+          },
+          {
+            "observedAtMs": 30431.961042,
+            "serverKiB": 354720,
+            "connectorKiB": 69808
+          },
+          {
+            "observedAtMs": 30781.327292,
+            "serverKiB": 354816,
+            "connectorKiB": 70224
+          },
+          {
+            "observedAtMs": 31089.907167,
+            "serverKiB": 354832,
+            "connectorKiB": 71984
+          },
+          {
+            "observedAtMs": 31482.87225,
+            "serverKiB": 354896,
+            "connectorKiB": 71984
+          },
+          {
+            "observedAtMs": 31714.283958,
+            "serverKiB": 360832,
+            "connectorKiB": 72880
+          },
+          {
+            "observedAtMs": 31946.007417,
+            "serverKiB": 360832,
+            "connectorKiB": 72880
+          },
+          {
+            "observedAtMs": 32180.589083,
+            "serverKiB": 360832,
+            "connectorKiB": 72880
+          },
+          {
+            "observedAtMs": 32419.041417,
+            "serverKiB": 360832,
+            "connectorKiB": 72880
+          },
+          {
+            "observedAtMs": 32656.1725,
+            "serverKiB": 361136,
+            "connectorKiB": 72880
+          },
+          {
+            "observedAtMs": 33635.29425,
+            "serverKiB": 361504,
+            "connectorKiB": 72976
+          },
+          {
+            "observedAtMs": 33870.223833,
+            "serverKiB": 365744,
+            "connectorKiB": 70768
+          },
+          {
+            "observedAtMs": 34838.447833,
+            "serverKiB": 308960,
+            "connectorKiB": 61184
+          },
+          {
+            "observedAtMs": 35074.824708,
+            "serverKiB": 311808,
+            "connectorKiB": 60288
+          },
+          {
+            "observedAtMs": 35967.568833,
+            "serverKiB": 312656,
+            "connectorKiB": 60384
+          },
+          {
+            "observedAtMs": 37009.394583,
+            "serverKiB": 313536,
+            "connectorKiB": 60416
+          },
+          {
+            "observedAtMs": 37801.683708,
+            "serverKiB": 313696,
+            "connectorKiB": 60464
+          },
+          {
+            "observedAtMs": 38133.490042,
+            "serverKiB": 314896,
+            "connectorKiB": 60544
+          }
+        ],
+        "failures": []
+      }
+    },
+    {
+      "scope": "loopback Spring v8 + SQLite + Connector + zsh PTY + Chromium DOM observation",
+      "completed": true,
+      "profile": "fanout",
+      "observation": "Input to all participant DOMs; simultaneous reload to all participant DOMs",
+      "environment": {
+        "node": "v26.3.1",
+        "chromium": "151.0.7922.34",
+        "os": "darwin 25.5.0",
+        "cpu": "Apple M4 Max",
+        "logicalCpus": 16,
+        "totalMemoryBytes": 51539607552
+      },
+      "load": {
+        "participants": 10,
+        "connectors": 1,
+        "terminals": 1,
+        "warmupInputs": 5,
+        "measuredInputs": 20,
+        "historyBytes": 524288,
+        "reloads": 5,
+        "rssIntervalMs": 200
+      },
+      "timings": [
+        {
+          "operation": "warmup-input",
+          "startedAtMs": 26747.431875,
+          "elapsedMs": 188.2762920000023,
+          "succeeded": true
+        },
+        {
+          "operation": "warmup-input",
+          "startedAtMs": 26935.710375,
+          "elapsedMs": 174.72387499999968,
+          "succeeded": true
+        },
+        {
+          "operation": "warmup-input",
+          "startedAtMs": 27110.436167,
+          "elapsedMs": 164.2849580000002,
+          "succeeded": true
+        },
+        {
+          "operation": "warmup-input",
+          "startedAtMs": 27274.723,
+          "elapsedMs": 166.95041700000002,
+          "succeeded": true
+        },
+        {
+          "operation": "warmup-input",
+          "startedAtMs": 27441.675667,
+          "elapsedMs": 162.12304099999892,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 27603.801917,
+          "elapsedMs": 158.77045799999905,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 27762.5745,
+          "elapsedMs": 170.46120800000062,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 27933.038125,
+          "elapsedMs": 160.53475000000253,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 28093.574833,
+          "elapsedMs": 158.89949999999953,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 28252.476583,
+          "elapsedMs": 153.1065000000017,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 28405.585042,
+          "elapsedMs": 166.35329099999944,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 28571.94025,
+          "elapsedMs": 186.85804199999984,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 28758.800125,
+          "elapsedMs": 155.88333299999795,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 28914.685708,
+          "elapsedMs": 158.42425000000003,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 29073.11175,
+          "elapsedMs": 155.35204199999862,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 29228.46625,
+          "elapsedMs": 148.7322499999973,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 29377.200667,
+          "elapsedMs": 152.3766660000001,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 29529.580375,
+          "elapsedMs": 157.0700829999987,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 29686.652708,
+          "elapsedMs": 151.65641699999833,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 29838.311375,
+          "elapsedMs": 158.89066699999967,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 29997.204542,
+          "elapsedMs": 165.38125000000218,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 30162.588458,
+          "elapsedMs": 171.9096669999999,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 30334.500458,
+          "elapsedMs": 156.9935000000005,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 30491.495917,
+          "elapsedMs": 163.71074999999837,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 30655.20975,
+          "elapsedMs": 160.9928329999966,
+          "succeeded": true
+        },
+        {
+          "operation": "prepare-history",
+          "startedAtMs": 30816.20425,
+          "elapsedMs": 2074.254167000003,
+          "succeeded": true
+        },
+        {
+          "operation": "reload-replay",
+          "startedAtMs": 32890.460208,
+          "elapsedMs": 1236.5239590000056,
+          "succeeded": true
+        },
+        {
+          "operation": "reload-replay",
+          "startedAtMs": 34126.986125,
+          "elapsedMs": 1201.8248749999984,
+          "succeeded": true
+        },
+        {
+          "operation": "reload-replay",
+          "startedAtMs": 35328.813125,
+          "elapsedMs": 1025.5909170000014,
+          "succeeded": true
+        },
+        {
+          "operation": "reload-replay",
+          "startedAtMs": 36354.405583,
+          "elapsedMs": 1132.731584000001,
+          "succeeded": true
+        },
+        {
+          "operation": "reload-replay",
+          "startedAtMs": 37487.138917,
+          "elapsedMs": 992.7341250000027,
+          "succeeded": true
+        }
+      ],
+      "distributions": {
+        "input": {
+          "succeeded": 20,
+          "failed": 0,
+          "p50Ms": 158.77045799999905,
+          "p95Ms": 171.9096669999999,
+          "maxMs": 186.85804199999984
+        },
+        "reload-replay": {
+          "succeeded": 5,
+          "failed": 0,
+          "p50Ms": 1132.731584000001,
+          "p95Ms": 1236.5239590000056,
+          "maxMs": 1236.5239590000056
+        }
+      },
+      "rss": {
+        "samples": [
+          {
+            "observedAtMs": 23065.497375,
+            "serverKiB": 304544,
+            "connectorKiB": 59968
+          },
+          {
+            "observedAtMs": 23295.756,
+            "serverKiB": 304880,
+            "connectorKiB": 59968
+          },
+          {
+            "observedAtMs": 23527.652667,
+            "serverKiB": 305520,
+            "connectorKiB": 60304
+          },
+          {
+            "observedAtMs": 23758.720417,
+            "serverKiB": 305616,
+            "connectorKiB": 60304
+          },
+          {
+            "observedAtMs": 23989.944417,
+            "serverKiB": 305776,
+            "connectorKiB": 60320
+          },
+          {
+            "observedAtMs": 24223.2385,
+            "serverKiB": 305936,
+            "connectorKiB": 60320
+          },
+          {
+            "observedAtMs": 24452.9815,
+            "serverKiB": 306080,
+            "connectorKiB": 60320
+          },
+          {
+            "observedAtMs": 24682.163125,
+            "serverKiB": 306400,
+            "connectorKiB": 60336
+          },
+          {
+            "observedAtMs": 24912.703833,
+            "serverKiB": 306448,
+            "connectorKiB": 60336
+          },
+          {
+            "observedAtMs": 25143.687375,
+            "serverKiB": 306880,
+            "connectorKiB": 60352
+          },
+          {
+            "observedAtMs": 25372.872458,
+            "serverKiB": 307360,
+            "connectorKiB": 60400
+          },
+          {
+            "observedAtMs": 25604.95075,
+            "serverKiB": 307472,
+            "connectorKiB": 60400
+          },
+          {
+            "observedAtMs": 25836.075708,
+            "serverKiB": 307776,
+            "connectorKiB": 60432
+          },
+          {
+            "observedAtMs": 26064.063042,
+            "serverKiB": 308240,
+            "connectorKiB": 60432
+          },
+          {
+            "observedAtMs": 26296.484708,
+            "serverKiB": 308288,
+            "connectorKiB": 60432
+          },
+          {
+            "observedAtMs": 26528.172833,
+            "serverKiB": 308960,
+            "connectorKiB": 60448
+          },
+          {
+            "observedAtMs": 26757.957542,
+            "serverKiB": 309152,
+            "connectorKiB": 60464
+          },
+          {
+            "observedAtMs": 27016.21575,
+            "serverKiB": 310720,
+            "connectorKiB": 62464
+          },
+          {
+            "observedAtMs": 27247.755208,
+            "serverKiB": 311072,
+            "connectorKiB": 62864
+          },
+          {
+            "observedAtMs": 27501.552875,
+            "serverKiB": 311520,
+            "connectorKiB": 63264
+          },
+          {
+            "observedAtMs": 27733.691042,
+            "serverKiB": 311792,
+            "connectorKiB": 65008
+          },
+          {
+            "observedAtMs": 27986.026458,
+            "serverKiB": 311936,
+            "connectorKiB": 65024
+          },
+          {
+            "observedAtMs": 28217.911042,
+            "serverKiB": 312880,
+            "connectorKiB": 65056
+          },
+          {
+            "observedAtMs": 28475.184875,
+            "serverKiB": 314016,
+            "connectorKiB": 65200
+          },
+          {
+            "observedAtMs": 28708.778667,
+            "serverKiB": 316832,
+            "connectorKiB": 67600
+          },
+          {
+            "observedAtMs": 28963.741,
+            "serverKiB": 317152,
+            "connectorKiB": 67664
+          },
+          {
+            "observedAtMs": 29194.870792,
+            "serverKiB": 317984,
+            "connectorKiB": 67728
+          },
+          {
+            "observedAtMs": 29436.964792,
+            "serverKiB": 318496,
+            "connectorKiB": 67728
+          },
+          {
+            "observedAtMs": 29670.956583,
+            "serverKiB": 320736,
+            "connectorKiB": 67744
+          },
+          {
+            "observedAtMs": 29906.607583,
+            "serverKiB": 328688,
+            "connectorKiB": 67776
+          },
+          {
+            "observedAtMs": 30138.310458,
+            "serverKiB": 333472,
+            "connectorKiB": 67776
+          },
+          {
+            "observedAtMs": 30388.301333,
+            "serverKiB": 338032,
+            "connectorKiB": 70416
+          },
+          {
+            "observedAtMs": 30619.103958,
+            "serverKiB": 352560,
+            "connectorKiB": 70416
+          },
+          {
+            "observedAtMs": 30887.585,
+            "serverKiB": 352592,
+            "connectorKiB": 70464
+          },
+          {
+            "observedAtMs": 31345.377708,
+            "serverKiB": 352704,
+            "connectorKiB": 72272
+          },
+          {
+            "observedAtMs": 31688.738958,
+            "serverKiB": 352832,
+            "connectorKiB": 72768
+          },
+          {
+            "observedAtMs": 32011.551625,
+            "serverKiB": 357920,
+            "connectorKiB": 72800
+          },
+          {
+            "observedAtMs": 32242.045667,
+            "serverKiB": 357952,
+            "connectorKiB": 73008
+          },
+          {
+            "observedAtMs": 32477.336,
+            "serverKiB": 357952,
+            "connectorKiB": 73008
+          },
+          {
+            "observedAtMs": 32712.078625,
+            "serverKiB": 357952,
+            "connectorKiB": 73008
+          },
+          {
+            "observedAtMs": 32946.441125,
+            "serverKiB": 358304,
+            "connectorKiB": 73008
+          },
+          {
+            "observedAtMs": 33959.566875,
+            "serverKiB": 358656,
+            "connectorKiB": 73120
+          },
+          {
+            "observedAtMs": 34190.965417,
+            "serverKiB": 361024,
+            "connectorKiB": 73344
+          },
+          {
+            "observedAtMs": 35174.714167,
+            "serverKiB": 361328,
+            "connectorKiB": 73424
+          },
+          {
+            "observedAtMs": 35408.356917,
+            "serverKiB": 361472,
+            "connectorKiB": 73424
+          },
+          {
+            "observedAtMs": 36241.955833,
+            "serverKiB": 361888,
+            "connectorKiB": 73488
+          },
+          {
+            "observedAtMs": 37320.563125,
+            "serverKiB": 368336,
+            "connectorKiB": 73520
+          },
+          {
+            "observedAtMs": 37552.531208,
+            "serverKiB": 368720,
+            "connectorKiB": 73600
+          },
+          {
+            "observedAtMs": 38411.310875,
+            "serverKiB": 368992,
+            "connectorKiB": 73664
+          }
+        ],
+        "failures": []
+      }
+    },
+    {
+      "scope": "loopback Spring v8 + SQLite + Connector + zsh PTY + Chromium DOM observation",
+      "completed": true,
+      "profile": "fanout",
+      "observation": "Input to all participant DOMs; simultaneous reload to all participant DOMs",
+      "environment": {
+        "node": "v26.3.1",
+        "chromium": "151.0.7922.34",
+        "os": "darwin 25.5.0",
+        "cpu": "Apple M4 Max",
+        "logicalCpus": 16,
+        "totalMemoryBytes": 51539607552
+      },
+      "load": {
+        "participants": 5,
+        "connectors": 1,
+        "terminals": 1,
+        "warmupInputs": 5,
+        "measuredInputs": 20,
+        "historyBytes": 524288,
+        "reloads": 5,
+        "rssIntervalMs": 200
+      },
+      "timings": [
+        {
+          "operation": "warmup-input",
+          "startedAtMs": 15260.933333,
+          "elapsedMs": 143.72112500000003,
+          "succeeded": true
+        },
+        {
+          "operation": "warmup-input",
+          "startedAtMs": 15404.659541,
+          "elapsedMs": 144.19366699999955,
+          "succeeded": true
+        },
+        {
+          "operation": "warmup-input",
+          "startedAtMs": 15548.857916,
+          "elapsedMs": 143.12033399999927,
+          "succeeded": true
+        },
+        {
+          "operation": "warmup-input",
+          "startedAtMs": 15691.983041,
+          "elapsedMs": 138.79954200000066,
+          "succeeded": true
+        },
+        {
+          "operation": "warmup-input",
+          "startedAtMs": 15830.786416,
+          "elapsedMs": 137.38804199999868,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 15968.180916,
+          "elapsedMs": 144.2757500000007,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 16112.461833,
+          "elapsedMs": 139.76950000000033,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 16252.236583,
+          "elapsedMs": 138.4374169999992,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 16390.6785,
+          "elapsedMs": 133.1402909999997,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 16523.823416,
+          "elapsedMs": 137.15466700000252,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 16660.982958,
+          "elapsedMs": 143.1873749999977,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 16804.175916,
+          "elapsedMs": 150.1976250000007,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 16954.379083,
+          "elapsedMs": 137.38637500000186,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 17091.770166,
+          "elapsedMs": 135.26379200000156,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 17227.04,
+          "elapsedMs": 143.8780000000006,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 17370.923375,
+          "elapsedMs": 145.51737500000309,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 17516.445583,
+          "elapsedMs": 131.89595800000097,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 17648.346625,
+          "elapsedMs": 133.7725410000021,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 17782.124291,
+          "elapsedMs": 136.8400419999998,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 17918.968916,
+          "elapsedMs": 144.544458999997,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 18063.517833,
+          "elapsedMs": 139.84799999999814,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 18203.371166,
+          "elapsedMs": 143.67649999999776,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 18347.052666,
+          "elapsedMs": 138.20158400000219,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 18485.25925,
+          "elapsedMs": 142.41225000000122,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 18627.676541,
+          "elapsedMs": 143.55191700000069,
+          "succeeded": true
+        },
+        {
+          "operation": "prepare-history",
+          "startedAtMs": 18771.233375,
+          "elapsedMs": 420.9365829999988,
+          "succeeded": true
+        },
+        {
+          "operation": "reload-replay",
+          "startedAtMs": 19192.172958,
+          "elapsedMs": 752.0253750000011,
+          "succeeded": true
+        },
+        {
+          "operation": "reload-replay",
+          "startedAtMs": 19944.201708,
+          "elapsedMs": 578.5492080000004,
+          "succeeded": true
+        },
+        {
+          "operation": "reload-replay",
+          "startedAtMs": 20522.75425,
+          "elapsedMs": 756.866833,
+          "succeeded": true
+        },
+        {
+          "operation": "reload-replay",
+          "startedAtMs": 21279.633041,
+          "elapsedMs": 823.2717499999999,
+          "succeeded": true
+        },
+        {
+          "operation": "reload-replay",
+          "startedAtMs": 22102.908166,
+          "elapsedMs": 619.5197499999995,
+          "succeeded": true
+        }
+      ],
+      "distributions": {
+        "input": {
+          "succeeded": 20,
+          "failed": 0,
+          "p50Ms": 139.76950000000033,
+          "p95Ms": 145.51737500000309,
+          "maxMs": 150.1976250000007
+        },
+        "reload-replay": {
+          "succeeded": 5,
+          "failed": 0,
+          "p50Ms": 752.0253750000011,
+          "p95Ms": 823.2717499999999,
+          "maxMs": 823.2717499999999
+        }
+      },
+      "rss": {
+        "samples": [
+          {
+            "observedAtMs": 13330.874166,
+            "serverKiB": 303504,
+            "connectorKiB": 59712
+          },
+          {
+            "observedAtMs": 13560.594041,
+            "serverKiB": 303856,
+            "connectorKiB": 59712
+          },
+          {
+            "observedAtMs": 13788.975625,
+            "serverKiB": 304576,
+            "connectorKiB": 59952
+          },
+          {
+            "observedAtMs": 14018.614125,
+            "serverKiB": 304832,
+            "connectorKiB": 59952
+          },
+          {
+            "observedAtMs": 14247.605416,
+            "serverKiB": 304992,
+            "connectorKiB": 59968
+          },
+          {
+            "observedAtMs": 14478.044583,
+            "serverKiB": 305056,
+            "connectorKiB": 59968
+          },
+          {
+            "observedAtMs": 14706.720541,
+            "serverKiB": 305456,
+            "connectorKiB": 59968
+          },
+          {
+            "observedAtMs": 14934.87025,
+            "serverKiB": 305760,
+            "connectorKiB": 59984
+          },
+          {
+            "observedAtMs": 15164.929541,
+            "serverKiB": 305968,
+            "connectorKiB": 59984
+          },
+          {
+            "observedAtMs": 15393.670375,
+            "serverKiB": 307408,
+            "connectorKiB": 61008
+          },
+          {
+            "observedAtMs": 15623.891375,
+            "serverKiB": 308448,
+            "connectorKiB": 63120
+          },
+          {
+            "observedAtMs": 15863.059875,
+            "serverKiB": 308672,
+            "connectorKiB": 63136
+          },
+          {
+            "observedAtMs": 16095.528833,
+            "serverKiB": 309040,
+            "connectorKiB": 63184
+          },
+          {
+            "observedAtMs": 16324.593208,
+            "serverKiB": 309328,
+            "connectorKiB": 63312
+          },
+          {
+            "observedAtMs": 16559.795,
+            "serverKiB": 309392,
+            "connectorKiB": 63344
+          },
+          {
+            "observedAtMs": 16788.096708,
+            "serverKiB": 309472,
+            "connectorKiB": 63376
+          },
+          {
+            "observedAtMs": 17015.938541,
+            "serverKiB": 309568,
+            "connectorKiB": 65664
+          },
+          {
+            "observedAtMs": 17267.822083,
+            "serverKiB": 309600,
+            "connectorKiB": 66224
+          },
+          {
+            "observedAtMs": 17496.381291,
+            "serverKiB": 309664,
+            "connectorKiB": 66656
+          },
+          {
+            "observedAtMs": 17726.009291,
+            "serverKiB": 309760,
+            "connectorKiB": 66656
+          },
+          {
+            "observedAtMs": 17965.384541,
+            "serverKiB": 309984,
+            "connectorKiB": 66672
+          },
+          {
+            "observedAtMs": 18193.511416,
+            "serverKiB": 310128,
+            "connectorKiB": 66672
+          },
+          {
+            "observedAtMs": 18424.184125,
+            "serverKiB": 310864,
+            "connectorKiB": 69328
+          },
+          {
+            "observedAtMs": 18657.592375,
+            "serverKiB": 311808,
+            "connectorKiB": 69328
+          },
+          {
+            "observedAtMs": 18943.128166,
+            "serverKiB": 313936,
+            "connectorKiB": 70672
+          },
+          {
+            "observedAtMs": 19188.155375,
+            "serverKiB": 350160,
+            "connectorKiB": 72528
+          },
+          {
+            "observedAtMs": 19510.038625,
+            "serverKiB": 350752,
+            "connectorKiB": 72848
+          },
+          {
+            "observedAtMs": 19740.198708,
+            "serverKiB": 355184,
+            "connectorKiB": 72848
+          },
+          {
+            "observedAtMs": 19974.855875,
+            "serverKiB": 355184,
+            "connectorKiB": 72848
+          },
+          {
+            "observedAtMs": 20281.064916,
+            "serverKiB": 355568,
+            "connectorKiB": 72896
+          },
+          {
+            "observedAtMs": 20510.359875,
+            "serverKiB": 356736,
+            "connectorKiB": 72896
+          },
+          {
+            "observedAtMs": 20815.714291,
+            "serverKiB": 357040,
+            "connectorKiB": 72960
+          },
+          {
+            "observedAtMs": 21043.771583,
+            "serverKiB": 357920,
+            "connectorKiB": 72960
+          },
+          {
+            "observedAtMs": 21272.099041,
+            "serverKiB": 357920,
+            "connectorKiB": 72960
+          },
+          {
+            "observedAtMs": 21708.87675,
+            "serverKiB": 358112,
+            "connectorKiB": 73024
+          },
+          {
+            "observedAtMs": 21936.209791,
+            "serverKiB": 358352,
+            "connectorKiB": 73024
+          },
+          {
+            "observedAtMs": 22164.108708,
+            "serverKiB": 358368,
+            "connectorKiB": 73024
+          },
+          {
+            "observedAtMs": 22591.626833,
+            "serverKiB": 358480,
+            "connectorKiB": 73072
+          }
+        ],
+        "failures": []
+      }
+    },
+    {
+      "scope": "loopback Spring v8 + SQLite + Connector + zsh PTY + Chromium DOM observation",
+      "completed": true,
+      "profile": "fanout",
+      "observation": "Input to all participant DOMs; simultaneous reload to all participant DOMs",
+      "environment": {
+        "node": "v26.3.1",
+        "chromium": "151.0.7922.34",
+        "os": "darwin 25.5.0",
+        "cpu": "Apple M4 Max",
+        "logicalCpus": 16,
+        "totalMemoryBytes": 51539607552
+      },
+      "load": {
+        "participants": 5,
+        "connectors": 1,
+        "terminals": 1,
+        "warmupInputs": 5,
+        "measuredInputs": 20,
+        "historyBytes": 524288,
+        "reloads": 5,
+        "rssIntervalMs": 200
+      },
+      "timings": [
+        {
+          "operation": "warmup-input",
+          "startedAtMs": 13765.843333,
+          "elapsedMs": 144.86204199999884,
+          "succeeded": true
+        },
+        {
+          "operation": "warmup-input",
+          "startedAtMs": 13910.710792,
+          "elapsedMs": 146.8107080000009,
+          "succeeded": true
+        },
+        {
+          "operation": "warmup-input",
+          "startedAtMs": 14057.527375,
+          "elapsedMs": 138.46779199999946,
+          "succeeded": true
+        },
+        {
+          "operation": "warmup-input",
+          "startedAtMs": 14196.000292,
+          "elapsedMs": 139.7732500000002,
+          "succeeded": true
+        },
+        {
+          "operation": "warmup-input",
+          "startedAtMs": 14335.778792,
+          "elapsedMs": 140.67691600000035,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 14476.460875,
+          "elapsedMs": 141.746083,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 14618.212542,
+          "elapsedMs": 143.14729100000113,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 14761.365583,
+          "elapsedMs": 137.41483399999925,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 14898.785458,
+          "elapsedMs": 133.97420899999997,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 15032.764708,
+          "elapsedMs": 133.3379589999986,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 15166.108125,
+          "elapsedMs": 135.25395799999933,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 15301.367458,
+          "elapsedMs": 156.6807919999992,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 15458.053708,
+          "elapsedMs": 135.58870899999965,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 15593.648375,
+          "elapsedMs": 139.35158299999966,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 15733.005375,
+          "elapsedMs": 132.6557499999999,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 15865.667542,
+          "elapsedMs": 133.03579100000024,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 15998.709083,
+          "elapsedMs": 133.42783400000008,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 16132.142542,
+          "elapsedMs": 132.55075000000033,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 16264.699625,
+          "elapsedMs": 136.74195800000052,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 16401.446667,
+          "elapsedMs": 144.70041599999968,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 16546.153542,
+          "elapsedMs": 140.87362500000017,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 16687.032958,
+          "elapsedMs": 136.1148749999993,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 16823.153625,
+          "elapsedMs": 134.20020800000202,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 16957.359375,
+          "elapsedMs": 136.59329200000138,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 17093.957792,
+          "elapsedMs": 142.51437499999884,
+          "succeeded": true
+        },
+        {
+          "operation": "prepare-history",
+          "startedAtMs": 17236.477125,
+          "elapsedMs": 931.9057079999984,
+          "succeeded": true
+        },
+        {
+          "operation": "reload-replay",
+          "startedAtMs": 18168.386167,
+          "elapsedMs": 577.4417910000011,
+          "succeeded": true
+        },
+        {
+          "operation": "reload-replay",
+          "startedAtMs": 18745.831292,
+          "elapsedMs": 575.1027080000022,
+          "succeeded": true
+        },
+        {
+          "operation": "reload-replay",
+          "startedAtMs": 19320.937542,
+          "elapsedMs": 528.8207079999993,
+          "succeeded": true
+        },
+        {
+          "operation": "reload-replay",
+          "startedAtMs": 19849.771583,
+          "elapsedMs": 551.0929169999981,
+          "succeeded": true
+        },
+        {
+          "operation": "reload-replay",
+          "startedAtMs": 20400.868958,
+          "elapsedMs": 525.0240840000006,
+          "succeeded": true
+        }
+      ],
+      "distributions": {
+        "input": {
+          "succeeded": 20,
+          "failed": 0,
+          "p50Ms": 136.1148749999993,
+          "p95Ms": 144.70041599999968,
+          "maxMs": 156.6807919999992
+        },
+        "reload-replay": {
+          "succeeded": 5,
+          "failed": 0,
+          "p50Ms": 551.0929169999981,
+          "p95Ms": 577.4417910000011,
+          "maxMs": 577.4417910000011
+        }
+      },
+      "rss": {
+        "samples": [
+          {
+            "observedAtMs": 11822.761208,
+            "serverKiB": 302688,
+            "connectorKiB": 59696
+          },
+          {
+            "observedAtMs": 12052.082625,
+            "serverKiB": 303024,
+            "connectorKiB": 59696
+          },
+          {
+            "observedAtMs": 12282.542042,
+            "serverKiB": 303760,
+            "connectorKiB": 59984
+          },
+          {
+            "observedAtMs": 12511.140083,
+            "serverKiB": 303808,
+            "connectorKiB": 59984
+          },
+          {
+            "observedAtMs": 12740.714625,
+            "serverKiB": 303936,
+            "connectorKiB": 60000
+          },
+          {
+            "observedAtMs": 12970.237833,
+            "serverKiB": 304112,
+            "connectorKiB": 60000
+          },
+          {
+            "observedAtMs": 13199.162542,
+            "serverKiB": 304352,
+            "connectorKiB": 60000
+          },
+          {
+            "observedAtMs": 13430.588417,
+            "serverKiB": 304656,
+            "connectorKiB": 60032
+          },
+          {
+            "observedAtMs": 13662.28525,
+            "serverKiB": 304720,
+            "connectorKiB": 60032
+          },
+          {
+            "observedAtMs": 13892.8215,
+            "serverKiB": 306096,
+            "connectorKiB": 61088
+          },
+          {
+            "observedAtMs": 14122.119292,
+            "serverKiB": 307264,
+            "connectorKiB": 62608
+          },
+          {
+            "observedAtMs": 14361.243417,
+            "serverKiB": 307440,
+            "connectorKiB": 63088
+          },
+          {
+            "observedAtMs": 14594.198833,
+            "serverKiB": 307680,
+            "connectorKiB": 64752
+          },
+          {
+            "observedAtMs": 14822.680875,
+            "serverKiB": 307872,
+            "connectorKiB": 64944
+          },
+          {
+            "observedAtMs": 15059.868625,
+            "serverKiB": 307968,
+            "connectorKiB": 64944
+          },
+          {
+            "observedAtMs": 15291.497833,
+            "serverKiB": 308128,
+            "connectorKiB": 65008
+          },
+          {
+            "observedAtMs": 15521.819167,
+            "serverKiB": 308224,
+            "connectorKiB": 68176
+          },
+          {
+            "observedAtMs": 15759.805083,
+            "serverKiB": 308240,
+            "connectorKiB": 68208
+          },
+          {
+            "observedAtMs": 15991.940833,
+            "serverKiB": 308384,
+            "connectorKiB": 68224
+          },
+          {
+            "observedAtMs": 16222.241417,
+            "serverKiB": 308448,
+            "connectorKiB": 68304
+          },
+          {
+            "observedAtMs": 16457.619708,
+            "serverKiB": 309200,
+            "connectorKiB": 68304
+          },
+          {
+            "observedAtMs": 16687.339125,
+            "serverKiB": 309328,
+            "connectorKiB": 68304
+          },
+          {
+            "observedAtMs": 16916.53125,
+            "serverKiB": 310512,
+            "connectorKiB": 71008
+          },
+          {
+            "observedAtMs": 17149.937167,
+            "serverKiB": 312864,
+            "connectorKiB": 71040
+          },
+          {
+            "observedAtMs": 17421.695083,
+            "serverKiB": 314096,
+            "connectorKiB": 72768
+          },
+          {
+            "observedAtMs": 17683.876375,
+            "serverKiB": 352128,
+            "connectorKiB": 74096
+          },
+          {
+            "observedAtMs": 17922.001333,
+            "serverKiB": 352160,
+            "connectorKiB": 74608
+          },
+          {
+            "observedAtMs": 18158.600375,
+            "serverKiB": 352160,
+            "connectorKiB": 74608
+          },
+          {
+            "observedAtMs": 18538.304375,
+            "serverKiB": 352608,
+            "connectorKiB": 74672
+          },
+          {
+            "observedAtMs": 18772.637625,
+            "serverKiB": 357264,
+            "connectorKiB": 74672
+          },
+          {
+            "observedAtMs": 19071.411458,
+            "serverKiB": 357472,
+            "connectorKiB": 74720
+          },
+          {
+            "observedAtMs": 19301.063917,
+            "serverKiB": 358144,
+            "connectorKiB": 74720
+          },
+          {
+            "observedAtMs": 19741.148292,
+            "serverKiB": 358560,
+            "connectorKiB": 74784
+          },
+          {
+            "observedAtMs": 20176.879417,
+            "serverKiB": 358784,
+            "connectorKiB": 74784
+          },
+          {
+            "observedAtMs": 20411.33625,
+            "serverKiB": 359520,
+            "connectorKiB": 74816
+          },
+          {
+            "observedAtMs": 20840.7235,
+            "serverKiB": 359696,
+            "connectorKiB": 74864
+          }
+        ],
+        "failures": []
+      }
+    },
+    {
+      "scope": "loopback Spring v8 + SQLite + Connector + zsh PTY + Chromium DOM observation",
+      "completed": true,
+      "profile": "fanout",
+      "observation": "Input to all participant DOMs; simultaneous reload to all participant DOMs",
+      "environment": {
+        "node": "v26.3.1",
+        "chromium": "151.0.7922.34",
+        "os": "darwin 25.5.0",
+        "cpu": "Apple M4 Max",
+        "logicalCpus": 16,
+        "totalMemoryBytes": 51539607552
+      },
+      "load": {
+        "participants": 5,
+        "connectors": 1,
+        "terminals": 1,
+        "warmupInputs": 5,
+        "measuredInputs": 20,
+        "historyBytes": 524288,
+        "reloads": 5,
+        "rssIntervalMs": 200
+      },
+      "timings": [
+        {
+          "operation": "warmup-input",
+          "startedAtMs": 13729.682583,
+          "elapsedMs": 153.63400000000001,
+          "succeeded": true
+        },
+        {
+          "operation": "warmup-input",
+          "startedAtMs": 13883.322125,
+          "elapsedMs": 143.36162499999955,
+          "succeeded": true
+        },
+        {
+          "operation": "warmup-input",
+          "startedAtMs": 14026.688875,
+          "elapsedMs": 141.86845800000083,
+          "succeeded": true
+        },
+        {
+          "operation": "warmup-input",
+          "startedAtMs": 14168.562917,
+          "elapsedMs": 137.76308299999982,
+          "succeeded": true
+        },
+        {
+          "operation": "warmup-input",
+          "startedAtMs": 14306.331208,
+          "elapsedMs": 140.25245900000118,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 14446.588833,
+          "elapsedMs": 142.90799999999945,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 14589.502542,
+          "elapsedMs": 141.41012500000033,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 14730.918042,
+          "elapsedMs": 141.50337500000023,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 14872.427167,
+          "elapsedMs": 138.96208300000035,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 15011.394583,
+          "elapsedMs": 133.40625,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 15144.805792,
+          "elapsedMs": 136.30845800000134,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 15281.145875,
+          "elapsedMs": 151.1440419999999,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 15432.294833,
+          "elapsedMs": 142.06879200000003,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 15574.370542,
+          "elapsedMs": 138.74729099999968,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 15713.129333,
+          "elapsedMs": 141.94966699999895,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 15855.085042,
+          "elapsedMs": 141.42912499999875,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 15996.519708,
+          "elapsedMs": 139.7594590000008,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 16136.283708,
+          "elapsedMs": 133.69966699999895,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 16269.98925,
+          "elapsedMs": 133.472667,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 16403.4675,
+          "elapsedMs": 133.50579199999993,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 16536.978625,
+          "elapsedMs": 144.2166670000006,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 16681.200833,
+          "elapsedMs": 144.06354199999987,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 16825.269417,
+          "elapsedMs": 140.41079100000206,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 16965.68525,
+          "elapsedMs": 137.9354999999996,
+          "succeeded": true
+        },
+        {
+          "operation": "input",
+          "startedAtMs": 17103.626292,
+          "elapsedMs": 143.97366599999805,
+          "succeeded": true
+        },
+        {
+          "operation": "prepare-history",
+          "startedAtMs": 17247.60575,
+          "elapsedMs": 939.4927500000013,
+          "succeeded": true
+        },
+        {
+          "operation": "reload-replay",
+          "startedAtMs": 18187.101375,
+          "elapsedMs": 593.9823329999999,
+          "succeeded": true
+        },
+        {
+          "operation": "reload-replay",
+          "startedAtMs": 18781.087167,
+          "elapsedMs": 607.8743329999998,
+          "succeeded": true
+        },
+        {
+          "operation": "reload-replay",
+          "startedAtMs": 19388.964667,
+          "elapsedMs": 499.2682910000003,
+          "succeeded": true
+        },
+        {
+          "operation": "reload-replay",
+          "startedAtMs": 19888.247333,
+          "elapsedMs": 599.5899170000012,
+          "succeeded": true
+        },
+        {
+          "operation": "reload-replay",
+          "startedAtMs": 20487.841667,
+          "elapsedMs": 750.211374999999,
+          "succeeded": true
+        }
+      ],
+      "distributions": {
+        "input": {
+          "succeeded": 20,
+          "failed": 0,
+          "p50Ms": 140.41079100000206,
+          "p95Ms": 144.2166670000006,
+          "maxMs": 151.1440419999999
+        },
+        "reload-replay": {
+          "succeeded": 5,
+          "failed": 0,
+          "p50Ms": 599.5899170000012,
+          "p95Ms": 750.211374999999,
+          "maxMs": 750.211374999999
+        }
+      },
+      "rss": {
+        "samples": [
+          {
+            "observedAtMs": 12006.6675,
+            "serverKiB": 309248,
+            "connectorKiB": 59776
+          },
+          {
+            "observedAtMs": 12238.155208,
+            "serverKiB": 309552,
+            "connectorKiB": 59776
+          },
+          {
+            "observedAtMs": 12469.391625,
+            "serverKiB": 310176,
+            "connectorKiB": 60096
+          },
+          {
+            "observedAtMs": 12701.547208,
+            "serverKiB": 310208,
+            "connectorKiB": 60096
+          },
+          {
+            "observedAtMs": 12932.2655,
+            "serverKiB": 310448,
+            "connectorKiB": 60112
+          },
+          {
+            "observedAtMs": 13162.382458,
+            "serverKiB": 310672,
+            "connectorKiB": 60144
+          },
+          {
+            "observedAtMs": 13394.6435,
+            "serverKiB": 310720,
+            "connectorKiB": 60144
+          },
+          {
+            "observedAtMs": 13625.964792,
+            "serverKiB": 311104,
+            "connectorKiB": 60160
+          },
+          {
+            "observedAtMs": 13857.038833,
+            "serverKiB": 312352,
+            "connectorKiB": 61136
+          },
+          {
+            "observedAtMs": 14092.473917,
+            "serverKiB": 313424,
+            "connectorKiB": 62576
+          },
+          {
+            "observedAtMs": 14329.294042,
+            "serverKiB": 313600,
+            "connectorKiB": 62976
+          },
+          {
+            "observedAtMs": 14561.794417,
+            "serverKiB": 314128,
+            "connectorKiB": 64864
+          },
+          {
+            "observedAtMs": 14795.109375,
+            "serverKiB": 314272,
+            "connectorKiB": 65536
+          },
+          {
+            "observedAtMs": 15032.161083,
+            "serverKiB": 314512,
+            "connectorKiB": 65536
+          },
+          {
+            "observedAtMs": 15264.506292,
+            "serverKiB": 314528,
+            "connectorKiB": 65568
+          },
+          {
+            "observedAtMs": 15497.488042,
+            "serverKiB": 314672,
+            "connectorKiB": 66896
+          },
+          {
+            "observedAtMs": 15731.916125,
+            "serverKiB": 314800,
+            "connectorKiB": 66944
+          },
+          {
+            "observedAtMs": 15961.213083,
+            "serverKiB": 314880,
+            "connectorKiB": 66944
+          },
+          {
+            "observedAtMs": 16194.672875,
+            "serverKiB": 314960,
+            "connectorKiB": 66960
+          },
+          {
+            "observedAtMs": 16432.222458,
+            "serverKiB": 315536,
+            "connectorKiB": 66992
+          },
+          {
+            "observedAtMs": 16666.104792,
+            "serverKiB": 315968,
+            "connectorKiB": 66992
+          },
+          {
+            "observedAtMs": 16895.201792,
+            "serverKiB": 316672,
+            "connectorKiB": 69648
+          },
+          {
+            "observedAtMs": 17129.757542,
+            "serverKiB": 318464,
+            "connectorKiB": 69680
+          },
+          {
+            "observedAtMs": 17417.846333,
+            "serverKiB": 320896,
+            "connectorKiB": 70416
+          },
+          {
+            "observedAtMs": 17709.303792,
+            "serverKiB": 359968,
+            "connectorKiB": 72448
+          },
+          {
+            "observedAtMs": 17945.025417,
+            "serverKiB": 360112,
+            "connectorKiB": 73568
+          },
+          {
+            "observedAtMs": 18182.09225,
+            "serverKiB": 360112,
+            "connectorKiB": 73568
+          },
+          {
+            "observedAtMs": 18649.441125,
+            "serverKiB": 360576,
+            "connectorKiB": 73648
+          },
+          {
+            "observedAtMs": 19038.239333,
+            "serverKiB": 365984,
+            "connectorKiB": 73648
+          },
+          {
+            "observedAtMs": 19298.126583,
+            "serverKiB": 367936,
+            "connectorKiB": 73680
+          },
+          {
+            "observedAtMs": 19787.888667,
+            "serverKiB": 368272,
+            "connectorKiB": 73744
+          },
+          {
+            "observedAtMs": 20369.973625,
+            "serverKiB": 368720,
+            "connectorKiB": 73776
+          },
+          {
+            "observedAtMs": 20782.698917,
+            "serverKiB": 368752,
+            "connectorKiB": 73776
+          },
+          {
+            "observedAtMs": 21012.133125,
+            "serverKiB": 369072,
+            "connectorKiB": 73840
+          },
+          {
+            "observedAtMs": 21245.359833,
+            "serverKiB": 369072,
+            "connectorKiB": 73840
+          }
+        ],
+        "failures": []
+      }
+    }
+  ]
+}

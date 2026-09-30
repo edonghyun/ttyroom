@@ -79,3 +79,17 @@ TTYROOM_E2E_SERVER_COMMAND='["java","-jar","/absolute/path/to/main/backend/build
 - [보안 모델](../docs/SECURITY_MODEL.md): 현재 토큰·역할 신뢰와 외부 운영 전 과제.
 
 단계별 개발 결과와 당시의 미구현 항목은 [구현 이력](../docs/WORK_LOG.md#초기-백엔드-기록)에 보관한다.
+
+### WebSocket 수신 자원 정책
+
+Spring 서버는 v7/v8 모두 text 메시지를 UTF-8 **256 KiB**까지 허용하며 초과 시 1009로 닫는다.
+JSON 공백을 포함한 전체 메시지 기준이다. inbox는 실행 중 항목을 포함해 **1 MiB·256개**이며
+초과 시 1008로 닫는다. binary는 기존 `maxQueuedDataBytesPerConnection`(기본 1 MiB, header 포함)을 따른다.
+미완성 메시지는 첫 partial callback부터 **5초** 이내에 완성해야 하며 초과 시 1008로 닫는다.
+작은 조각을 계속 보내도 기한이 연장되지 않는다. 이는 연결별 한도이며 접속 전 무송신 대기나
+transport callback 전의 느린 바이트 전송, 전체 연결 수까지 제한하는 정책은 아니다.
+
+기존 100 MiB text를 허용하던 배포와 달리 거대한 hello/metadata/host-inventory는 거절될 수 있다.
+메시지 스키마의 shape는 유지하지만 admission 자원 한도는 축소했다. 정상 크기의 JSON과 binary 계약은 유지한다.
+host-inventory를 자동 분할하는 프로토콜은 없으므로 많은 터미널·긴 metadata 사용 시 전체 인코딩 크기를 확인해야 한다.
+[측정 조건과 한계](../docs/PERFORMANCE.md)를 참고한다.

@@ -21,6 +21,9 @@ TTYROOM_PERFORMANCE_DIR=$(CDPATH= cd -- "$1" && pwd)
 export TTYROOM_PERFORMANCE_DIR
 TTYROOM_PERFORMANCE_MAX_HEAP=${TTYROOM_PERFORMANCE_MAX_HEAP:-2g}
 export TTYROOM_PERFORMANCE_MAX_HEAP
+TTYROOM_PERFORMANCE_PROFILE=${TTYROOM_PERFORMANCE_PROFILE:-baseline}
+case "$TTYROOM_PERFORMANCE_PROFILE" in baseline|fanout) ;; *) echo 'Unknown performance profile' >&2; exit 2 ;; esac
+export TTYROOM_PERFORMANCE_PROFILE
 trap 'result=$?; printf "%s\n" "$result" > "$TTYROOM_PERFORMANCE_DIR/exit-status.txt"' EXIT
 cp "$jar_path" "$TTYROOM_PERFORMANCE_DIR/ttyroom-backend.jar"
 TTYROOM_E2E_SERVER_COMMAND=$(node -e 'process.stdout.write(JSON.stringify(process.argv.slice(1)))' "$java_bin" -Xms256m "-Xmx$TTYROOM_PERFORMANCE_MAX_HEAP" -jar "$TTYROOM_PERFORMANCE_DIR/ttyroom-backend.jar")
@@ -36,6 +39,7 @@ const hash = (path) => createHash('sha256').update(readFileSync(path)).digest('h
 const paths = git('ls-files', '-co', '--exclude-standard', '-z').split('\0').filter(Boolean);
 writeFileSync(join(directory, 'manifest.json'), JSON.stringify({
   startedAt: new Date().toISOString(), revision: git('rev-parse', 'HEAD'),
+  profile: process.env.TTYROOM_PERFORMANCE_PROFILE,
   dirty: git('status', '--porcelain') !== '', node: process.version,
   java: execFileSync(process.argv[3], ['--version'], { encoding: 'utf8' }).trim(),
   jarSha256: hash(join(directory, 'ttyroom-backend.jar')),

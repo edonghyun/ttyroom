@@ -9,6 +9,7 @@ export default defineConfig({
   workers: 1,
   repeatEach: 3,
   retries: 0,
+  maxFailures: 1,
   reporter: "list",
   use: { ...devices["Desktop Chrome"], trace: "off", screenshot: "off", video: "off" },
 });

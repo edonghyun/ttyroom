@@ -13,6 +13,7 @@ export type ProbePacket =
 /** Raw protocol peer: preserves control/binary arrival order without projection or deduplication. */
 export class SocketProbe {
   private readonly messages: ProbePacket[] = [];
+  private closeCode: number | undefined;
   private failure: Error | undefined;
   private constructor(private readonly socket: WebSocket) {
     socket.on("message", (raw, binary) => {
@@ -29,6 +30,9 @@ export class SocketProbe {
       const parsed = parseServerMessage(raw.toString());
       if (parsed.kind === "ok") this.messages.push({ kind: "control", message: parsed.message });
       else this.failure = new Error("Invalid server protocol message");
+    });
+    socket.on("close", (code) => {
+      this.closeCode = code;
     });
     socket.on("error", (error) => {
       this.failure = error;
@@ -57,6 +61,16 @@ export class SocketProbe {
   }
   sendBytes(bytes: Uint8Array) {
     this.socket.send(bytes);
+  }
+  startTextMessage(part: string) {
+    this.socket.send(part, { binary: false, fin: false });
+  }
+  startBinaryMessage(part: Uint8Array) {
+    this.socket.send(part, { binary: true, fin: false });
+  }
+  async closureCode(): Promise<number> {
+    await waitUntil(() => this.closeCode !== undefined);
+    return this.closeCode!;
   }
   sendTextParts(...parts: string[]) {
     parts.forEach((part, index) =>

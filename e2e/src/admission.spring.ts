@@ -3,26 +3,32 @@ import { registeredRoom } from "./registered-room.js";
 import { SocketProbe } from "./socket-probe.js";
 
 describe("Spring v8 입장 인증", () => {
-  it("transport 버퍼보다 큰 hello를 여러 조각으로 받아 한 번만 입장시킨다", async () => {
-    await using room = await registeredRoom();
-    const alice = await room.participant();
-    await using peer = await SocketProbe.connect(room.server.baseUrl);
-    const hello = JSON.stringify({
-      type: "hello",
-      protocolVersion: 8,
-      roomId: room.invitation.roomId,
-      credential: alice.secret,
-      name: "Alice",
-    });
+  it.each([65_536, 262_144])(
+    "%i byte hello를 여러 조각으로 받아 한 번만 입장시킨다",
+    async (bytes) => {
+      await using room = await registeredRoom();
+      const alice = await room.participant();
+      await using peer = await SocketProbe.connect(room.server.baseUrl);
+      const hello = JSON.stringify({
+        type: "hello",
+        protocolVersion: 8,
+        roomId: room.invitation.roomId,
+        credential: alice.secret,
+        name: "Alice",
+      });
 
-    peer.sendTextParts(hello.slice(0, 1) + " ".repeat(65_536), hello.slice(1));
-    const welcome = await peer.next();
-    peer.send({ type: "acquire-lease", terminalId: 42 });
-    const nextReply = await peer.next();
+      peer.sendTextParts(
+        hello.slice(0, 1) + " ".repeat(bytes - Buffer.byteLength(hello)),
+        hello.slice(1),
+      );
+      const welcome = await peer.next();
+      peer.send({ type: "acquire-lease", terminalId: 42 });
+      const nextReply = await peer.next();
 
-    expect(welcome).toMatchObject({ type: "welcome", selfClientId: alice.id });
-    expect(nextReply).toMatchObject({ type: "lease-invalid", terminalId: 42 });
-  });
+      expect(welcome).toMatchObject({ type: "welcome", selfClientId: alice.id });
+      expect(nextReply).toMatchObject({ type: "lease-invalid", terminalId: 42 });
+    },
+  );
 
   it("분할된 binary는 완성된 프레임 하나로 검증하고 후속 control을 받는다", async () => {
     await using room = await registeredRoom();

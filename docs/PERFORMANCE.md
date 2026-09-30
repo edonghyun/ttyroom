@@ -76,12 +76,12 @@ CI에서도 `JAVA_TOOL_OPTIONS=-Xmx512m`으로 실행해 큰 수신 버퍼의 �
 수정은 [RoomSocketHandler](../backend/src/main/java/dev/ttyroom/adapter/ws/RoomSocketHandler.java)의
 partial callback과 [IncomingMessages](../backend/src/main/java/dev/ttyroom/adapter/ws/IncomingMessages.java)다.
 Tomcat 버퍼는 text 16,384 문자·binary 16 KiB로 제한하고, 실제 수신한 조각만 누적한다.
-완성된 메시지의 UTF-8 100 MiB 한도와 기존 binary 정책 한도는 유지한다.
-중간 text는 문자 수로 보수적으로 제한하고 완성 뒤 정확한 UTF-8 바이트를 검증한다.
+T10.1 당시에는 완성된 text의 UTF-8 100 MiB 한도와 기존 binary 정책 한도를 유지했다.
+T10.2에서는 아래와 같이 text와 inbox 한도를 줄이고 수신 중 UTF-8 바이트를 검증한다.
 text 조각의 surrogate pair, binary header 분할, 누적 한도·닫힌 연결·후속 메시지 초기화를 검증한다.
 분할 수신 도중에는 인증이나 입력을 실행하지 않는다.
 
-거대한 미완성 메시지는 여전히 실제 수신량만큼 메모리를 사용할 수 있다.
+수신 버퍼만 줄여서는 미완성 메시지의 전체 점유량과 수명이 제한되지 않아 T10.2에서 보완한다.
 전체 연결 수·전체 room의 누적 메모리 상한이나 악성 연결 방어를 해결했다는 의미는 아니다.
 송신 `SocketSender`는 변경하지 않았다. 어댑터 실험의 heap 값에는 Mockito·JIT·GC가 섞여 있으므로
 객체별 retained size나 socket당 메모리 추정으로 사용하지 않는다.
@@ -119,3 +119,67 @@ reload 표본은 반복당 5개라 p95가 max와 같으며 신뢰구간이나 �
 
 이번 병목 수정의 근거는 실제 할당 실패·수신 버퍼 설정·반복 RSS·작은 heap 재검증이다.
 다중 참가자, 원격 네트워크, 장시간 부하와 전체 room의 메모리 예산은 후속 측정 범위다.
+
+## T10.2 — 수신 자원과 참가자 수에 따른 부하 측정 계획
+
+실행 전에 범위를 고정한다. 최대 heap 512 MiB, 참가자 1·5·10명, 각 3회 새 서버로 실행한다.
+각 참가자는 독립 Chromium context를 사용한다. Connector·터미널은 여전히 각각 1개다.
+입력 5회 warmup·20회 측정, 512 KiB history, 5회 동시 reload를 유지한다.
+입력/복구 시간은 **모든 참가자의 DOM**에 표식이 보일 때까지다. 단일 참가자 기준선과
+관찰 대상이 다르므로 증가분을 서버 처리 시간이나 사용자당 비용으로 단정하지 않는다.
+
+```sh
+TTYROOM_PERFORMANCE_PROFILE=fanout TTYROOM_PERFORMANCE_MAX_HEAP=512m \
+  ./scripts/measure-performance.sh artifacts/performance-fanout
+```
+
+성공 기준은 모든 참가자의 표식 확인, unexpected browser error 없음, RSS 수집 실패 없음이다.
+개별 관찰 10초·시나리오 120초 timeout 또는 프로세스 실패는 실패 표본으로 남긴다.
+실패를 반복 재시도로 가리거나 더 큰 부하로 진행해 한계를 찾지 않는다.
+
+위험 예측은 두 수준으로 구분한다.
+
+- 코드가 강제하는 상한: text 256 KiB UTF-8, inbox 1 MiB 및 256개(in-flight 포함),
+  미완성 메시지는 첫 조각부터 5초. binary 기본 1 MiB는 header 포함이며 기존 정책을 유지한다.
+- 관측한 범위: 해당 장비·heap·traffic·history에서 완료율, 지연 분포, RSS 최대값을 비교한다.
+  모든 단계가 성공해도 포화점을 관측한 것은 아니다. 10명 성공을 100명 안전으로 외삽하지 않는다.
+
+기본값에서 socket당 수신 1 MiB + inbox 1 MiB + 일반 송신 1 MiB + replay 4 MiB,
+터미널당 retained payload 1 MiB가 논리적 예산 항목이다. 대략 `7 MiB × socket 수 +
+1 MiB × terminal 수`로 예산 증가를 검토할 수 있지만 **실제 heap/RSS 상한 공식은 아니다**.
+서로 공유하는 replay payload, UTF-16·JSON 객체·복사본, 프레임 개수, JVM/native memory가 다르다.
+방·연결·터미널의 전역 개수 제한도 아직 없다. RSS를 `-Xmx`로 나눈 값을 heap 사용률로 표현하지 않는다.
+
+운영 경계는 동일 배포 환경에서 RSS 예산(컨테이너 제한과 JVM heap은 별도), 허용 지연,
+허용 실패율을 먼저 정한 뒤 더 긴 일정 부하와 burst/reconnect에서 검증해야 한다.
+현재 자료로 가능한 것은 검증한 부하 범위와 초과 시 동작 설명이며 정확한 OOM 인원 예측이 아니다.
+
+## 참가자 fanout 결과 — 2026-09-30
+
+[원시 결과](performance/fanout.json). 위 최초 기준선과 같은 장비·런타임에서 새 JAR의
+최대 heap을 512 MiB로 고정하고 다른 빌드·테스트 없이 실행했다. 참가자 수별 새 서버 3회,
+전체 9회에서 입력 180개·동시 복구 45개가 완료됐고 RSS 수집 실패는 0개다.
+복구 한 번은 해당 단계의 모든 참가자 reload를 뜻한다. 브라우저별 관찰을 독립 요청 표본으로 부풀리지 않는다.
+
+| 참가자 수 | 입력 p95 범위 ms | 동시 복구 p95 범위 ms | 서버 RSS 관측 최대값 범위 MiB |
+| --------- | ---------------- | --------------------- | ----------------------------- |
+| 1         | 133.0–136.8      | 771.0–808.7           | 342.3–352.4                   |
+| 5         | 144.2–145.5      | 577.4–823.3           | 350.1–360.4                   |
+| 10        | 166.7–171.9      | 1,149.7–1,236.5       | 357.2–366.2                   |
+
+각 셀은 반복별 p95 또는 최대값의 최소–최대다. 5회 복구 표본의 p95는 max다.
+5명 복구의 편차와 1명보다 낮은 값도 그대로 보존하며 선형 모델을 맞추지 않는다.
+Connector RSS 관측 최대값은 전체 71.3–81.0 MiB였다. 같은 컴퓨터의 여러 Chromium context,
+키 입력 및 DOM polling 비용도 지연에 포함된다.
+
+**확인된 범위는 터미널 하나의 출력을 함께 보는 10명까지의 짧은 로컬 시나리오**다.
+10개 터미널의 동시 출력, 다중 room, 느린 클라이언트, 원격 네트워크, 장시간 누적 부하의 결과가 아니다.
+매 입력마다 모든 DOM을 기다리는 순차 부하이므로 일정 유입률을 주는 open-loop 포화 시험도 아니다.
+이 범위에서 OOM·timeout은 없었지만 최대 수용량이나 장시간 메모리 안전을 증명하지 않는다.
+
+위험 수준을 예측하려면 다음 측정은 동일 배포 사양에서 동시 terminal 수와 출력 bytes/s를
+각각 늘리며 GC 후 live heap·GC pause·CPU·queue 대기·실패율을 함께 기록해야 한다.
+처리율보다 유입률이 크면 `잔여 queue 용량 / (유입률 − 처리율)`로 포화까지의 시간을
+대략 계산할 수 있다. byte/s와 command/s를 각각 같은 단위로 적용해 더 이른 한도를 사용한다.
+이는 유입·처리율이 일정하다는 조건의 추정이며 이번 표가 그 처리율을 측정했다는 뜻은 아니다.
+전역 room/connection/terminal admission 예산까지 강제한 뒤 그 경계 안에서 운영 한도를 정한다.

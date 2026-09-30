@@ -24,6 +24,7 @@
 - [등록 API 권한 경계](#등록-api-권한-경계)
 - [v8 입장과 연결 교체](#v8-입장과-연결-교체)
 - [성능 기준선과 수신 버퍼](#성능-기준선과-수신-버퍼)
+- [수신 자원 한도와 참가자 부하](#수신-자원-한도와-참가자-부하)
 
 ## 초기 구성과 검증 경계
 
@@ -382,3 +383,24 @@ T10.1. 먼저 [측정 계획](PERFORMANCE.md)에 부하·성공 기준·관찰 �
 같은 monotonic clock으로 남기도록 정리했다. 통계는 nearest-rank와 실패 개수를 함께 보여준다.
 성능 수치는 CI gate로 쓰지 않고, 작은 heap의 실제 인증 계약을 CI에 추가했다.
 범위와 검사 결과는 [검증 기록](VERIFICATION.md#2026-09-30-성능-측정과-수신-버퍼-t101)을 따른다.
+
+## 수신 자원 한도와 참가자 부하
+
+T10.2 ([작업 #12](https://github.com/edonghyun/ttyroom/issues/12)). 작은 transport 버퍼만으로는
+메시지/대기열 100 MiB 한도와 미완성 메시지의 무기한 점유가 해결되지 않았다. text는 UTF-8
+256 KiB, control inbox는 in-flight 포함 1 MiB·256개로 줄였다. JSON을 파싱하기 전에 조각별
+UTF-8 바이트를 누적하며, surrogate pair가 callback 사이에서 나뉘어도 같은 길이로 계산한다.
+
+첫 partial callback부터 5초 기한을 소유하는 곳은 `IncomingMessages`다. 후속 조각으로
+기한을 연장하지 않으며 완료·초과·종료 시 버퍼와 timer를 해제한다. 취소와 경합한 옛 timer는
+다음 메시지를 닫을 수 없다. 만료 callback은 조립 monitor 밖에서 sender를 중단하며,
+실제 disconnect/transport close는 기존 sender의 별도 virtual thread가 맡는다.
+
+UTF-8 초과를 놓치는 assertion 실패를 먼저 확인했다. 실제 수정 전 JAR에서도 과대 text와
+미완성 text/binary 연결 격리 4개가 모두 종료 대기 timeout으로 실패했다. 수정 후 동일 사례와
+정상 참가자 요청, 정확히 256 KiB인 hello가 통과했다. timer 경합과 inbox 배선은 추가 회귀 테스트다.
+모든 추가 테스트가 구현보다 먼저 작성되었다고 주장하지 않는다.
+
+성능 profile에 참가자 1·5·10명과 모든 DOM 관찰, 동시 reload를 추가했다. 실패 시 더 높은
+부하로 계속 진행하지 않으며 최대 heap 512 MiB·각 3회 새 서버로 실행했다.
+[측정 계획·결과](PERFORMANCE.md)는 한 장비의 짧은 fanout 검증과 운영 최대 수용량을 구분한다.

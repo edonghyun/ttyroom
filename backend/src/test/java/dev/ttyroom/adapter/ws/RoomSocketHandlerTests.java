@@ -160,6 +160,58 @@ class RoomSocketHandlerTests {
     }
 
     @Test
+    void aFullControlInboxClosesThePeerAndDiscardsItsWaitingCommands() throws Exception {
+        var admission = mock(RoomSessions.class);
+        var session = mock(RoomSessions.Session.class);
+        when(admission.join(any(), any())).thenReturn(session);
+        var socket = mock(WebSocketSession.class);
+        when(socket.getId()).thenReturn("flooding-peer");
+        when(socket.isOpen()).thenReturn(true);
+        var closed = new CountDownLatch(1);
+        var statuses = new CopyOnWriteArrayList<CloseStatus>();
+        doAnswer(
+                        call -> {
+                            statuses.add(call.getArgument(0));
+                            closed.countDown();
+                            return null;
+                        })
+                .when(socket)
+                .close(any());
+        var workers = mock(java.util.concurrent.ExecutorService.class);
+        var waiting = new java.util.ArrayList<Runnable>();
+        doAnswer(
+                        call -> {
+                            waiting.add(call.getArgument(0));
+                            return null;
+                        })
+                .when(workers)
+                .execute(any());
+        var command = "{\"type\":\"rename-terminal\",\"terminalId\":7,\"title\":\"Queued\"}";
+        var fullMessage = new TextMessage(command + " ".repeat(256 * 1024 - command.length()));
+        try (var handler =
+                new RoomSocketHandler(admission, JsonMapper.builder().build(), workers)) {
+            handler.afterConnectionEstablished(socket);
+            handler.handleTextMessage(
+                    socket,
+                    new TextMessage(
+                            """
+                            {"type":"hello","protocolVersion":7,"roomId":"room","token":"token",
+                             "clientId":"alice","name":"Alice","role":"participant"}
+                            """));
+            for (int i = 0; i < 4; i++) handler.handleTextMessage(socket, fullMessage);
+
+            handler.handleTextMessage(socket, new TextMessage(command));
+            if (!closed.await(2, TimeUnit.SECONDS))
+                throw new AssertionError("Full inbox did not close");
+            waiting.forEach(Runnable::run);
+
+            assertThat(statuses).containsExactly(CloseStatus.POLICY_VIOLATION);
+            verify(session, never()).handle(any(ParticipantCommand.class));
+            verify(session).disconnect();
+        }
+    }
+
+    @Test
     void aPreHelloControlCannotBecomeAuthenticatedWhileWaitingForAWorker() throws Exception {
         var admission = mock(RoomSessions.class);
         var session = mock(RoomSessions.Session.class);

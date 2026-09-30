@@ -40,8 +40,9 @@ public final class RoomSocketHandler extends TextWebSocketHandler implements Aut
     }
 
     private final Limits limits;
-    // ws 8.x defaults to a 100 MiB assembled-message limit. Check UTF-8 bytes as Node does.
-    static final int MAX_MESSAGE_BYTES = 100 * 1024 * 1024;
+    private static final int MAX_BINARY_BYTES = 100 * 1024 * 1024;
+    private static final int MAX_TEXT_BYTES = 256 * 1024;
+    private static final int MAX_CONTROL_BYTES = 1024 * 1024;
     private static final int RECEIVE_CHUNK_SIZE = 16 * 1024;
     private final RoomSessions sessions;
     private final JsonMapper json;
@@ -76,10 +77,7 @@ public final class RoomSocketHandler extends TextWebSocketHandler implements Aut
         final WebSocketSession socket;
         final SocketSender sender;
         final ControlInbox controls;
-        final IncomingMessages incoming =
-                new IncomingMessages(
-                        MAX_MESSAGE_BYTES,
-                        (int) Math.min(MAX_MESSAGE_BYTES, limits.maxReceivedBinaryBytes()));
+        final IncomingMessages incoming;
         private RoomSessions.Session session;
         // Counts the announcement plus output waiting for it. A late frame cannot overtake
         // earlier deferred output when the announcement itself finishes.
@@ -92,7 +90,7 @@ public final class RoomSocketHandler extends TextWebSocketHandler implements Aut
             this.controls =
                     new ControlInbox(
                             controlWorkers,
-                            MAX_MESSAGE_BYTES,
+                            MAX_CONTROL_BYTES,
                             failure -> {
                                 System.getLogger(RoomSocketHandler.class.getName())
                                         .log(
@@ -109,6 +107,15 @@ public final class RoomSocketHandler extends TextWebSocketHandler implements Aut
                                 connections.remove(socket.getId(), this);
                                 disconnected();
                             });
+            this.incoming =
+                    new IncomingMessages(
+                            MAX_TEXT_BYTES,
+                            (int) Math.min(MAX_BINARY_BYTES, limits.maxReceivedBinaryBytes()),
+                            deadlines,
+                            () ->
+                                    sender.abort(
+                                            CloseStatus.POLICY_VIOLATION.withReason(
+                                                    "incomplete message timeout")));
         }
 
         synchronized boolean beginAdmission() {
@@ -305,7 +312,7 @@ public final class RoomSocketHandler extends TextWebSocketHandler implements Aut
     @Override
     public void afterConnectionEstablished(WebSocketSession socket) {
         // Tomcat allocates these buffers per connection. They are chunk sizes, not the logical
-        // message ceiling: IncomingMessages assembles partial callbacks under the existing limits.
+        // message ceiling: IncomingMessages assembles partial callbacks under the logical limits.
         socket.setTextMessageSizeLimit(RECEIVE_CHUNK_SIZE);
         socket.setBinaryMessageSizeLimit(RECEIVE_CHUNK_SIZE);
         var connection = new Connection(socket);
@@ -330,7 +337,7 @@ public final class RoomSocketHandler extends TextWebSocketHandler implements Aut
         }
         if (message == null) return;
         int messageBytes = message.getPayload().getBytes(StandardCharsets.UTF_8).length;
-        if (messageBytes > MAX_MESSAGE_BYTES) {
+        if (messageBytes > MAX_TEXT_BYTES) {
             connection.close(CloseStatus.TOO_BIG_TO_PROCESS);
             return;
         }
@@ -381,7 +388,7 @@ public final class RoomSocketHandler extends TextWebSocketHandler implements Aut
             message = connection.incoming.receive(message);
         } catch (IncomingMessages.TooLarge tooLarge) {
             connection.close(
-                    limits.maxReceivedBinaryBytes() < MAX_MESSAGE_BYTES
+                    limits.maxReceivedBinaryBytes() < MAX_BINARY_BYTES
                             ? CloseStatus.POLICY_VIOLATION
                             : CloseStatus.TOO_BIG_TO_PROCESS);
             return;
