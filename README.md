@@ -107,6 +107,7 @@ sessionStorage에, 참가자 credential은 각 탭에, Host credential은 Connec
 - [Connector 실패 분류 수정](docs/WORK_LOG.md#자원-수명과-실패-처리): 실패 테스트부터 수정한 RED → GREEN 사례.
 - [프론트엔드 종료 경계 수정](docs/WORK_LOG.md#자원-수명과-실패-처리): 종료 후 재시작 방지의 RED → GREEN 사례.
 - [검증 기록](docs/VERIFICATION.md): 현재 점검과 이전 Node/Spring 브라우저 검증의 범위.
+- [성능 측정](docs/PERFORMANCE.md): 고정 부하·원시 결과와 수신 버퍼 수정 전후의 메모리 비교.
 
 리팩터링의 GREEN → REFACTOR → GREEN과 오류 수정의 RED → GREEN을 구분합니다.
 실행 환경과 소스별 로컬·CI 결과를 구분해 기록합니다. 입력 exactly-once와 공개 서비스 운영은 보장 범위에 포함하지 않습니다.

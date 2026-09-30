@@ -42,6 +42,7 @@ public final class RoomSocketHandler extends TextWebSocketHandler implements Aut
     private final Limits limits;
     // ws 8.x defaults to a 100 MiB assembled-message limit. Check UTF-8 bytes as Node does.
     static final int MAX_MESSAGE_BYTES = 100 * 1024 * 1024;
+    private static final int RECEIVE_CHUNK_SIZE = 16 * 1024;
     private final RoomSessions sessions;
     private final JsonMapper json;
     private final ConcurrentHashMap<String, Connection> connections = new ConcurrentHashMap<>();
@@ -75,6 +76,10 @@ public final class RoomSocketHandler extends TextWebSocketHandler implements Aut
         final WebSocketSession socket;
         final SocketSender sender;
         final ControlInbox controls;
+        final IncomingMessages incoming =
+                new IncomingMessages(
+                        MAX_MESSAGE_BYTES,
+                        (int) Math.min(MAX_MESSAGE_BYTES, limits.maxReceivedBinaryBytes()));
         private RoomSessions.Session session;
         // Counts the announcement plus output waiting for it. A late frame cannot overtake
         // earlier deferred output when the announcement itself finishes.
@@ -127,6 +132,7 @@ public final class RoomSocketHandler extends TextWebSocketHandler implements Aut
             synchronized (this) {
                 if (closed) return;
                 closed = true;
+                incoming.close();
                 controls.close();
                 openingDeliveries.clear();
                 callback = session;
@@ -298,17 +304,31 @@ public final class RoomSocketHandler extends TextWebSocketHandler implements Aut
 
     @Override
     public void afterConnectionEstablished(WebSocketSession socket) {
-        socket.setTextMessageSizeLimit(MAX_MESSAGE_BYTES);
-        socket.setBinaryMessageSizeLimit(MAX_MESSAGE_BYTES);
+        // Tomcat allocates these buffers per connection. They are chunk sizes, not the logical
+        // message ceiling: IncomingMessages assembles partial callbacks under the existing limits.
+        socket.setTextMessageSizeLimit(RECEIVE_CHUNK_SIZE);
+        socket.setBinaryMessageSizeLimit(RECEIVE_CHUNK_SIZE);
         var connection = new Connection(socket);
         connections.put(socket.getId(), connection);
         if (stopped) connection.sender.abort(CloseStatus.GOING_AWAY);
     }
 
     @Override
+    public boolean supportsPartialMessages() {
+        return true;
+    }
+
+    @Override
     protected void handleTextMessage(WebSocketSession socket, TextMessage message) {
         var connection = connections.get(socket.getId());
         if (stopped || connection == null) return;
+        try {
+            message = connection.incoming.receive(message);
+        } catch (IncomingMessages.TooLarge tooLarge) {
+            connection.close(CloseStatus.TOO_BIG_TO_PROCESS);
+            return;
+        }
+        if (message == null) return;
         int messageBytes = message.getPayload().getBytes(StandardCharsets.UTF_8).length;
         if (messageBytes > MAX_MESSAGE_BYTES) {
             connection.close(CloseStatus.TOO_BIG_TO_PROCESS);
@@ -357,6 +377,16 @@ public final class RoomSocketHandler extends TextWebSocketHandler implements Aut
     protected void handleBinaryMessage(WebSocketSession socket, BinaryMessage message) {
         var connection = connections.get(socket.getId());
         if (stopped || connection == null) return;
+        try {
+            message = connection.incoming.receive(message);
+        } catch (IncomingMessages.TooLarge tooLarge) {
+            connection.close(
+                    limits.maxReceivedBinaryBytes() < MAX_MESSAGE_BYTES
+                            ? CloseStatus.POLICY_VIOLATION
+                            : CloseStatus.TOO_BIG_TO_PROCESS);
+            return;
+        }
+        if (message == null) return;
         // Bound each frame including its header. Established streams remain direct; output
         // following terminal-opened waits for that announcement through the bounded inbox.
         if (message.getPayloadLength() > limits.maxReceivedBinaryBytes()) {

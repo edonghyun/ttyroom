@@ -28,6 +28,66 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 class RoomSocketHandlerTests {
     @Test
+    void fragmentedInputRunsOnceOnlyAfterTheCompleteHeaderAndPayloadArrive() throws Exception {
+        var admission = mock(RoomSessions.class);
+        var session = mock(RoomSessions.Session.class);
+        when(admission.join(any(), any())).thenReturn(session);
+        var socket = mock(WebSocketSession.class);
+        when(socket.getId()).thenReturn("fragmented-input");
+        try (var handler = new RoomSocketHandler(admission, JsonMapper.builder().build())) {
+            handler.afterConnectionEstablished(socket);
+            handler.handleTextMessage(
+                    socket,
+                    new TextMessage(
+                            """
+                            {"type":"hello","protocolVersion":7,"roomId":"room","token":"token",
+                             "clientId":"alice","name":"Alice","role":"participant"}
+                            """));
+            var bytes = InputWire.encode(new InputFrame(7, 1, 1, new byte[] {65, 66}));
+
+            handler.handleBinaryMessage(
+                    socket, new BinaryMessage(java.util.Arrays.copyOfRange(bytes, 0, 5), false));
+            int inputsBeforeCompletion = mockingDetails(session).getInvocations().size();
+            handler.handleBinaryMessage(
+                    socket,
+                    new BinaryMessage(java.util.Arrays.copyOfRange(bytes, 5, bytes.length), true));
+
+            assertThat(inputsBeforeCompletion).isZero();
+            verify(session)
+                    .input(
+                            argThat(
+                                    frame ->
+                                            frame.terminalId() == 7
+                                                    && java.util.Arrays.equals(
+                                                            frame.payload(), new byte[] {65, 66})));
+        }
+    }
+
+    @Test
+    void fragmentedHelloIsAdmittedOnlyAfterItsFinalPart() throws Exception {
+        var admission = mock(RoomSessions.class);
+        when(admission.join(any(), any())).thenReturn(mock(RoomSessions.Session.class));
+        var socket = mock(WebSocketSession.class);
+        when(socket.getId()).thenReturn("fragmented-peer");
+        try (var handler = new RoomSocketHandler(admission, JsonMapper.builder().build())) {
+            handler.afterConnectionEstablished(socket);
+            var hello =
+                    """
+                    {"type":"hello","protocolVersion":7,"roomId":"room","token":"token",
+                     "clientId":"alice","name":"Alice","role":"participant"}
+                    """;
+
+            handler.handleTextMessage(socket, new TextMessage(hello.substring(0, 40), false));
+            int admissionsBeforeFinalPart = mockingDetails(admission).getInvocations().size();
+            handler.handleTextMessage(socket, new TextMessage(hello.substring(40), true));
+
+            assertThat(admissionsBeforeFinalPart).isZero();
+            verify(admission).join(any(), any());
+            assertThat(handler.supportsPartialMessages()).isTrue();
+        }
+    }
+
+    @Test
     void aBlockedControlCommandDoesNotHoldTheReceiveCallbackOrFollowingBinaryInput()
             throws Exception {
         var admission = mock(RoomSessions.class);

@@ -156,8 +156,11 @@ SocketSender의 별도 큐·replay 안전 상한이 없어지는 것은 아니�
 - `backend`: Java 21 Gradle 테스트와 API-only JAR 빌드
 - `spring-contract`: Spring 대상 HTTP/WS 계약과 재접속·재시작 검사
 - `check`: TypeScript 타입·포맷·의존성·단위 테스트
-- `browser`: Node/Spring matrix의 정적 웹 계약과 Chromium 검증
+- `browser`: Spring v8의 정적 웹 계약과 Chromium 검증
 - `full`: TypeScript 빌드·통합·Node 대상 프로토콜 E2E
+
+성능 실험은 [측정 안내](PERFORMANCE.md)에 따라 `scripts/measure-performance.sh`로 별도 실행한다.
+정상 CI에는 지연 임계값을 추가하지 않는다. Spring v8 인증 계약은 512 MiB 최대 힙에서 검증한다.
 
 ## 설계와 개발 이력
 

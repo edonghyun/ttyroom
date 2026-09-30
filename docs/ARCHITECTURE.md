@@ -73,6 +73,7 @@ eligibility는 저장 뒤 다시 검사하지 않으며, 후속 효과가 현재
 - [RoomDirectory](../backend/src/main/java/dev/ttyroom/application/RoomDirectory.java): `execute`, `RoomOperation.changeIf`의 직렬화·저장·commit 계약.
 - [RoomSessions](../backend/src/main/java/dev/ttyroom/application/RoomSessions.java): `change`, `publish`, `broadcast`, `disconnected`의 효과와 연결 동일성 처리.
 - [SocketSender](../backend/src/main/java/dev/ttyroom/adapter/ws/SocketSender.java): 비동기 송신·큐 한도·시간 초과·연결 종료.
+- [IncomingMessages](../backend/src/main/java/dev/ttyroom/adapter/ws/IncomingMessages.java): 연결별 수신 조각 조립·누적 한도·종료 시 해제. Tomcat의 작은 수신 버퍼와 논리 메시지 한도를 분리한다. [측정 근거](PERFORMANCE.md)를 참고한다.
 - [RoomPersistenceTests](../backend/src/test/java/dev/ttyroom/application/RoomPersistenceTests.java): 저장 대기·실패와 commit 후 전송 실패.
 - [저장 후 알림 검토](WORK_LOG.md#자원-수명과-실패-처리): 추가한 계약 테스트와 로컬 검증 범위.
 - [백엔드 상세 설계](../backend/ARCHITECTURE.md): 현재 모듈의 책임, 동시성·저장·전달 계약.

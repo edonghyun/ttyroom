@@ -50,6 +50,8 @@ jobs:
       - name: Spring HTTP specification and registration contracts
         run: ./scripts/test-spring.sh registration
       - name: Spring v8 admission contracts
+        env:
+          JAVA_TOOL_OPTIONS: -Xmx512m
         run: ./scripts/test-spring.sh authentication
 
   check:

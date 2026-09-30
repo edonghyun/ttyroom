@@ -60,6 +60,21 @@ export class TestSystem {
     return actor;
   }
 
+  /** Only these process RSS values are measured; PTY children and Chromium are separate. */
+  processIds(): { server: number; connector: number } {
+    const server = this.running.pid;
+    const connector = this.connectors.values().next().value?.process.pid;
+    if (!server || !connector) throw new Error("Test system processes are unavailable");
+    return { server, connector };
+  }
+
+  diagnostics(): string {
+    return [
+      this.running.diagnostics(),
+      ...[...this.connectors].map((connector) => connector.diagnostics()),
+    ].join("\n");
+  }
+
   toggleKillSwitch(): void {
     const connector = this.connectors.values().next().value;
     if (!connector) throw new Error("real connector is not running");

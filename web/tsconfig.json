@@ -13,6 +13,7 @@
     "demo",
     "playwright.demo.config.ts",
     "playwright.config.ts",
+    "playwright.performance.config.ts",
     "vite.config.ts",
     "vitest.config.ts",
     "vitest.setup.ts"

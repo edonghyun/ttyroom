@@ -58,6 +58,16 @@ export class SocketProbe {
   sendBytes(bytes: Uint8Array) {
     this.socket.send(bytes);
   }
+  sendTextParts(...parts: string[]) {
+    parts.forEach((part, index) =>
+      this.socket.send(part, { binary: false, fin: index === parts.length - 1 }),
+    );
+  }
+  sendByteParts(...parts: Uint8Array[]) {
+    parts.forEach((part, index) =>
+      this.socket.send(part, { binary: true, fin: index === parts.length - 1 }),
+    );
+  }
   async next(): Promise<ServerMessage> {
     const packet = await this.nextPacket();
     if (packet.kind !== "control")

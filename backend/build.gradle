@@ -27,7 +27,18 @@ dependencies {
 }
 
 tasks.named('test') {
-    useJUnitPlatform()
+    useJUnitPlatform { excludeTags 'performance' }
+}
+
+// Opt-in observations: timing never becomes a shared-runner CI gate.
+tasks.register('performanceTest', Test) {
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform { includeTags 'performance' }
+    minHeapSize = '256m'
+    maxHeapSize = '512m'
+    systemProperty 'ttyroom.performance.dir', providers.gradleProperty('performanceDir').getOrElse('')
+    outputs.upToDateWhen { false }
 }
 
 tasks.named('bootJar') {

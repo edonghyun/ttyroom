@@ -1,7 +1,43 @@
 import { describe, expect, it } from "vitest";
 import { registeredRoom } from "./registered-room.js";
+import { SocketProbe } from "./socket-probe.js";
 
 describe("Spring v8 입장 인증", () => {
+  it("transport 버퍼보다 큰 hello를 여러 조각으로 받아 한 번만 입장시킨다", async () => {
+    await using room = await registeredRoom();
+    const alice = await room.participant();
+    await using peer = await SocketProbe.connect(room.server.baseUrl);
+    const hello = JSON.stringify({
+      type: "hello",
+      protocolVersion: 8,
+      roomId: room.invitation.roomId,
+      credential: alice.secret,
+      name: "Alice",
+    });
+
+    peer.sendTextParts(hello.slice(0, 1) + " ".repeat(65_536), hello.slice(1));
+    const welcome = await peer.next();
+    peer.send({ type: "acquire-lease", terminalId: 42 });
+    const nextReply = await peer.next();
+
+    expect(welcome).toMatchObject({ type: "welcome", selfClientId: alice.id });
+    expect(nextReply).toMatchObject({ type: "lease-invalid", terminalId: 42 });
+  });
+
+  it("분할된 binary는 완성된 프레임 하나로 검증하고 후속 control을 받는다", async () => {
+    await using room = await registeredRoom();
+    const alice = await room.participant();
+    const { peer } = await room.connect(alice.secret, "Alice");
+
+    peer.sendByteParts(new Uint8Array(32_768), new Uint8Array(32_768));
+    const rejected = await peer.next();
+    peer.send({ type: "acquire-lease", terminalId: 42 });
+    const nextReply = await peer.next();
+
+    expect(rejected).toMatchObject({ type: "error", code: "bad-message" });
+    expect(nextReply).toMatchObject({ type: "lease-invalid", terminalId: 42 });
+  });
+
   it("participant credential의 주체 ID로 입장한다", async () => {
     await using room = await registeredRoom();
     const alice = await room.participant();

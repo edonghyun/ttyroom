@@ -98,7 +98,7 @@
 - [현재 인증 계약](../../docs/AUTHENTICATION.md)과 [실행 범위](../../docs/VERIFICATION.md#2026-09-30-credential-취소-t95)를 갱신했다.
 - 공개 CI의 최종 실행과 완료 상태는 위 issue를 기준으로 확인한다.
 
-## 마지막 구현 — T11.1
+## 이전 완료 — T11.1
 
 [T11.1 — API 명세 자동 검증과 문서 UI 필요성 검토](https://github.com/edonghyun/ttyroom/issues/11).
 
@@ -109,9 +109,20 @@
   [OpenAPI·문서 UI 선택 근거](../../protocol/HTTP.md#openapi와-문서-ui-선택)를 정리했다.
 - 별도 사이트·Swagger UI는 보류한다. 공개 CI의 최종 실행과 완료 상태는 위 issue를 기준으로 확인한다.
 
+## 마지막 구현 — T10.1
+
+[T10.1 — 재현 가능한 성능 측정](https://github.com/edonghyun/ttyroom/issues/10).
+
+- 고정 부하·환경·성공 기준, 실제 브라우저 경로와 통제 송신 실험, 실패를 포함한 원시 JSON을 추가했다.
+- 512 MiB OOM을 재현하고 논리 메시지 한도와 Tomcat 수신 버퍼를 분리했다.
+- 동일 2 GiB 조건에서 전후 각각 3회 비교하고, 수정 후 512 MiB 3회도 완료했다.
+- Java 472·TS 584·실제 인증 17·브라우저 42개 통과. 인증 CI에도 512 MiB 조건을 고정했다.
+- [측정 근거와 한계](../../docs/PERFORMANCE.md), [검증 기록](../../docs/VERIFICATION.md#2026-09-30-성능-측정과-수신-버퍼-t101)을 연결했다.
+- 공개 CI의 최종 실행과 완료 상태는 위 issue를 기준으로 확인한다.
+
 ## 다음 후보
 
-[T10.1 — 재현 가능한 성능 측정](https://github.com/edonghyun/ttyroom/issues/10):
-단일 서버·Connector·브라우저 조건을 고정하고 지연·메모리 측정의 원시 결과부터 남긴다.
+성능 후속은 다중 참가자·장시간 부하에서 전체 메모리 예산과 공정성을 측정하는 것이다.
+이번 단일 참가자 결과를 용량 수치로 확대하지 않는다.
 
 [T8.4 — 라이선스](https://github.com/edonghyun/ttyroom/issues/4)는 소유자 선택을 기다리는 별도 백로그로 유지한다.

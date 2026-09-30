@@ -1,5 +1,25 @@
 # 검증 기록
 
+## 2026-09-30 성능 측정과 수신 버퍼 T10.1
+
+macOS·Java 21·Node 26에서 실행했다. 측정 조건·환경·전후 수치는 [성능 안내](PERFORMANCE.md),
+개별 관측값은 [공개 원시 JSON](performance/baseline.json)에 둔다. 전체 로그는 `artifacts/t10-1/`이다.
+
+- Java 전체 **472개 통과**, 실패·오류·skip 0. 수신 조각의 누적 한도·복사·초기화·종료와
+  완성 전 인증/입력 차단을 포함한다. 성능 tag는 일반 test에서 제외한다.
+- TypeScript 단위 **584개 통과**: protocol 102, E2E guard 12, Connector 65, React 187, Node 218.
+- Spring v8 인증·취소 프로세스 **17개 통과**, 최대 힙 512 MiB. 64 KiB 분할 hello와 binary를 포함한다.
+- 기존 실제 PTY Chromium **42개 통과**, 최대 힙 512 MiB.
+- 전후 비교 브라우저 각각 **3회**, 수정 후 512 MiB **3회** 완료. 각 실행은 입력 20개·replay 5개다.
+  송신 어댑터 실험은 일반 큐·느린 수신자·replay 두 크기를 별도 JVM 3개에서 반복했다.
+- 타입·의존성·Prettier 검사와 Java AOSP 포맷, diff 공백 검사 통과.
+
+최초 512 MiB 실패 3회와 추가 진단의 heap OOM은 삭제하지 않았다. 수정 전 첫 비교와 부하를 겹치지
+않게 한 추가 비교도 모두 남겼다. 결과 요약은 추가 비교를 사용한다. 하네스의 history 준비 실패는
+제품 결함과 구분한다. 보고서 실패 보존·분할 hello의 RED/GREEN과 추가 회귀 테스트의 성격도 구분했다.
+공개 CI의 최종 실행과 커밋은 [T10.1 issue](https://github.com/edonghyun/ttyroom/issues/10)에 기록한다.
+다중 사용자 용량·장시간 누수·원격망 지연·운영 SLO 검증은 포함하지 않는다.
+
 ## 2026-09-30 HTTP 명세 검증 T11.1
 
 기준 커밋 `cc9e2c6`, Java 21·macOS에서 실행했다. 로그는 로컬 `artifacts/t11-1/`에 둔다.
