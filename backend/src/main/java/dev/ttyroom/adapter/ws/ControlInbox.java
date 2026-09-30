@@ -9,7 +9,7 @@ import java.util.function.Consumer;
 final class ControlInbox {
     static final int MAX_PENDING = 256;
 
-    private record Command(Runnable action, int bytes) {}
+    private record Command(Runnable action, int bytes, BufferEvents.ControlQueueWait waiting) {}
 
     private final ArrayDeque<Command> queue = new ArrayDeque<>();
     private final Executor executor;
@@ -27,8 +27,12 @@ final class ControlInbox {
     }
 
     synchronized boolean offer(Runnable action, int bytes) {
-        if (closed || pending >= MAX_PENDING || bytes > maxBytes - pendingBytes) return false;
-        queue.addLast(new Command(action, bytes));
+        if (closed) return false;
+        if (pending >= MAX_PENDING || bytes > maxBytes - pendingBytes) {
+            BufferEvents.pressure("control-inbox", "rejected", pendingBytes, pending);
+            return false;
+        }
+        queue.addLast(new Command(action, bytes, BufferEvents.queued()));
         pending++;
         pendingBytes += bytes;
         if (!running) {
@@ -55,6 +59,7 @@ final class ControlInbox {
                 }
             }
             try {
+                BufferEvents.started(command.waiting());
                 command.action().run();
             } catch (RuntimeException | Error failure) {
                 close();

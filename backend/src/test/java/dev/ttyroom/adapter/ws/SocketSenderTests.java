@@ -8,8 +8,12 @@ import static org.mockito.Mockito.*;
 import dev.ttyroom.application.OutputFrame;
 import dev.ttyroom.application.RoomSessions.PeerUnavailable;
 
+import jdk.jfr.Recording;
+import jdk.jfr.consumer.RecordingFile;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.web.socket.BinaryMessage;
@@ -19,6 +23,7 @@ import org.springframework.web.socket.WebSocketMessage;
 import org.springframework.web.socket.WebSocketSession;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -198,6 +203,42 @@ class SocketSenderTests {
             assertThat(accepted).isFalse();
             assertThat(peer.delivered).containsExactly("in flight", "still usable", "<close>");
             assertThat(peer.closeStatus).isEqualTo(CloseStatus.NORMAL);
+        }
+    }
+
+    @Test
+    void recordingADroppedOutputDoesNotConsumeControlCapacity(@TempDir Path directory)
+            throws Exception {
+        try (var recording = new Recording();
+                var peer = new Fixture()) {
+            recording.enable("ttyroom.BufferPressure");
+            recording.start();
+            peer.blockWrites();
+            peer.send("hold");
+            peer.awaitWrite();
+
+            var accepted = peer.sender.offerOutput(List.of(new TextMessage("output")), 4);
+            peer.send("control");
+            peer.sender.finish(CloseStatus.NORMAL);
+            peer.release.countDown();
+            peer.awaitClose();
+            recording.stop();
+            var file = directory.resolve("pressure.jfr");
+            recording.dump(file);
+            var events =
+                    RecordingFile.readAllEvents(file).stream()
+                            .filter(
+                                    event ->
+                                            event.getEventType()
+                                                    .getName()
+                                                    .equals("ttyroom.BufferPressure"))
+                            .toList();
+
+            assertThat(accepted).isFalse();
+            assertThat(peer.delivered).containsExactly("hold", "control", "<close>");
+            assertThat(events).hasSize(1);
+            assertThat(events.getFirst().getString("outcome")).isEqualTo("live-drop");
+            assertThat(events.getFirst().getLong("pendingBytes")).isEqualTo(4);
         }
     }
 

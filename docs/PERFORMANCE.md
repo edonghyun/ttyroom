@@ -183,3 +183,52 @@ Connector RSS 관측 최대값은 전체 71.3–81.0 MiB였다. 같은 컴퓨터
 대략 계산할 수 있다. byte/s와 command/s를 각각 같은 단위로 적용해 더 이른 한도를 사용한다.
 이는 유입·처리율이 일정하다는 조건의 추정이며 이번 표가 그 처리율을 측정했다는 뜻은 아니다.
 전역 room/connection/terminal admission 예산까지 강제한 뒤 그 경계 안에서 운영 한도를 정한다.
+
+## T10.3 — 포화 구간 측정 계획
+
+실행 전 고정한 로컬 실험 조건이다. 운영 SLO나 제품 최대 수용량으로 선언하지 않는다.
+실제 Spring v8·SQLite·WebSocket에 합성 호스트와 수신자 5개를 연결한다.
+합성 호스트가 보낸 4 KiB payload의 timestamp·sequence를 수신자가 검사한다.
+실제 Connector·PTY·React rendering은 이 실험에 포함하지 않는다. 이전 브라우저 fanout과 합산하지 않는다.
+
+- Java 21 G1, `-Xms256m -Xmx512m`. 출력 부하는 terminal당 64/256/1024 KiB/s로 조절한다.
+- 단계는 `(terminal 수, host 수, terminal당 KiB/s)` = `(1,1,64)`, `(1,1,256)`,
+  `(4,1,256)`, `(16,1,256)`, `(16,4,1024)`다. 마지막 단계의 총 출력은 16 MiB/s다.
+  실제 Connector의 throttling을 검증하는 시험은 아니다.
+- 단계마다 새 서버 3회, 5초 warmup 후 20초 측정. 응답을 기다리지 않고 10 ms tick의
+  경과 시간에 따라 송신량을 결정한다. 뒤처진 송신을 성공한 낮은 부하로 보고하지 않는다.
+- 제어 probe는 100 ms 간격의 존재하지 않는 terminal 제어권 요청이다. 큐 처리·응답을
+  관찰하지만 durable write 부하를 대표하지 않는다.
+- 실험 통과 기준: 정상 수신자의 누락·중복·순서 오류·gap·종료 0, 출력 p95 ≤100 ms,
+  제어 p95 ≤250 ms, 개별 최대 ≤1000 ms. 지연 histogram은 고정 크기의 1 ms 상한 bucket이다.
+- 즉시 중단: 정상 연결 오류/연속성 손실, 지연 최대 1초 초과, generator 지연 250 ms 초과,
+  generator socket backlog 1 MiB 초과, 서버 RSS 768 MiB 또는 generator RSS 512 MiB 초과,
+  RSS 관찰 실패. 각 대기는 유한하며 종료하지 못한 단계도 원본에 보존한다.
+- 한 단계라도 실패하면 더 높은 부하로 진행하지 않는다. 모든 단계가 성공해도 유한한 상한까지만
+  시험한 결과이며 포화점을 찾았다고 표현하지 않는다.
+- ladder 뒤 별도 조건으로 4 MiB/s·16 terminal을 5분 유지한다. ladder에서 실패했다면
+  3회 모두 통과한 더 낮은 단계로 내린다. 5분은 장기 누수 안전의
+  증거가 아니다. 느린 수신자 1개 추가와 5개 수신자의 동시 재접속은 각각 독립 실행한다.
+  느린 수신자는 socket read를 멈추고 정상 5개 수신자는 계속 읽는다. 재접속은 모든 terminal의
+  retained payload와 sync가 5초 안에 복구돼야 한다.
+
+JFR에는 CPU load, GC pause·heap summary, control enqueue부터 worker 시작까지의 대기,
+버퍼 drop·거절만 활성화한다. 제품의 custom event는 기본 비활성이고 stack·ID·credential·내용을
+기록하지 않는다. 시작 시 event type 등록과 command당 event 참조 하나는 비활성일 때도 존재한다.
+계측 비용은 같은 1 terminal·256 KiB/s 조건에서 JFR ON/OFF 각각 3회로 비교한다.
+RSS sampler는 1초마다 직렬로 실행하며 호출 시간·누락을 남긴다.
+
+강제 GC와 `GC.heap_info`는 빈 history, 적재 후, host 취소·5초 cooldown 뒤에만 호출하고
+timed traffic에서 제외한다. 이는 진단을 위해 수명을 확인한 post-full-GC heap이며 자연 GC와
+구분한다. timed 구간의 JFR `After GC` heap도 전체 live set의 정밀 크기라고 단정하지 않는다.
+JFR CPU는 전체 기계 대비 JVM CPU 비율이고, RSS는 JVM heap·native를 포함한 프로세스 관측값이다.
+
+```sh
+./scripts/build-spring.sh
+TTYROOM_CAPACITY_PROFILE=smoke ./scripts/measure-capacity.sh artifacts/capacity-smoke
+./scripts/measure-capacity.sh artifacts/capacity-full
+```
+
+Java 21의 `JAVA_HOME`, `jcmd`, `jfr`, `ps`가 필요하다. 새 출력 디렉터리만 사용한다.
+JAR·JFC·source hash를 고정하고 다른 빌드·테스트 없이 실행한다. 각 실행은 결과 JSON, JFR 원본,
+선택 event의 JSON, GC 진단 원문을 남긴다. 실패한 smoke는 환경·harness 진단이며 성능 표본과 섞지 않는다.

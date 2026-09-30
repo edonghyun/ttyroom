@@ -6,10 +6,16 @@ interface Credential {
   secret: string;
 }
 
-export async function registeredRoom(protocolVersion: 7 | 8 = 8) {
-  if (!process.env.TTYROOM_E2E_SERVER_COMMAND)
+export async function registeredRoom(
+  protocolVersion: 7 | 8 = 8,
+  command?: readonly [string, ...string[]],
+) {
+  if (!command && !process.env.TTYROOM_E2E_SERVER_COMMAND)
     throw new Error("Run with ./scripts/test-spring.sh authentication to select the Spring JAR");
-  const server = await ServerProcess.start({}, { protocolVersion, startupTimeoutMs: 30_000 });
+  const server = await ServerProcess.start(
+    {},
+    { protocolVersion, startupTimeoutMs: 30_000, command },
+  );
   const peers: SocketProbe[] = [];
   async function post(path: string, body: unknown, bearer?: string) {
     const response = await fetch(`${server.baseUrl}${path}`, {

@@ -129,7 +129,10 @@ final class SocketSender {
         synchronized (this) {
             if (finishing || terminated) throw new PeerUnavailable("WebSocket sender is closed");
             if (bytes > limits.bytes() - pendingBytes
-                    || batch.size() > limits.messages() - pendingMessages) return false;
+                    || batch.size() > limits.messages() - pendingMessages) {
+                BufferEvents.pressure("outbound", "rejected", pendingBytes, pendingMessages);
+                return false;
+            }
             queue.addAll(batch);
             pendingBytes += (int) bytes;
             pendingMessages += batch.size();
@@ -142,8 +145,11 @@ final class SocketSender {
     synchronized boolean offerOutput(
             List<? extends WebSocketMessage<?>> messages, long dropThreshold) {
         if (finishing || terminated) throw new PeerUnavailable("WebSocket sender is closed");
-        if (pendingBytes + replayBytes >= dropThreshold) return false;
-        return offer(messages);
+        boolean accepted = pendingBytes + replayBytes < dropThreshold && offer(messages);
+        if (!accepted)
+            BufferEvents.pressure(
+                    "outbound", "live-drop", pendingBytes + replayBytes, pendingMessages);
+        return accepted;
     }
 
     /** Reserve the whole snapshot or close; never partially enqueue a replay. */
@@ -161,6 +167,7 @@ final class SocketSender {
                 notifyAll();
                 return;
             }
+            BufferEvents.pressure("replay", "rejected", replayBytes, replayRequests);
         }
         abort(CloseStatus.POLICY_VIOLATION.withReason("outbound replay limit"));
         throw new PeerUnavailable("WebSocket replay budget exceeded");
