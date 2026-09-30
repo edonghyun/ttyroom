@@ -1,5 +1,22 @@
 # 검증 기록
 
+## 2026-09-30 자원 계측과 복구 실패 경계 T10.3
+
+- Java 전체 **487개 통과**, 실패·오류·skip 0. 실제 queue 대기·거절과 느린 송신자의 drop event를 검증한다.
+- TS 단위 **590개 통과**: protocol 102, Connector 65, React 187, Node 218, E2E guard 18.
+- 최대 heap 512 MiB 실제 Spring 인증·격리 **22개**, HTTP·등록 **13개 통과**.
+- 타입·의존성 경계 검사 통과. JFR event 누락과 histogram snapshot 변경은 실제 assertion RED 뒤 GREEN을 확인했다.
+- 성능 최초 실행 **21회 중 19회**, 별도 원인 확인 **5회 중 4회** 시나리오 통과. 모든 timed load는 완료했지만
+  최초 느린 수신자 fault 미발생과 16/4 terminal 동시 복구 실패는 별도 실패로 보존했다. 전체 성능 시험이 통과한 것은 아니다.
+- 연속 출력 ladder 15회·JFR OFF 3회·5분 부하 1회, 압축 없는 느린 연결 격리 1회, 3 terminal 복구 3회 성공.
+  4 terminal 첫 복구 실패 뒤 더 큰 단계는 실행하지 않았다.
+- 공개 JSON 26개 trial의 소스 hash·frame 수·histogram 합계·제어 응답/queue event 수를 대조했다.
+  RSS 수집 실패·JFR DataLoss 0. raw 기록은 `artifacts/t10-3/`에 둔다.
+
+조건·한계·전역 예산 후보는 [성능 안내](PERFORMANCE.md), 개별 관측은 [공개 JSON](performance/capacity.json),
+최종 커밋의 공개 CI는 [작업 #13](https://github.com/edonghyun/ttyroom/issues/13)에 기록한다.
+복구 실패의 제품 수정은 [후속 #14](https://github.com/edonghyun/ttyroom/issues/14)에서 진행한다.
+
 ## 2026-09-30 수신 자원 한도와 참가자 fanout T10.2
 
 - Java 전체 **485개 통과**, 실패·오류·skip 0. UTF-8 분할, 누적 한도, 기한 연장 방지,

@@ -404,3 +404,24 @@ UTF-8 초과를 놓치는 assertion 실패를 먼저 확인했다. 실제 수정
 성능 profile에 참가자 1·5·10명과 모든 DOM 관찰, 동시 reload를 추가했다. 실패 시 더 높은
 부하로 계속 진행하지 않으며 최대 heap 512 MiB·각 3회 새 서버로 실행했다.
 [측정 계획·결과](PERFORMANCE.md)는 한 장비의 짧은 fanout 검증과 운영 최대 수용량을 구분한다.
+
+## 자원 계측과 복구 실패 경계
+
+T10.3 ([작업 #13](https://github.com/edonghyun/ttyroom/issues/13)). 기본 비활성 JFR event로
+control queue 대기와 송신·replay 거절을 기록한다. ID·credential·payload·stack은 남기지 않는다.
+queue event가 없다는 행동 RED 뒤 구현했고, 늦은 샘플이 histogram snapshot을 바꾸는 문제도
+assertion RED 뒤 수정했다. 나머지 검증은 회귀 테스트이며 모두 TDD로 만들었다고 표현하지 않는다.
+
+실제 Spring·SQLite에 합성 WebSocket peer를 연결하는 유한한 open-loop 부하 도구를 추가했다.
+fixture가 프로세스·소켓·JFR·RSS 관찰을 소유하며, 실패도 결과에 남긴다. 불변 JAR와 소스 hash,
+실행 조건·중단선·반복 횟수를 고정하고 다른 테스트와 겹치지 않게 측정했다.
+
+연속 출력은 최고 16 MiB/s·20초 3회와 4 MiB/s·5분을 통과했다. 압축 가능한 application payload
+수치이며 실제 Connector·PTY·브라우저 처리량은 아니다. 최초 느린 수신자 시험은 의도한 fault를
+만들지 못했고, 압축을 끈 별도 시험에서 연결 종료와 정상 수신자 격리를 확인했다.
+
+동시 복구는 full history terminal 3개에서 3회 성공하고 4개에서 첫 실패했다. payload 외 header·sync를
+포함한 예약이 연결별 4 MiB 한도를 넘는 것을 JFR과 코드로 확인했다. 부하 성공과 복구 안전은 별개였다.
+더 큰 복구 단계는 중단하고 [T10.4](https://github.com/edonghyun/ttyroom/issues/14)에 수정·검증 범위를
+등록했다. 이번 변경은 계측·재현·예산 후보까지이며 복구 정책 변경과 전역 admission 강제는 포함하지 않는다.
+[측정 결과와 공개 JSON](PERFORMANCE.md#t103-측정-결과--출력보다-먼저-드러난-복구-한도)에 실패까지 보존한다.
