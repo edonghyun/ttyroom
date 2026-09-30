@@ -1,5 +1,24 @@
 # 검증 기록
 
+## 2026-09-30 전역 admission 예산 T10.5
+
+- Java 전체 **517개 통과**, 실패·오류·skip 0. 방/terminal/connection의 마지막 슬롯 경합,
+  저장 실패의 예약 반환, 삭제 실패 보존, late/duplicate close, 복원 상태 초과를 포함한다.
+- TS 단위 **591개 통과**: 기존 590개 전체와 새 오류 코드 parser 테스트 1개를 확인했다.
+- 타입·Prettier·의존성 경계 검사, 실제 Spring HTTP/OpenAPI·등록 13개 통과.
+- 최대 heap 512 MiB 불변 JAR에서 기존 인증·취소·수신·복구 24개와 새 전역 한도 5개 통과.
+  새 프로세스 테스트는 방 복원 후 503, inventory 전체 거절, history 예산, 인증 전 슬롯,
+  hello deadline, 기존 참가자의 정상 응답을 확인한다.
+- `artifacts/t10-5/room-red.log`, `connection-red.log`는 제품 동작 assertion RED다.
+  이후 Java 전체 GREEN, 새 프로세스 `global-green.log`와 기존 24개 회귀 결과를 남겼다.
+  최초 프로세스 실패는 protocol dist 미빌드, 다음 실패는 welcome snapshot 기대 경로 오류이며
+  제품 RED 근거로 사용하지 않는다.
+- 로컬 경계 측정 **3/3 완료**. 4 room·16 connection·16 terminal, 첫 초과 요청 격리,
+  12명 순차 복구 초기+churn 10회, host 제거 후 16 terminal 재등록을 확인했다.
+  [공개 관측](performance/admission.json)에 source/JAR hash·heap·RSS·queue·거절·복구 기록을 보존한다.
+
+배포 환경 검증은 미완료이며 #15를 닫지 않는다. 최종 커밋의 CI 상태는 작업 #15에 기록한다.
+
 ## 2026-09-30 여러 터미널 복구 T10.4
 
 - Java 전체 **496개 통과**, 실패·오류·skip 0. 순차 history 예약, 복구 중 출력, pending resync,

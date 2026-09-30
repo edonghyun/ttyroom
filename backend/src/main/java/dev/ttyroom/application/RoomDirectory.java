@@ -22,6 +22,61 @@ import java.util.function.Supplier;
 
 /** Owns room identity, command ordering and save-before-commit changes. */
 public final class RoomDirectory implements AutoCloseable {
+    public record Limits(int rooms, int terminals) {
+        public static final Limits DEFAULT = new Limits(4, 16);
+
+        public Limits {
+            if (rooms < 1 || terminals < 0)
+                throw new IllegalArgumentException("Invalid room capacity");
+        }
+    }
+
+    public static final class CapacityExceeded extends RuntimeException {
+        private final String resource;
+
+        CapacityExceeded(String resource) {
+            super(resource + " capacity exhausted");
+            this.resource = resource;
+        }
+
+        public String resource() {
+            return resource;
+        }
+    }
+
+    private final Limits limits;
+    private int reservedRooms;
+    private int reservedTerminals;
+
+    // Only short counter changes hold this monitor; storage and room work never do.
+    private synchronized void reserve(int roomCount, int terminalCount) {
+        if (roomCount > limits.rooms() - reservedRooms) throw new CapacityExceeded("rooms");
+        if (terminalCount > limits.terminals() - reservedTerminals)
+            throw new CapacityExceeded("terminals");
+        reservedRooms += roomCount;
+        reservedTerminals += terminalCount;
+    }
+
+    private synchronized void release(int roomCount, int terminalCount) {
+        reservedRooms -= roomCount;
+        reservedTerminals -= terminalCount;
+    }
+
+    /** Reserve growth before saving; a failed save returns only that operation's reservation. */
+    private void saveWithCapacity(Room room, StoredRoom record) {
+        int target = record.control().workspace().terminals().size();
+        int growth = Math.max(0, target - room.reservedTerminals);
+        reserve(0, growth);
+        try {
+            store.save(record);
+        } catch (RuntimeException | Error failure) {
+            release(0, growth);
+            throw failure;
+        }
+        release(0, Math.max(0, room.reservedTerminals - target));
+        room.reservedTerminals = target;
+    }
+
     private final ConcurrentHashMap<String, Room> rooms = new ConcurrentHashMap<>();
     private final SecureRandom random = new SecureRandom();
 
@@ -35,6 +90,11 @@ public final class RoomDirectory implements AutoCloseable {
     }
 
     public RoomDirectory(RoomStore store) {
+        this(store, Limits.DEFAULT);
+    }
+
+    public RoomDirectory(RoomStore store, Limits limits) {
+        this.limits = Objects.requireNonNull(limits);
         this.store = Objects.requireNonNull(store);
         try {
             restore(store.loadAll());
@@ -50,6 +110,7 @@ public final class RoomDirectory implements AutoCloseable {
 
     /** Bootstrap only: load all durable rooms before opening admission. No sockets are needed. */
     public RoomDirectory(List<StoredRoom> storedRooms) {
+        this.limits = Limits.DEFAULT;
         this.store = RoomStore.transientOnly();
         restore(storedRooms);
     }
@@ -63,13 +124,23 @@ public final class RoomDirectory implements AutoCloseable {
                             HexFormat.of().parseHex(stored.tokenHash()),
                             RoomControl.restore(stored.control()),
                             RoomCredentials.restore(stored.credentials()));
+            reserve(1, room.reservedTerminals);
             if (rooms.putIfAbsent(room.id, room) != null)
                 throw new IllegalArgumentException("Duplicate room ID");
         }
     }
 
     public Invitation create(String name) {
-        return duringOperation(() -> createRoom(name));
+        return duringOperation(
+                () -> {
+                    reserve(1, 0);
+                    try {
+                        return createRoom(name);
+                    } catch (RuntimeException | Error failure) {
+                        release(1, 0);
+                        throw failure;
+                    }
+                });
     }
 
     private Invitation createRoom(String name) {
@@ -251,7 +322,8 @@ public final class RoomDirectory implements AutoCloseable {
                 if (!eligible.getAsBoolean()) return null;
                 change = room.control.stageChange(update);
             }
-            if (change.recordToSave() != null) store.save(room.durableState(change.recordToSave()));
+            if (change.recordToSave() != null)
+                saveWithCapacity(room, room.durableState(change.recordToSave()));
             synchronized (room) {
                 change.commit();
                 return deliver.apply(change.result());
@@ -307,7 +379,7 @@ public final class RoomDirectory implements AutoCloseable {
                                 controlState == null ? room.control.durableState() : controlState,
                                 draft.durableState());
             }
-            store.save(record);
+            saveWithCapacity(room, record);
             synchronized (room) {
                 room.credentials = draft;
                 controlChange.commit();
@@ -318,7 +390,7 @@ public final class RoomDirectory implements AutoCloseable {
         /** A separate durable decision: delete failure cannot undo an earlier change. */
         void remove() {
             store.delete(room.id);
-            rooms.remove(room.id, room);
+            if (rooms.remove(room.id, room)) release(1, room.reservedTerminals);
         }
     }
 
@@ -388,6 +460,7 @@ public final class RoomDirectory implements AutoCloseable {
         final String name;
         final RoomControl control;
         private RoomCredentials credentials;
+        private int reservedTerminals;
         private final ReentrantLock commands = new ReentrantLock(true);
         private final byte[] tokenHash;
 
@@ -401,6 +474,7 @@ public final class RoomDirectory implements AutoCloseable {
             this.name = name;
             this.tokenHash = tokenHash.clone();
             this.control = control;
+            this.reservedTerminals = control.durableState().workspace().terminals().size();
             this.credentials = credentials;
         }
 

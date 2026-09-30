@@ -1,0 +1,1627 @@
+{
+  "schemaVersion": 1,
+  "scope": "T10.5 local multi-room admission boundary and sequential reconnect churn. Synthetic peers, no PTY/browser, not deployment capacity or a sustained load profile.",
+  "histogramEncoding": "nonzeroBuckets entries are [upper bound in ms,count]; bucket 1001 means >1000ms; omitted buckets are zero.",
+  "manifest": {
+    "startedAt": "2026-09-30T07:15:31.671Z",
+    "revision": "c33c7068f5c73fa1e18c674cbc9dd09f14400219",
+    "dirty": true,
+    "profile": "admission",
+    "node": "v26.3.1",
+    "java": "openjdk 21.0.12.1 2026-08-18 LTS\nOpenJDK Runtime Environment Temurin-21.0.12.1+1 (build 21.0.12.1+1-LTS)\nOpenJDK 64-Bit Server VM Temurin-21.0.12.1+1 (build 21.0.12.1+1-LTS, mixed mode, sharing)",
+    "jvmArguments": ["-Xms256m", "-Xmx512m", "-XX:+UseG1GC"],
+    "jarSha256": "8bc055d721b5927297c90534c64ef52254a8d83edf4327823a5711214c7b89bf",
+    "jfcSha256": "d5df8107a9ca2f39e10299210e590fb752288b07ef5e5144c5472df9a59bbfe8",
+    "sourceSha256": {
+      "e2e/src/performance/admission-run.ts": "990475118f5c05bd39ecbe805a95914809f8d40adde4ce7906658a7579ed8d23",
+      "backend/build.gradle": "65812ef2d3911d844196adceeb7baba75dc991be5d872330eb9d0d07ad70ff20",
+      "backend/src/main/java/dev/ttyroom/TtyRoomApplication.java": "d20ff965f5788c057befc23c446b2f8f5febb6830fe5320f9e562e3cfc6d313b",
+      "backend/src/main/java/dev/ttyroom/adapter/config/ServerSettings.java": "f0dd01becc7a345625e2241af3beeb929a5852c124085a6e566b5112eefe4c81",
+      "backend/src/main/java/dev/ttyroom/adapter/http/HealthController.java": "eae72dff87f2442ec1938879a60467861a84de937f4f67ae27a8b8e6eb80269a",
+      "backend/src/main/java/dev/ttyroom/adapter/http/RoomController.java": "bc3800d3dc595c473fae54376378b538df8d0def63cf50174198eb98eef7622b",
+      "backend/src/main/java/dev/ttyroom/adapter/http/StaticWebController.java": "163f2220c85e4bf8c3275d199314ad912c6c5d259c3de21bc5ba8c4ae72d3a5a",
+      "backend/src/main/java/dev/ttyroom/adapter/sqlite/SqliteRoomStore.java": "842ae5e4bee1d3f8adba9c89770b8bbbee71cd64513b3ef127134f89e5b24f3c",
+      "backend/src/main/java/dev/ttyroom/adapter/sqlite/StoredRoomJson.java": "755efea8902441870a1a3557bfa40b1055da42d111e0a38384f4ce3ab8412ee0",
+      "backend/src/main/java/dev/ttyroom/adapter/ws/BufferEvents.java": "ef33c2f98af626324b338e7d83f33099c3a9723eaa871c42958ffb662fe46faf",
+      "backend/src/main/java/dev/ttyroom/adapter/ws/ControlInbox.java": "d2be972864726d69561a509fcad80674aa8d191959ee907e9fce8e9a058b8a48",
+      "backend/src/main/java/dev/ttyroom/adapter/ws/IncomingMessages.java": "f95d80bbc6a1267ab67da9e6544cb986954cd35329259c9eac115f74265d14af",
+      "backend/src/main/java/dev/ttyroom/adapter/ws/InputWire.java": "70149fdff7b08dd4b867db8262a7408ff4c4a70710aa2996171e164b0292785e",
+      "backend/src/main/java/dev/ttyroom/adapter/ws/OutputWire.java": "2b45df50c534a30e74334c2f68504bee7fd008c9bf9737c3765c61936d8375cf",
+      "backend/src/main/java/dev/ttyroom/adapter/ws/RoomProtocol.java": "034339b761c89c801638ee8bd49e351f3ed3fb388b3ed4013e2ecbbb1b245b78",
+      "backend/src/main/java/dev/ttyroom/adapter/ws/RoomSocketHandler.java": "f073ce16cfc9de586266f40bed0040dbeea065ffffb444b90f428c3659b11a32",
+      "backend/src/main/java/dev/ttyroom/adapter/ws/SocketSender.java": "ef2693f49fb6e5c6b8ea717c2721c311d83a494140602ebd059b4057605f6a59",
+      "backend/src/main/java/dev/ttyroom/adapter/ws/WebSocketConfiguration.java": "b0698830073fbddaa2561546adfd3fef3ea84e048660a581bfdcf1b4a9b0fdc1",
+      "backend/src/main/java/dev/ttyroom/application/CursorPosition.java": "7ca89bee1e849aaee96ee16a42fb5da16bb39ce88cec69c964567b5030a6e8bd",
+      "backend/src/main/java/dev/ttyroom/application/ExpiryTimers.java": "1b51b429304316a17d1f4d373e9c2604ef609788685e3ec20a3681dad29987eb",
+      "backend/src/main/java/dev/ttyroom/application/HostCommand.java": "e6280e1c86ac4ea06ccdddac3676090dc4306d2eeae7834463d28329ea52355a",
+      "backend/src/main/java/dev/ttyroom/application/InputFrame.java": "5c19638c263db02684e510e8cfc76e32df1cf78a25d175da46ddc4a6a2271b96",
+      "backend/src/main/java/dev/ttyroom/application/OutputFrame.java": "684c89fb2ac9b21472a66cc8f92259c99cfd08f135f1fd21a61eb1cf1b26f52c",
+      "backend/src/main/java/dev/ttyroom/application/ParticipantCommand.java": "39c1b004a2d0b46f5c55ffd11ce49e519cf904682ccedf4614ed7708cd468d29",
+      "backend/src/main/java/dev/ttyroom/application/RoomCredentials.java": "6c0f9dea71d7e492dff09553676e94b307e4658f1b45d3798433de9d741427c2",
+      "backend/src/main/java/dev/ttyroom/application/RoomDirectory.java": "83e5f8ebec70e5a782a68a9a1c0bda4ea530dbc425da10c8dc4a62b5a47e4844",
+      "backend/src/main/java/dev/ttyroom/application/RoomNotice.java": "d94e7cddd221f40d9f09fae913d33a12f57bead46b655db8d86f328d05720da6",
+      "backend/src/main/java/dev/ttyroom/application/RoomSessions.java": "593bad8dc5efbffc7378250e154337830e020a7641efca7921b8323f449b3ee9",
+      "backend/src/main/java/dev/ttyroom/application/RoomStore.java": "f4cbab0f75618183541f33b9b0deb404eea6ccf9284f02afd3e3bef936a169cb",
+      "backend/src/main/java/dev/ttyroom/application/TerminalOutput.java": "33c035242d1640a7f92cd14086f61f9e8ef518d8d4dd1f9140ab9fa2ce92f92f",
+      "backend/src/main/java/dev/ttyroom/domain/HostPresence.java": "9e8d37a1782a45cba6b66bbbb7fadf50ee9bc4ed19a41586a9a69ccb55b1b3be",
+      "backend/src/main/java/dev/ttyroom/domain/LeaseControl.java": "4d3820c2d3355a2905242f548d36a5fb90de123dfce49d07aaf273b965753160",
+      "backend/src/main/java/dev/ttyroom/domain/RoomControl.java": "683e483997faaa35721c742841b521a85f2d097df632c7b6d290c1d138e92556",
+      "backend/src/main/java/dev/ttyroom/domain/TerminalWorkspace.java": "8f1fce4b0895dbab04c1e104cb97bda848ae620e3fbe22271fa47167c9024d54",
+      "backend/src/main/resources/application.properties": "90eb8ce3fa4d4048cfcc38cdb8142361f7758e9ade5ce5433cda8eb130f392b8",
+      "e2e/src/performance/capacity-peer.ts": "852d6c31a239680c076e0a77efbf1356cf81329a6d4d9a9493f8ac983b756308",
+      "e2e/src/performance/capacity-report.spec.ts": "4d9ae1f5d1b63e8a23842149251803ff0aac08f1b8b3fe199e0e10a6406c95c6",
+      "e2e/src/performance/capacity-report.ts": "0213b9167b8b9195b17b6bc5a05e50d8fc75901ebec92fedb1a74667a85ec171",
+      "e2e/src/performance/capacity-run.ts": "cb199fbc72f46c1fd5ab77d86a7eb26a3f5f704ee000424658cf41210711fc93",
+      "e2e/src/performance/jvm-observation.ts": "b568ff7a20758604f6a06f0a054c32d3dab21ac64403b2001ab4a4b4cbf4f79c",
+      "e2e/src/server-process.ts": "fd57be0f053bcaa8be7d7a5286cffa307e4d96679583eea2a98ef94b2325ed72",
+      "e2e/src/socket-probe.ts": "98894893b23d729e9b2c51b34e1a8dca621d11973eef0c544a6dc6b018390b83",
+      "protocol/src/messages.ts": "bfdcc0ec57a3282b8fb0e0f6420063dbb565a2c20d51f0f6757b998c38e731da",
+      "scripts/measure-capacity.sh": "b98e1c24c27937b04f8713282dee70819ce5cbda1ec2266e06185f2a7f097a84"
+    }
+  },
+  "trials": [
+    {
+      "repetition": 1,
+      "completed": true,
+      "failures": [],
+      "limits": {
+        "rooms": 4,
+        "connections": 16,
+        "terminals": 16,
+        "retainedHistoryBytes": 16777216
+      },
+      "environment": {
+        "os": "darwin 25.5.0",
+        "cpu": "Apple M4 Max",
+        "node": "v26.3.1"
+      },
+      "rejections": {
+        "roomStatus": 503,
+        "terminalCode": "capacity-exhausted",
+        "connectionCode": 1013
+      },
+      "recoveries": [
+        {
+          "round": 0,
+          "elapsedMs": 790.6758749999999,
+          "bytes": 50331648
+        },
+        {
+          "round": 1,
+          "elapsedMs": 752.6796669999999,
+          "bytes": 50331648
+        },
+        {
+          "round": 2,
+          "elapsedMs": 738.9281659999997,
+          "bytes": 50331648
+        },
+        {
+          "round": 3,
+          "elapsedMs": 743.3324999999995,
+          "bytes": 50331648
+        },
+        {
+          "round": 4,
+          "elapsedMs": 747.6117080000004,
+          "bytes": 50331648
+        },
+        {
+          "round": 5,
+          "elapsedMs": 742.91525,
+          "bytes": 50331648
+        },
+        {
+          "round": 6,
+          "elapsedMs": 739.8373329999995,
+          "bytes": 50331648
+        },
+        {
+          "round": 7,
+          "elapsedMs": 747.9299579999997,
+          "bytes": 50331648
+        },
+        {
+          "round": 8,
+          "elapsedMs": 745.4870410000003,
+          "bytes": 50331648
+        },
+        {
+          "round": 9,
+          "elapsedMs": 730.6510839999992,
+          "bytes": 50331648
+        },
+        {
+          "round": 10,
+          "elapsedMs": 739.7567909999998,
+          "bytes": 50331648
+        }
+      ],
+      "closures": [
+        1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006,
+        1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006,
+        1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006,
+        1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006,
+        1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006,
+        1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006,
+        1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006,
+        1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006,
+        1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006
+      ],
+      "heap": [
+        {
+          "phase": "empty",
+          "at": "2026-09-30T07:15:33.960Z",
+          "usedBytes": 14972928,
+          "diagnosticMs": 263.0122080000001
+        },
+        {
+          "phase": "full",
+          "at": "2026-09-30T07:15:35.700Z",
+          "usedBytes": 35417088,
+          "diagnosticMs": 157.8009159999997
+        },
+        {
+          "phase": "after-churn",
+          "at": "2026-09-30T07:15:43.558Z",
+          "usedBytes": 35401728,
+          "diagnosticMs": 163.50583299999926
+        },
+        {
+          "phase": "released",
+          "at": "2026-09-30T07:15:43.745Z",
+          "usedBytes": 17610752,
+          "diagnosticMs": 148.26345799999945
+        }
+      ],
+      "flight": {
+        "queue": {
+          "count": 142,
+          "p95UpperMs": 1,
+          "maxMs": 2.297959,
+          "over1000Ms": 0,
+          "nonzeroBuckets": [
+            [1, 139],
+            [3, 3]
+          ]
+        },
+        "pressure": {},
+        "gc": [
+          {
+            "at": "2026-09-30T16:15:34.864429916+09:00",
+            "pauseMs": 2.26925,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T16:15:35.329966916+09:00",
+            "pauseMs": 3.703417,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T16:15:35.607678500+09:00",
+            "pauseMs": 10.787916,
+            "cause": "Diagnostic Command"
+          },
+          {
+            "at": "2026-09-30T16:15:36.280073666+09:00",
+            "pauseMs": 0.5565840000000001,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T16:15:36.807590583+09:00",
+            "pauseMs": 0.6604169999999999,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T16:15:37.369826458+09:00",
+            "pauseMs": 0.571833,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T16:15:37.884091625+09:00",
+            "pauseMs": 0.701875,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T16:15:38.448219583+09:00",
+            "pauseMs": 0.6096250000000001,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T16:15:38.983874250+09:00",
+            "pauseMs": 0.672083,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T16:15:39.532515166+09:00",
+            "pauseMs": 0.691334,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T16:15:40.097470250+09:00",
+            "pauseMs": 0.686208,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T16:15:40.625900500+09:00",
+            "pauseMs": 0.53575,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T16:15:41.199774250+09:00",
+            "pauseMs": 0.694791,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T16:15:41.713345541+09:00",
+            "pauseMs": 0.758709,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T16:15:42.280197958+09:00",
+            "pauseMs": 0.674625,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T16:15:42.800179208+09:00",
+            "pauseMs": 0.735208,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T16:15:43.347805958+09:00",
+            "pauseMs": 0.708875,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T16:15:43.465268875+09:00",
+            "pauseMs": 12.51775,
+            "cause": "Diagnostic Command"
+          },
+          {
+            "at": "2026-09-30T16:15:43.659430875+09:00",
+            "pauseMs": 7.512833,
+            "cause": "Diagnostic Command"
+          }
+        ],
+        "heap": [
+          {
+            "at": "2026-09-30T16:15:34.864431083+09:00",
+            "when": "Before GC",
+            "usedBytes": 174356888
+          },
+          {
+            "at": "2026-09-30T16:15:34.866698208+09:00",
+            "when": "After GC",
+            "usedBytes": 34992936
+          },
+          {
+            "at": "2026-09-30T16:15:35.329968041+09:00",
+            "when": "Before GC",
+            "usedBytes": 173404968
+          },
+          {
+            "at": "2026-09-30T16:15:35.333669416+09:00",
+            "when": "After GC",
+            "usedBytes": 37141464
+          },
+          {
+            "at": "2026-09-30T16:15:35.607679250+09:00",
+            "when": "Before GC",
+            "usedBytes": 95861720
+          },
+          {
+            "at": "2026-09-30T16:15:35.618465166+09:00",
+            "when": "After GC",
+            "usedBytes": 35069336
+          },
+          {
+            "at": "2026-09-30T16:15:36.280074750+09:00",
+            "when": "Before GC",
+            "usedBytes": 195501464
+          },
+          {
+            "at": "2026-09-30T16:15:36.280629500+09:00",
+            "when": "After GC",
+            "usedBytes": 36942296
+          },
+          {
+            "at": "2026-09-30T16:15:36.807592125+09:00",
+            "when": "Before GC",
+            "usedBytes": 194228696
+          },
+          {
+            "at": "2026-09-30T16:15:36.808250333+09:00",
+            "when": "After GC",
+            "usedBytes": 36885872
+          },
+          {
+            "at": "2026-09-30T16:15:37.369827375+09:00",
+            "when": "Before GC",
+            "usedBytes": 194172272
+          },
+          {
+            "at": "2026-09-30T16:15:37.370397750+09:00",
+            "when": "After GC",
+            "usedBytes": 36819408
+          },
+          {
+            "at": "2026-09-30T16:15:37.884092916+09:00",
+            "when": "Before GC",
+            "usedBytes": 194105808
+          },
+          {
+            "at": "2026-09-30T16:15:37.884793208+09:00",
+            "when": "After GC",
+            "usedBytes": 36921376
+          },
+          {
+            "at": "2026-09-30T16:15:38.448220708+09:00",
+            "when": "Before GC",
+            "usedBytes": 194207776
+          },
+          {
+            "at": "2026-09-30T16:15:38.448828416+09:00",
+            "when": "After GC",
+            "usedBytes": 36833392
+          },
+          {
+            "at": "2026-09-30T16:15:38.983875458+09:00",
+            "when": "Before GC",
+            "usedBytes": 194119792
+          },
+          {
+            "at": "2026-09-30T16:15:38.984546+09:00",
+            "when": "After GC",
+            "usedBytes": 36776112
+          },
+          {
+            "at": "2026-09-30T16:15:39.532516583+09:00",
+            "when": "Before GC",
+            "usedBytes": 194062512
+          },
+          {
+            "at": "2026-09-30T16:15:39.533205916+09:00",
+            "when": "After GC",
+            "usedBytes": 36938032
+          },
+          {
+            "at": "2026-09-30T16:15:40.097471666+09:00",
+            "when": "Before GC",
+            "usedBytes": 194224432
+          },
+          {
+            "at": "2026-09-30T16:15:40.098156083+09:00",
+            "when": "After GC",
+            "usedBytes": 36863272
+          },
+          {
+            "at": "2026-09-30T16:15:40.625901666+09:00",
+            "when": "Before GC",
+            "usedBytes": 194149672
+          },
+          {
+            "at": "2026-09-30T16:15:40.626435750+09:00",
+            "when": "After GC",
+            "usedBytes": 36789888
+          },
+          {
+            "at": "2026-09-30T16:15:41.199775208+09:00",
+            "when": "Before GC",
+            "usedBytes": 194076288
+          },
+          {
+            "at": "2026-09-30T16:15:41.200468666+09:00",
+            "when": "After GC",
+            "usedBytes": 36749080
+          },
+          {
+            "at": "2026-09-30T16:15:41.713346916+09:00",
+            "when": "Before GC",
+            "usedBytes": 194035480
+          },
+          {
+            "at": "2026-09-30T16:15:41.714103666+09:00",
+            "when": "After GC",
+            "usedBytes": 36905272
+          },
+          {
+            "at": "2026-09-30T16:15:42.280199333+09:00",
+            "when": "Before GC",
+            "usedBytes": 194191672
+          },
+          {
+            "at": "2026-09-30T16:15:42.280871875+09:00",
+            "when": "After GC",
+            "usedBytes": 36885144
+          },
+          {
+            "at": "2026-09-30T16:15:42.800180833+09:00",
+            "when": "Before GC",
+            "usedBytes": 194171544
+          },
+          {
+            "at": "2026-09-30T16:15:42.800913791+09:00",
+            "when": "After GC",
+            "usedBytes": 36779168
+          },
+          {
+            "at": "2026-09-30T16:15:43.347807083+09:00",
+            "when": "Before GC",
+            "usedBytes": 194065568
+          },
+          {
+            "at": "2026-09-30T16:15:43.348514166+09:00",
+            "when": "After GC",
+            "usedBytes": 36942216
+          },
+          {
+            "at": "2026-09-30T16:15:43.465270125+09:00",
+            "when": "Before GC",
+            "usedBytes": 48476552
+          },
+          {
+            "at": "2026-09-30T16:15:43.477785666+09:00",
+            "when": "After GC",
+            "usedBytes": 35401808
+          },
+          {
+            "at": "2026-09-30T16:15:43.659431916+09:00",
+            "when": "Before GC",
+            "usedBytes": 36450384
+          },
+          {
+            "at": "2026-09-30T16:15:43.666942500+09:00",
+            "when": "After GC",
+            "usedBytes": 17611632
+          }
+        ],
+        "cpu": [
+          {
+            "at": "2026-09-30T16:15:36.106531250+09:00",
+            "jvmFractionOfMachine": 0.058168318
+          },
+          {
+            "at": "2026-09-30T16:15:37.112002791+09:00",
+            "jvmFractionOfMachine": 0.040841585
+          },
+          {
+            "at": "2026-09-30T16:15:38.117196958+09:00",
+            "jvmFractionOfMachine": 0.038125
+          },
+          {
+            "at": "2026-09-30T16:15:39.117485958+09:00",
+            "jvmFractionOfMachine": 0.0375
+          },
+          {
+            "at": "2026-09-30T16:15:40.118176750+09:00",
+            "jvmFractionOfMachine": 0.036875
+          },
+          {
+            "at": "2026-09-30T16:15:41.123389708+09:00",
+            "jvmFractionOfMachine": 0.032797031
+          },
+          {
+            "at": "2026-09-30T16:15:42.123966625+09:00",
+            "jvmFractionOfMachine": 0.04
+          },
+          {
+            "at": "2026-09-30T16:15:43.129215750+09:00",
+            "jvmFractionOfMachine": 0.036875
+          }
+        ],
+        "lostBytes": 0
+      },
+      "rss": [
+        {
+          "at": "2026-09-30T07:15:33.702Z",
+          "serverRssBytes": 283967488,
+          "generatorRssBytes": 89931776,
+          "sampleMs": 6.74654200000009
+        },
+        {
+          "at": "2026-09-30T07:15:34.705Z",
+          "serverRssBytes": 365182976,
+          "generatorRssBytes": 129859584,
+          "sampleMs": 3.119333000000097
+        },
+        {
+          "at": "2026-09-30T07:15:35.709Z",
+          "serverRssBytes": 453853184,
+          "generatorRssBytes": 155303936,
+          "sampleMs": 3.536250000000109
+        },
+        {
+          "at": "2026-09-30T07:15:36.714Z",
+          "serverRssBytes": 456278016,
+          "generatorRssBytes": 164298752,
+          "sampleMs": 3.707749999999578
+        },
+        {
+          "at": "2026-09-30T07:15:37.718Z",
+          "serverRssBytes": 456589312,
+          "generatorRssBytes": 167362560,
+          "sampleMs": 3.6512919999995574
+        },
+        {
+          "at": "2026-09-30T07:15:38.721Z",
+          "serverRssBytes": 456785920,
+          "generatorRssBytes": 174211072,
+          "sampleMs": 3.4909170000000813
+        },
+        {
+          "at": "2026-09-30T07:15:39.726Z",
+          "serverRssBytes": 456933376,
+          "generatorRssBytes": 174637056,
+          "sampleMs": 4.44012500000008
+        },
+        {
+          "at": "2026-09-30T07:15:40.729Z",
+          "serverRssBytes": 457080832,
+          "generatorRssBytes": 192872448,
+          "sampleMs": 3.616874999999709
+        },
+        {
+          "at": "2026-09-30T07:15:41.733Z",
+          "serverRssBytes": 457113600,
+          "generatorRssBytes": 195510272,
+          "sampleMs": 4.053874999999607
+        },
+        {
+          "at": "2026-09-30T07:15:42.737Z",
+          "serverRssBytes": 458031104,
+          "generatorRssBytes": 195805184,
+          "sampleMs": 4.085124999999607
+        },
+        {
+          "at": "2026-09-30T07:15:43.741Z",
+          "serverRssBytes": 461488128,
+          "generatorRssBytes": 199966720,
+          "sampleMs": 3.3021670000016456
+        }
+      ],
+      "rssFailures": []
+    },
+    {
+      "repetition": 2,
+      "completed": true,
+      "failures": [],
+      "limits": {
+        "rooms": 4,
+        "connections": 16,
+        "terminals": 16,
+        "retainedHistoryBytes": 16777216
+      },
+      "environment": {
+        "os": "darwin 25.5.0",
+        "cpu": "Apple M4 Max",
+        "node": "v26.3.1"
+      },
+      "rejections": {
+        "roomStatus": 503,
+        "terminalCode": "capacity-exhausted",
+        "connectionCode": 1013
+      },
+      "recoveries": [
+        {
+          "round": 0,
+          "elapsedMs": 790.5869170000005,
+          "bytes": 50331648
+        },
+        {
+          "round": 1,
+          "elapsedMs": 753.2975420000002,
+          "bytes": 50331648
+        },
+        {
+          "round": 2,
+          "elapsedMs": 748.9945420000004,
+          "bytes": 50331648
+        },
+        {
+          "round": 3,
+          "elapsedMs": 740.726999999999,
+          "bytes": 50331648
+        },
+        {
+          "round": 4,
+          "elapsedMs": 744.4890000000014,
+          "bytes": 50331648
+        },
+        {
+          "round": 5,
+          "elapsedMs": 729.7692090000019,
+          "bytes": 50331648
+        },
+        {
+          "round": 6,
+          "elapsedMs": 738.7309580000001,
+          "bytes": 50331648
+        },
+        {
+          "round": 7,
+          "elapsedMs": 740.3410000000003,
+          "bytes": 50331648
+        },
+        {
+          "round": 8,
+          "elapsedMs": 744.2125830000004,
+          "bytes": 50331648
+        },
+        {
+          "round": 9,
+          "elapsedMs": 741.768250000001,
+          "bytes": 50331648
+        },
+        {
+          "round": 10,
+          "elapsedMs": 732.5382919999975,
+          "bytes": 50331648
+        }
+      ],
+      "closures": [
+        1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006,
+        1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006,
+        1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006,
+        1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006,
+        1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006,
+        1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006,
+        1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006,
+        1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006,
+        1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006
+      ],
+      "heap": [
+        {
+          "phase": "empty",
+          "at": "2026-09-30T07:15:45.454Z",
+          "usedBytes": 14855168,
+          "diagnosticMs": 241.93108399999983
+        },
+        {
+          "phase": "full",
+          "at": "2026-09-30T07:15:47.131Z",
+          "usedBytes": 34932736,
+          "diagnosticMs": 156.5457920000008
+        },
+        {
+          "phase": "after-churn",
+          "at": "2026-09-30T07:15:54.971Z",
+          "usedBytes": 35474432,
+          "diagnosticMs": 161.83091699999932
+        },
+        {
+          "phase": "released",
+          "at": "2026-09-30T07:15:55.149Z",
+          "usedBytes": 17400832,
+          "diagnosticMs": 150.44325000000026
+        }
+      ],
+      "flight": {
+        "queue": {
+          "count": 142,
+          "p95UpperMs": 1,
+          "maxMs": 2.957209,
+          "over1000Ms": 0,
+          "nonzeroBuckets": [
+            [1, 139],
+            [3, 3]
+          ]
+        },
+        "pressure": {},
+        "gc": [
+          {
+            "at": "2026-09-30T16:15:46.284012708+09:00",
+            "pauseMs": 2.523583,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T16:15:46.751679125+09:00",
+            "pauseMs": 3.6477910000000002,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T16:15:47.038375916+09:00",
+            "pauseMs": 11.702875,
+            "cause": "Diagnostic Command"
+          },
+          {
+            "at": "2026-09-30T16:15:47.711639333+09:00",
+            "pauseMs": 0.582458,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T16:15:48.240111166+09:00",
+            "pauseMs": 0.5926669999999999,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T16:15:48.812075250+09:00",
+            "pauseMs": 0.580333,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T16:15:49.359364833+09:00",
+            "pauseMs": 0.683833,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T16:15:49.891502333+09:00",
+            "pauseMs": 0.653042,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T16:15:50.448646875+09:00",
+            "pauseMs": 0.668041,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T16:15:50.959139041+09:00",
+            "pauseMs": 0.7034170000000001,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T16:15:51.523179708+09:00",
+            "pauseMs": 0.644417,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T16:15:52.051168750+09:00",
+            "pauseMs": 0.701208,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T16:15:52.617413208+09:00",
+            "pauseMs": 0.717042,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T16:15:53.129737166+09:00",
+            "pauseMs": 0.705709,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T16:15:53.696205791+09:00",
+            "pauseMs": 0.62075,
+            "cause": "GCLocker Initiated GC"
+          },
+          {
+            "at": "2026-09-30T16:15:54.255382750+09:00",
+            "pauseMs": 0.765083,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T16:15:54.766169125+09:00",
+            "pauseMs": 0.7265,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T16:15:54.879261+09:00",
+            "pauseMs": 10.488375,
+            "cause": "Diagnostic Command"
+          },
+          {
+            "at": "2026-09-30T16:15:55.061093750+09:00",
+            "pauseMs": 7.932958,
+            "cause": "Diagnostic Command"
+          }
+        ],
+        "heap": [
+          {
+            "at": "2026-09-30T16:15:46.284014083+09:00",
+            "when": "Before GC",
+            "usedBytes": 174239208
+          },
+          {
+            "at": "2026-09-30T16:15:46.286535208+09:00",
+            "when": "After GC",
+            "usedBytes": 34918440
+          },
+          {
+            "at": "2026-09-30T16:15:46.751680+09:00",
+            "when": "Before GC",
+            "usedBytes": 173330472
+          },
+          {
+            "at": "2026-09-30T16:15:46.755326208+09:00",
+            "when": "After GC",
+            "usedBytes": 36852608
+          },
+          {
+            "at": "2026-09-30T16:15:47.038377083+09:00",
+            "when": "Before GC",
+            "usedBytes": 95572864
+          },
+          {
+            "at": "2026-09-30T16:15:47.050077541+09:00",
+            "when": "After GC",
+            "usedBytes": 34933160
+          },
+          {
+            "at": "2026-09-30T16:15:47.711640583+09:00",
+            "when": "Before GC",
+            "usedBytes": 194316712
+          },
+          {
+            "at": "2026-09-30T16:15:47.712221333+09:00",
+            "when": "After GC",
+            "usedBytes": 36852416
+          },
+          {
+            "at": "2026-09-30T16:15:48.240112333+09:00",
+            "when": "Before GC",
+            "usedBytes": 194138816
+          },
+          {
+            "at": "2026-09-30T16:15:48.240702958+09:00",
+            "when": "After GC",
+            "usedBytes": 36792440
+          },
+          {
+            "at": "2026-09-30T16:15:48.812076333+09:00",
+            "when": "Before GC",
+            "usedBytes": 194078840
+          },
+          {
+            "at": "2026-09-30T16:15:48.812655083+09:00",
+            "when": "After GC",
+            "usedBytes": 36586824
+          },
+          {
+            "at": "2026-09-30T16:15:49.359365833+09:00",
+            "when": "Before GC",
+            "usedBytes": 193873224
+          },
+          {
+            "at": "2026-09-30T16:15:49.360047958+09:00",
+            "when": "After GC",
+            "usedBytes": 36739272
+          },
+          {
+            "at": "2026-09-30T16:15:49.891503708+09:00",
+            "when": "Before GC",
+            "usedBytes": 194025672
+          },
+          {
+            "at": "2026-09-30T16:15:49.892154750+09:00",
+            "when": "After GC",
+            "usedBytes": 36669792
+          },
+          {
+            "at": "2026-09-30T16:15:50.448648208+09:00",
+            "when": "Before GC",
+            "usedBytes": 193956192
+          },
+          {
+            "at": "2026-09-30T16:15:50.449314083+09:00",
+            "when": "After GC",
+            "usedBytes": 36597824
+          },
+          {
+            "at": "2026-09-30T16:15:50.959140125+09:00",
+            "when": "Before GC",
+            "usedBytes": 193884224
+          },
+          {
+            "at": "2026-09-30T16:15:50.959841875+09:00",
+            "when": "After GC",
+            "usedBytes": 36727648
+          },
+          {
+            "at": "2026-09-30T16:15:51.523180833+09:00",
+            "when": "Before GC",
+            "usedBytes": 194014048
+          },
+          {
+            "at": "2026-09-30T16:15:51.523823708+09:00",
+            "when": "After GC",
+            "usedBytes": 36689904
+          },
+          {
+            "at": "2026-09-30T16:15:52.051169833+09:00",
+            "when": "Before GC",
+            "usedBytes": 193976304
+          },
+          {
+            "at": "2026-09-30T16:15:52.051869500+09:00",
+            "when": "After GC",
+            "usedBytes": 36624152
+          },
+          {
+            "at": "2026-09-30T16:15:52.617414333+09:00",
+            "when": "Before GC",
+            "usedBytes": 193910552
+          },
+          {
+            "at": "2026-09-30T16:15:52.618129750+09:00",
+            "when": "After GC",
+            "usedBytes": 36589976
+          },
+          {
+            "at": "2026-09-30T16:15:53.129738958+09:00",
+            "when": "Before GC",
+            "usedBytes": 193876376
+          },
+          {
+            "at": "2026-09-30T16:15:53.130442333+09:00",
+            "when": "After GC",
+            "usedBytes": 36747256
+          },
+          {
+            "at": "2026-09-30T16:15:53.696207166+09:00",
+            "when": "Before GC",
+            "usedBytes": 194033656
+          },
+          {
+            "at": "2026-09-30T16:15:53.696826125+09:00",
+            "when": "After GC",
+            "usedBytes": 36697424
+          },
+          {
+            "at": "2026-09-30T16:15:54.255384208+09:00",
+            "when": "Before GC",
+            "usedBytes": 193983824
+          },
+          {
+            "at": "2026-09-30T16:15:54.256147458+09:00",
+            "when": "After GC",
+            "usedBytes": 36637544
+          },
+          {
+            "at": "2026-09-30T16:15:54.766170416+09:00",
+            "when": "Before GC",
+            "usedBytes": 193923944
+          },
+          {
+            "at": "2026-09-30T16:15:54.766894916+09:00",
+            "when": "After GC",
+            "usedBytes": 36776472
+          },
+          {
+            "at": "2026-09-30T16:15:54.879261750+09:00",
+            "when": "Before GC",
+            "usedBytes": 45165080
+          },
+          {
+            "at": "2026-09-30T16:15:54.889748666+09:00",
+            "when": "After GC",
+            "usedBytes": 35289128
+          },
+          {
+            "at": "2026-09-30T16:15:55.061094166+09:00",
+            "when": "Before GC",
+            "usedBytes": 36337704
+          },
+          {
+            "at": "2026-09-30T16:15:55.069025916+09:00",
+            "when": "After GC",
+            "usedBytes": 17401104
+          }
+        ],
+        "cpu": [
+          {
+            "at": "2026-09-30T16:15:47.595748541+09:00",
+            "jvmFractionOfMachine": 0.065625
+          },
+          {
+            "at": "2026-09-30T16:15:48.598082375+09:00",
+            "jvmFractionOfMachine": 0.038125
+          },
+          {
+            "at": "2026-09-30T16:15:49.598308916+09:00",
+            "jvmFractionOfMachine": 0.039375
+          },
+          {
+            "at": "2026-09-30T16:15:50.598612708+09:00",
+            "jvmFractionOfMachine": 0.0375
+          },
+          {
+            "at": "2026-09-30T16:15:51.599681750+09:00",
+            "jvmFractionOfMachine": 0.035625000000000004
+          },
+          {
+            "at": "2026-09-30T16:15:52.604217916+09:00",
+            "jvmFractionOfMachine": 0.033415842
+          },
+          {
+            "at": "2026-09-30T16:15:53.609444791+09:00",
+            "jvmFractionOfMachine": 0.041874999999999996
+          },
+          {
+            "at": "2026-09-30T16:15:54.614630375+09:00",
+            "jvmFractionOfMachine": 0.035891089
+          }
+        ],
+        "lostBytes": 0
+      },
+      "rss": [
+        {
+          "at": "2026-09-30T07:15:45.214Z",
+          "serverRssBytes": 290177024,
+          "generatorRssBytes": 200097792,
+          "sampleMs": 2.9638340000001335
+        },
+        {
+          "at": "2026-09-30T07:15:46.217Z",
+          "serverRssBytes": 417103872,
+          "generatorRssBytes": 200228864,
+          "sampleMs": 3.4767919999994774
+        },
+        {
+          "at": "2026-09-30T07:15:47.220Z",
+          "serverRssBytes": 487686144,
+          "generatorRssBytes": 208027648,
+          "sampleMs": 3.427832999999737
+        },
+        {
+          "at": "2026-09-30T07:15:48.223Z",
+          "serverRssBytes": 488325120,
+          "generatorRssBytes": 208306176,
+          "sampleMs": 3.222041999999419
+        },
+        {
+          "at": "2026-09-30T07:15:49.226Z",
+          "serverRssBytes": 488669184,
+          "generatorRssBytes": 211501056,
+          "sampleMs": 3.438750000001164
+        },
+        {
+          "at": "2026-09-30T07:15:50.229Z",
+          "serverRssBytes": 488865792,
+          "generatorRssBytes": 211517440,
+          "sampleMs": 3.4898749999993015
+        },
+        {
+          "at": "2026-09-30T07:15:51.232Z",
+          "serverRssBytes": 488996864,
+          "generatorRssBytes": 211992576,
+          "sampleMs": 3.5644590000010794
+        },
+        {
+          "at": "2026-09-30T07:15:52.235Z",
+          "serverRssBytes": 489111552,
+          "generatorRssBytes": 212369408,
+          "sampleMs": 3.6215830000001006
+        },
+        {
+          "at": "2026-09-30T07:15:53.238Z",
+          "serverRssBytes": 489308160,
+          "generatorRssBytes": 212385792,
+          "sampleMs": 3.441624999999476
+        },
+        {
+          "at": "2026-09-30T07:15:54.243Z",
+          "serverRssBytes": 489521152,
+          "generatorRssBytes": 212402176,
+          "sampleMs": 4.235749999999825
+        },
+        {
+          "at": "2026-09-30T07:15:55.247Z",
+          "serverRssBytes": 491880448,
+          "generatorRssBytes": 231931904,
+          "sampleMs": 3.1561250000013388
+        }
+      ],
+      "rssFailures": []
+    },
+    {
+      "repetition": 3,
+      "completed": true,
+      "failures": [],
+      "limits": {
+        "rooms": 4,
+        "connections": 16,
+        "terminals": 16,
+        "retainedHistoryBytes": 16777216
+      },
+      "environment": {
+        "os": "darwin 25.5.0",
+        "cpu": "Apple M4 Max",
+        "node": "v26.3.1"
+      },
+      "rejections": {
+        "roomStatus": 503,
+        "terminalCode": "capacity-exhausted",
+        "connectionCode": 1013
+      },
+      "recoveries": [
+        {
+          "round": 0,
+          "elapsedMs": 792.1656660000008,
+          "bytes": 50331648
+        },
+        {
+          "round": 1,
+          "elapsedMs": 739.2868750000016,
+          "bytes": 50331648
+        },
+        {
+          "round": 2,
+          "elapsedMs": 745.575166999999,
+          "bytes": 50331648
+        },
+        {
+          "round": 3,
+          "elapsedMs": 763.5748750000021,
+          "bytes": 50331648
+        },
+        {
+          "round": 4,
+          "elapsedMs": 740.0563750000001,
+          "bytes": 50331648
+        },
+        {
+          "round": 5,
+          "elapsedMs": 742.3593330000003,
+          "bytes": 50331648
+        },
+        {
+          "round": 6,
+          "elapsedMs": 736.4860420000005,
+          "bytes": 50331648
+        },
+        {
+          "round": 7,
+          "elapsedMs": 738.973750000001,
+          "bytes": 50331648
+        },
+        {
+          "round": 8,
+          "elapsedMs": 737.7362910000011,
+          "bytes": 50331648
+        },
+        {
+          "round": 9,
+          "elapsedMs": 741.6374580000011,
+          "bytes": 50331648
+        },
+        {
+          "round": 10,
+          "elapsedMs": 748.523083,
+          "bytes": 50331648
+        }
+      ],
+      "closures": [
+        1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006,
+        1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006,
+        1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006,
+        1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006,
+        1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006,
+        1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006,
+        1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006,
+        1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006,
+        1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006, 1006
+      ],
+      "heap": [
+        {
+          "phase": "empty",
+          "at": "2026-09-30T07:15:56.883Z",
+          "usedBytes": 14895104,
+          "diagnosticMs": 255.17579200000182
+        },
+        {
+          "phase": "full",
+          "at": "2026-09-30T07:15:58.562Z",
+          "usedBytes": 34991104,
+          "diagnosticMs": 155.1402080000007
+        },
+        {
+          "phase": "after-churn",
+          "at": "2026-09-30T07:16:06.418Z",
+          "usedBytes": 35317760,
+          "diagnosticMs": 163.11520900000323
+        },
+        {
+          "phase": "released",
+          "at": "2026-09-30T07:16:06.619Z",
+          "usedBytes": 17492992,
+          "diagnosticMs": 160.83554100000038
+        }
+      ],
+      "flight": {
+        "queue": {
+          "count": 142,
+          "p95UpperMs": 1,
+          "maxMs": 3.3669160000000002,
+          "over1000Ms": 0,
+          "nonzeroBuckets": [
+            [1, 139],
+            [4, 3]
+          ]
+        },
+        "pressure": {},
+        "gc": [
+          {
+            "at": "2026-09-30T16:15:57.714969292+09:00",
+            "pauseMs": 2.1715,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T16:15:58.182738375+09:00",
+            "pauseMs": 3.85325,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T16:15:58.469161834+09:00",
+            "pauseMs": 10.967457999999999,
+            "cause": "Diagnostic Command"
+          },
+          {
+            "at": "2026-09-30T16:15:59.130386792+09:00",
+            "pauseMs": 0.624833,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T16:15:59.656874375+09:00",
+            "pauseMs": 0.696084,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T16:16:00.225810334+09:00",
+            "pauseMs": 0.766083,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T16:16:00.756015917+09:00",
+            "pauseMs": 0.693083,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T16:16:01.321666750+09:00",
+            "pauseMs": 0.6800419999999999,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T16:16:01.852327334+09:00",
+            "pauseMs": 0.647625,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T16:16:02.398297709+09:00",
+            "pauseMs": 0.7022499999999999,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T16:16:02.959891334+09:00",
+            "pauseMs": 0.757958,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T16:16:03.487998875+09:00",
+            "pauseMs": 0.681709,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T16:16:04.051924250+09:00",
+            "pauseMs": 0.7108340000000001,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T16:16:04.561056417+09:00",
+            "pauseMs": 0.672875,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T16:16:05.126245750+09:00",
+            "pauseMs": 0.691,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T16:16:05.656548542+09:00",
+            "pauseMs": 0.7812920000000001,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T16:16:06.209287250+09:00",
+            "pauseMs": 0.651875,
+            "cause": "G1 Evacuation Pause"
+          },
+          {
+            "at": "2026-09-30T16:16:06.326912125+09:00",
+            "pauseMs": 11.912042,
+            "cause": "Diagnostic Command"
+          },
+          {
+            "at": "2026-09-30T16:16:06.520226417+09:00",
+            "pauseMs": 7.838958,
+            "cause": "Diagnostic Command"
+          }
+        ],
+        "heap": [
+          {
+            "at": "2026-09-30T16:15:57.714970792+09:00",
+            "when": "Before GC",
+            "usedBytes": 174279144
+          },
+          {
+            "at": "2026-09-30T16:15:57.717139834+09:00",
+            "when": "After GC",
+            "usedBytes": 34867912
+          },
+          {
+            "at": "2026-09-30T16:15:58.182739792+09:00",
+            "when": "Before GC",
+            "usedBytes": 173279944
+          },
+          {
+            "at": "2026-09-30T16:15:58.186590667+09:00",
+            "when": "After GC",
+            "usedBytes": 37114848
+          },
+          {
+            "at": "2026-09-30T16:15:58.469162834+09:00",
+            "when": "Before GC",
+            "usedBytes": 95835104
+          },
+          {
+            "at": "2026-09-30T16:15:58.480128250+09:00",
+            "when": "After GC",
+            "usedBytes": 34991880
+          },
+          {
+            "at": "2026-09-30T16:15:59.130388+09:00",
+            "when": "Before GC",
+            "usedBytes": 194375432
+          },
+          {
+            "at": "2026-09-30T16:15:59.131011250+09:00",
+            "when": "After GC",
+            "usedBytes": 36916088
+          },
+          {
+            "at": "2026-09-30T16:15:59.656875584+09:00",
+            "when": "Before GC",
+            "usedBytes": 194202488
+          },
+          {
+            "at": "2026-09-30T16:15:59.657569625+09:00",
+            "when": "After GC",
+            "usedBytes": 36850624
+          },
+          {
+            "at": "2026-09-30T16:16:00.225812042+09:00",
+            "when": "Before GC",
+            "usedBytes": 194137024
+          },
+          {
+            "at": "2026-09-30T16:16:00.226575500+09:00",
+            "when": "After GC",
+            "usedBytes": 36665168
+          },
+          {
+            "at": "2026-09-30T16:16:00.756017417+09:00",
+            "when": "Before GC",
+            "usedBytes": 193951568
+          },
+          {
+            "at": "2026-09-30T16:16:00.756708500+09:00",
+            "when": "After GC",
+            "usedBytes": 36786832
+          },
+          {
+            "at": "2026-09-30T16:16:01.321668167+09:00",
+            "when": "Before GC",
+            "usedBytes": 194073232
+          },
+          {
+            "at": "2026-09-30T16:16:01.322346250+09:00",
+            "when": "After GC",
+            "usedBytes": 36703632
+          },
+          {
+            "at": "2026-09-30T16:16:01.852328875+09:00",
+            "when": "Before GC",
+            "usedBytes": 193990032
+          },
+          {
+            "at": "2026-09-30T16:16:01.852974417+09:00",
+            "when": "After GC",
+            "usedBytes": 36664696
+          },
+          {
+            "at": "2026-09-30T16:16:02.398299209+09:00",
+            "when": "Before GC",
+            "usedBytes": 193951096
+          },
+          {
+            "at": "2026-09-30T16:16:02.398999459+09:00",
+            "when": "After GC",
+            "usedBytes": 36813536
+          },
+          {
+            "at": "2026-09-30T16:16:02.959892625+09:00",
+            "when": "Before GC",
+            "usedBytes": 194099936
+          },
+          {
+            "at": "2026-09-30T16:16:02.960648625+09:00",
+            "when": "After GC",
+            "usedBytes": 36770840
+          },
+          {
+            "at": "2026-09-30T16:16:03.488000250+09:00",
+            "when": "Before GC",
+            "usedBytes": 194057240
+          },
+          {
+            "at": "2026-09-30T16:16:03.488679959+09:00",
+            "when": "After GC",
+            "usedBytes": 36694600
+          },
+          {
+            "at": "2026-09-30T16:16:04.051925459+09:00",
+            "when": "Before GC",
+            "usedBytes": 193981000
+          },
+          {
+            "at": "2026-09-30T16:16:04.052634584+09:00",
+            "when": "After GC",
+            "usedBytes": 36657672
+          },
+          {
+            "at": "2026-09-30T16:16:04.561057834+09:00",
+            "when": "Before GC",
+            "usedBytes": 193944072
+          },
+          {
+            "at": "2026-09-30T16:16:04.561729+09:00",
+            "when": "After GC",
+            "usedBytes": 36832560
+          },
+          {
+            "at": "2026-09-30T16:16:05.126247042+09:00",
+            "when": "Before GC",
+            "usedBytes": 194118960
+          },
+          {
+            "at": "2026-09-30T16:16:05.126936250+09:00",
+            "when": "After GC",
+            "usedBytes": 36777872
+          },
+          {
+            "at": "2026-09-30T16:16:05.656549709+09:00",
+            "when": "Before GC",
+            "usedBytes": 194064272
+          },
+          {
+            "at": "2026-09-30T16:16:05.657329292+09:00",
+            "when": "After GC",
+            "usedBytes": 36699688
+          },
+          {
+            "at": "2026-09-30T16:16:06.209288709+09:00",
+            "when": "Before GC",
+            "usedBytes": 193986088
+          },
+          {
+            "at": "2026-09-30T16:16:06.209938750+09:00",
+            "when": "After GC",
+            "usedBytes": 36838872
+          },
+          {
+            "at": "2026-09-30T16:16:06.326912875+09:00",
+            "when": "Before GC",
+            "usedBytes": 46276056
+          },
+          {
+            "at": "2026-09-30T16:16:06.338823250+09:00",
+            "when": "After GC",
+            "usedBytes": 35318544
+          },
+          {
+            "at": "2026-09-30T16:16:06.520227375+09:00",
+            "when": "Before GC",
+            "usedBytes": 36367120
+          },
+          {
+            "at": "2026-09-30T16:16:06.528064292+09:00",
+            "when": "After GC",
+            "usedBytes": 17486080
+          }
+        ],
+        "cpu": [
+          {
+            "at": "2026-09-30T16:15:59.025937750+09:00",
+            "jvmFractionOfMachine": 0.063118811
+          },
+          {
+            "at": "2026-09-30T16:16:00.026379209+09:00",
+            "jvmFractionOfMachine": 0.036875000000000005
+          },
+          {
+            "at": "2026-09-30T16:16:01.028976500+09:00",
+            "jvmFractionOfMachine": 0.039375
+          },
+          {
+            "at": "2026-09-30T16:16:02.033986084+09:00",
+            "jvmFractionOfMachine": 0.035891089
+          },
+          {
+            "at": "2026-09-30T16:16:03.034705750+09:00",
+            "jvmFractionOfMachine": 0.036875
+          },
+          {
+            "at": "2026-09-30T16:16:04.039987625+09:00",
+            "jvmFractionOfMachine": 0.033415842
+          },
+          {
+            "at": "2026-09-30T16:16:05.045187917+09:00",
+            "jvmFractionOfMachine": 0.039375
+          },
+          {
+            "at": "2026-09-30T16:16:06.050403584+09:00",
+            "jvmFractionOfMachine": 0.038366336
+          }
+        ],
+        "lostBytes": 0
+      },
+      "rss": [
+        {
+          "at": "2026-09-30T07:15:56.630Z",
+          "serverRssBytes": 284278784,
+          "generatorRssBytes": 231997440,
+          "sampleMs": 3.022166999999172
+        },
+        {
+          "at": "2026-09-30T07:15:57.633Z",
+          "serverRssBytes": 366854144,
+          "generatorRssBytes": 232390656,
+          "sampleMs": 3.4987079999991693
+        },
+        {
+          "at": "2026-09-30T07:15:58.636Z",
+          "serverRssBytes": 449150976,
+          "generatorRssBytes": 233226240,
+          "sampleMs": 3.180791999999201
+        },
+        {
+          "at": "2026-09-30T07:15:59.639Z",
+          "serverRssBytes": 450560000,
+          "generatorRssBytes": 233996288,
+          "sampleMs": 3.348792000000685
+        },
+        {
+          "at": "2026-09-30T07:16:00.643Z",
+          "serverRssBytes": 450838528,
+          "generatorRssBytes": 234012672,
+          "sampleMs": 4.194415999998455
+        },
+        {
+          "at": "2026-09-30T07:16:01.648Z",
+          "serverRssBytes": 451067904,
+          "generatorRssBytes": 243875840,
+          "sampleMs": 4.782333000002836
+        },
+        {
+          "at": "2026-09-30T07:16:02.652Z",
+          "serverRssBytes": 451231744,
+          "generatorRssBytes": 261210112,
+          "sampleMs": 3.8868339999971795
+        },
+        {
+          "at": "2026-09-30T07:16:03.656Z",
+          "serverRssBytes": 451330048,
+          "generatorRssBytes": 273743872,
+          "sampleMs": 3.1650420000005397
+        },
+        {
+          "at": "2026-09-30T07:16:04.660Z",
+          "serverRssBytes": 451428352,
+          "generatorRssBytes": 273973248,
+          "sampleMs": 3.4544170000008307
+        },
+        {
+          "at": "2026-09-30T07:16:05.662Z",
+          "serverRssBytes": 451592192,
+          "generatorRssBytes": 279855104,
+          "sampleMs": 3.102874999996857
+        },
+        {
+          "at": "2026-09-30T07:16:06.666Z",
+          "serverRssBytes": 454868992,
+          "generatorRssBytes": 279904256,
+          "sampleMs": 3.10566700000345
+        }
+      ],
+      "rssFailures": []
+    }
+  ]
+}

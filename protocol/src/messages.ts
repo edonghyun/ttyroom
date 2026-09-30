@@ -257,6 +257,7 @@ export const errorCodeSchema = z.enum([
   "invalid-token",
   "invalid-credential",
   "unsupported-protocol-version",
+  "capacity-exhausted",
   "bad-message",
 ]);
 export type ErrorCode = z.infer<typeof errorCodeSchema>;

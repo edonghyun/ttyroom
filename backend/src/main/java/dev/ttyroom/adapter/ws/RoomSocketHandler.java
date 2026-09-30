@@ -19,6 +19,7 @@ import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -27,14 +28,21 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 public final class RoomSocketHandler extends TextWebSocketHandler implements AutoCloseable {
-    public record Limits(long sendBufferDropThresholdBytes, long maxReceivedBinaryBytes) {
+    public record Limits(
+            long sendBufferDropThresholdBytes, long maxReceivedBinaryBytes, int connections) {
+        public Limits(long dropBytes, long binaryBytes) {
+            this(dropBytes, binaryBytes, 16);
+        }
+
         public static final Limits DEFAULT = new Limits(1_048_576, 1_048_576);
 
         public Limits {
-            if (sendBufferDropThresholdBytes < 0 || maxReceivedBinaryBytes <= 0)
+            if (sendBufferDropThresholdBytes < 0 || maxReceivedBinaryBytes <= 0 || connections < 1)
                 throw new IllegalArgumentException("Invalid WebSocket limits");
         }
     }
@@ -46,6 +54,9 @@ public final class RoomSocketHandler extends TextWebSocketHandler implements Aut
     private static final int RECEIVE_CHUNK_SIZE = 16 * 1024;
     private final RoomSessions sessions;
     private final JsonMapper json;
+    // Physical transport slots outlive logical membership and a sender's pending close.
+    private final ConcurrentHashMap<String, WebSocketSession> transports =
+            new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Connection> connections = new ConcurrentHashMap<>();
 
     private final ExecutorService controlWorkers;
@@ -82,6 +93,8 @@ public final class RoomSocketHandler extends TextWebSocketHandler implements Aut
         // Counts the announcement plus output waiting for it. A late frame cannot overtake
         // earlier deferred output when the announcement itself finishes.
         private final Map<Long, Integer> openingDeliveries = new HashMap<>();
+        final ScheduledFuture<?> helloDeadline;
+        private boolean admissionExpired;
         private boolean admissionStarted;
         private boolean closed;
 
@@ -116,10 +129,20 @@ public final class RoomSocketHandler extends TextWebSocketHandler implements Aut
                                     sender.abort(
                                             CloseStatus.POLICY_VIOLATION.withReason(
                                                     "incomplete message timeout")));
+            helloDeadline = deadlines.schedule(this::expireAdmission, 5, TimeUnit.SECONDS);
+        }
+
+        private void expireAdmission() {
+            synchronized (this) {
+                if (closed || session != null) return;
+                admissionExpired = true;
+            }
+            disconnected();
+            sender.abort(CloseStatus.POLICY_VIOLATION.withReason("hello timeout"));
         }
 
         synchronized boolean beginAdmission() {
-            if (admissionStarted || closed) return false;
+            if (admissionStarted || closed || admissionExpired) return false;
             admissionStarted = true;
             return true;
         }
@@ -128,8 +151,9 @@ public final class RoomSocketHandler extends TextWebSocketHandler implements Aut
             if (admitted == null) return;
             boolean alreadyClosed;
             synchronized (this) {
-                alreadyClosed = closed;
-                if (!closed) session = admitted;
+                alreadyClosed = closed || admissionExpired;
+                if (!alreadyClosed) session = admitted;
+                helloDeadline.cancel(false);
             }
             if (alreadyClosed) admitted.disconnect();
         }
@@ -139,6 +163,7 @@ public final class RoomSocketHandler extends TextWebSocketHandler implements Aut
             synchronized (this) {
                 if (closed) return;
                 closed = true;
+                helloDeadline.cancel(false);
                 incoming.close();
                 controls.close();
                 openingDeliveries.clear();
@@ -312,14 +337,33 @@ public final class RoomSocketHandler extends TextWebSocketHandler implements Aut
     }
 
     @Override
-    public void afterConnectionEstablished(WebSocketSession socket) {
+    public void afterConnectionEstablished(WebSocketSession socket) throws IOException {
+        boolean accepted;
+        synchronized (transports) {
+            accepted = !stopped && transports.size() < limits.connections();
+            if (accepted) transports.put(socket.getId(), socket);
+        }
+        if (!accepted) {
+            socket.close(new CloseStatus(1013, "connection capacity exhausted"));
+            return;
+        }
+        try {
+            establish(socket);
+        } catch (RuntimeException | Error failure) {
+            transports.remove(socket.getId(), socket);
+            throw failure;
+        }
+    }
+
+    private void establish(WebSocketSession socket) {
         // Tomcat allocates these buffers per connection. They are chunk sizes, not the logical
         // message ceiling: IncomingMessages assembles partial callbacks under the logical limits.
         socket.setTextMessageSizeLimit(RECEIVE_CHUNK_SIZE);
         socket.setBinaryMessageSizeLimit(RECEIVE_CHUNK_SIZE);
         var connection = new Connection(socket);
         connections.put(socket.getId(), connection);
-        if (stopped) connection.sender.abort(CloseStatus.GOING_AWAY);
+        if (stopped || transports.get(socket.getId()) != socket)
+            connection.sender.abort(CloseStatus.GOING_AWAY);
     }
 
     @Override
@@ -422,8 +466,11 @@ public final class RoomSocketHandler extends TextWebSocketHandler implements Aut
 
     @Override
     public void afterConnectionClosed(WebSocketSession socket, CloseStatus status) {
-        var connection = connections.remove(socket.getId());
-        if (connection != null) {
+        transports.remove(socket.getId(), socket);
+        var connection = connections.get(socket.getId());
+        if (connection != null
+                && connection.socket == socket
+                && connections.remove(socket.getId(), connection)) {
             try {
                 connection.disconnected();
             } finally {
@@ -444,6 +491,7 @@ public final class RoomSocketHandler extends TextWebSocketHandler implements Aut
                     connection.sender.abort(CloseStatus.GOING_AWAY);
                 });
         connections.clear();
+        transports.clear();
         deadlines.shutdownNow();
     }
 }

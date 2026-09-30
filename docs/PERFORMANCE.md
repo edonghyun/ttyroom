@@ -148,7 +148,7 @@ TTYROOM_PERFORMANCE_PROFILE=fanout TTYROOM_PERFORMANCE_MAX_HEAP=512m \
 터미널당 retained payload 1 MiB가 논리적 예산 항목이다. 대략 `7 MiB × socket 수 +
 1 MiB × terminal 수`로 예산 증가를 검토할 수 있지만 **실제 heap/RSS 상한 공식은 아니다**.
 서로 공유하는 replay payload, UTF-16·JSON 객체·복사본, 프레임 개수, JVM/native memory가 다르다.
-방·연결·터미널의 전역 개수 제한도 아직 없다. RSS를 `-Xmx`로 나눈 값을 heap 사용률로 표현하지 않는다.
+T10.2 당시에는 방·연결·터미널의 전역 개수 제한도 없었다. 현재 정책은 아래 T10.5를 참고한다. RSS를 `-Xmx`로 나눈 값을 heap 사용률로 표현하지 않는다.
 
 운영 경계는 동일 배포 환경에서 RSS 예산(컨테이너 제한과 JVM heap은 별도), 허용 지연,
 허용 실패율을 먼저 정한 뒤 더 긴 일정 부하와 burst/reconnect에서 검증해야 한다.
@@ -319,7 +319,7 @@ gap 전달 성공을 확인한 것은 아니다. 최초 압축 조건에서 faul
 
 ### 전역 자원 예산 후보와 적용 순서
 
-현재 전역 admission 제한은 구현하지 않았다. 아래는 운영 보장이 아닌 **후속 구현·검증을 위한
+T10.3 측정 시점에는 전역 admission 제한을 구현하지 않았다. 아래는 운영 보장이 아닌 **후속 구현·검증을 위한
 제한된 pilot 후보**이며, [T10.4](https://github.com/edonghyun/ttyroom/issues/14)에서 복구 경계를
 먼저 고쳐야 한다. 단순히 replay 한도를 올려 실패를 숨기지 않는다.
 
@@ -352,7 +352,7 @@ T10.3의 4-terminal 실패를 수정한 뒤 같은 `recovery` profile로 재측�
 한 연결의 입장 복구가 한 번에 모든 history를 붙잡지 않으며, 아직 선택하지 않은 terminal은 ID만
 보관한다. 기존 replay 4 MiB·65,536 frames·16 requests와 5초 write timeout은 바꾸지 않았다.
 terminal 하나의 history가 설정에 의해 그 예산을 넘으면 기존처럼 거절한다.
-전역 terminal 수·retained history 총량 및 명시적 resync 요청 폭주는 별도의 제한 대상이다.
+T10.4 시점의 전역 terminal 수·retained history 총량은 후속 T10.5에서 제한한다. 명시적 resync 요청 폭주는 별도 제한 대상이다.
 
 실행 snapshot은 `36f7568`이다. T10.3 recovery와 harness source는 같고 제품 JAR은 다르다.
 불변 JAR·source hash와 실패 원본을 남기며 다른 로컬 빌드·테스트와 겹치지 않게 실행한다.
@@ -379,4 +379,58 @@ terminal 하나의 history가 설정에 의해 그 예산을 넘으면 기존처
 RSS 수집 실패·JFR DataLoss는 없었고 frame 수·histogram 합계·제어 응답/queue event 수를 대조했다.
 이것은 같은 짧은 부하의 복구 결함 수정 근거이며 장시간 누수·원격망·다중 room 검증은 아니다.
 T10.3의 수정 전 임시 3-terminal 후보는 이제 실패 회피 기준으로 사용할 필요가 없지만,
-전역 admission 정책을 강제하고 운영 상한을 검증하는 작업은 여전히 #15에 남아 있다.
+이후 #15에서 전역 admission 정책을 추가했다. 실제 배포 사양의 운영 상한 검증은 남아 있다.
+
+## T10.5 — 전역 admission 경계
+
+Spring의 기본 후보는 저장된 방 4개, 물리 WebSocket 16개, 저장된 terminal 16개,
+retained payload 예약 16 MiB다. 소유자·저장 실패·종료·재시작 규칙은
+[설정 안내](DEVELOPMENT.md#전역-admission-예산-spring)에 정의한다.
+연결별 inbox·송신·replay 예산은 변경하지 않았다.
+
+재현 명령:
+
+```sh
+JAVA_HOME=/path/to/jdk21 TTYROOM_CAPACITY_PROFILE=admission \
+  ./scripts/measure-capacity.sh artifacts/capacity-admission
+```
+
+프로필은 불변 JAR, Java 21, G1, `-Xms256m -Xmx512m`를 사용한다. 다른 로컬 빌드·테스트와
+겹치지 않게 실행한다. 한 프로세스에 4개 방, 방마다 host 1명·participant 3명·terminal 4개를
+만들어 16개 연결·16 MiB retained payload를 채운다. 첫 초과 방/terminal/connection을 거절한 뒤
+모든 방의 제어 응답을 확인한다. 12명이 순차로 접속하는 복구 round를 초기 1회와 churn 10회
+실행한다. 동시 재접속 부하의 대체 시험은 아니다. host 취소로 전역 terminal 예약을 반환한 뒤
+새 host가 16개를 다시 등록할 수 있는지도 확인한다. 동일 조건 3회 반복한다.
+
+GC 후 heap(빈 상태/적재/연결 churn 후/host 제거 후), RSS, JFR queue 대기·buffer 거절·drop,
+복구 bytes·sequence·sync를 기록한다. raw 결과는 artifacts에, 공개 관측은
+`docs/performance/admission.json`에 보존한다. 결과는 아래에 기록한다.
+
+이 측정은 macOS 로컬 합성 peer의 유한 실행이다. 실제 배포 사양은 아직 제공되지 않았으므로
+배포 환경 검증과 운영 상한 결정은 #15의 미완료 항목으로 남긴다. credential 발급 수,
+고유 identity churn과 grace metadata, HTTP/TCP 연결 수는 이 admission 예산으로 제한되지 않는다.
+따라서 전체 서버 OOM 방지나 장시간 누수 부재를 보장하지 않는다.
+
+### 로컬 경계 측정 결과
+
+[공개 JSON](performance/admission.json)의 3회 모두 완료했다. 측정은 `c33c706` 이후 작업 중인
+소스에서 실행했으며 manifest의 `dirty: true`, 제품 소스/JAR/harness hash로 구분한다.
+
+| 반복 | 적재 / churn 후 / 해제 후 GC heap | 관측 최대 RSS | 12명 순차 복구 round 범위 |
+| ---- | --------------------------------- | ------------- | ------------------------- |
+| 1    | 33.78 / 33.76 / 16.79 MiB         | 440.11 MiB    | 730.65–790.68 ms          |
+| 2    | 33.31 / 33.83 / 16.59 MiB         | 469.09 MiB    | 729.77–790.59 ms          |
+| 3    | 33.37 / 33.68 / 16.68 MiB         | 433.80 MiB    | 736.49–792.17 ms          |
+
+각 round는 48 MiB를 복구한다. 총 33 round·396개 participant 연결에서 기록 수신과
+sequence·sync를 확인했다. 각 실행의 방/terminal/connection 첫 초과 요청은 각각
+HTTP 503 / `capacity-exhausted` / close 1013으로 거절됐다. 정상 방 모두의 제어 응답을 확인했다.
+JFR queue event는 실행별 142개, p95 상한 1 ms였다. buffer drop/rejection event,
+RSS 수집 실패, JFR DataLoss는 0이었다. admission 거절은 JFR buffer 거절과 다른 경계이며
+공개 JSON의 `rejections`에 wire 응답으로 기록한다.
+
+강제 GC 후 heap은 빈 서버 14.17–14.28 MiB였고 해제 후에는 16.59–16.79 MiB였다.
+그 차이를 전부 누수로 판정하거나 전부 정상으로 확정하지 않는다. warmup, 등록된 credential,
+참가자의 grace metadata 등이 남아 있고 10회 churn만으로 장시간 잔류 추세를 판단할 수 없다.
+이번 결과는 설정된 예산의 거절·반납과 다중 방 복구를 확인하며, 이전 지속 출력 시험과
+조합한 전역 최대 부하·원격망·배포 사양 검증은 아니다.

@@ -368,14 +368,26 @@ public final class RoomSessions implements AutoCloseable {
         private void change(Function<RoomControl, ChangeResult> update) {
             rooms.execute(
                     room.state,
-                    operation ->
-                            operation.changeIf(
+                    operation -> {
+                        try {
+                            return operation.changeIf(
                                     this::current,
                                     update,
                                     result -> {
                                         publish(result);
                                         return null;
-                                    }));
+                                    });
+                        } catch (RoomDirectory.CapacityExceeded full) {
+                            operation.runIf(
+                                    this::current,
+                                    () ->
+                                            reply(
+                                                    new Rejected(
+                                                            "capacity-exhausted",
+                                                            full.resource())));
+                            return null;
+                        }
+                    });
         }
 
         private void executeLive(Runnable action) {

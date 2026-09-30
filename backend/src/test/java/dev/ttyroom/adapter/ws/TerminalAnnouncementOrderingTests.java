@@ -20,7 +20,7 @@ import java.util.List;
 
 class TerminalAnnouncementOrderingTests {
     @Test
-    void outputWaitsForItsTerminalAnnouncementWhileOtherTerminalsRemainLive() {
+    void outputWaitsForItsTerminalAnnouncementWhileOtherTerminalsRemainLive() throws Exception {
         try (var connection = new HostConnection()) {
             connection.announceTerminal();
 
@@ -35,7 +35,7 @@ class TerminalAnnouncementOrderingTests {
     }
 
     @Test
-    void newOutputCannotOvertakeOutputAlreadyWaitingForTheAnnouncement() {
+    void newOutputCannotOvertakeOutputAlreadyWaitingForTheAnnouncement() throws Exception {
         try (var connection = new HostConnection()) {
             connection.announceTerminal();
             connection.output(7, 1);
@@ -52,7 +52,7 @@ class TerminalAnnouncementOrderingTests {
     }
 
     @Test
-    void closingDiscardsOutputStillWaitingForAnAnnouncement() {
+    void closingDiscardsOutputStillWaitingForAnAnnouncement() throws Exception {
         try (var connection = new HostConnection()) {
             connection.announceTerminal();
             connection.output(7, 1);
@@ -67,7 +67,7 @@ class TerminalAnnouncementOrderingTests {
     }
 
     @Test
-    void openingOutputUsesTheBoundedInboxInsteadOfGrowingWithoutLimit() {
+    void openingOutputUsesTheBoundedInboxInsteadOfGrowingWithoutLimit() throws Exception {
         try (var connection = new HostConnection()) {
             connection.announceTerminal();
 
@@ -87,7 +87,7 @@ class TerminalAnnouncementOrderingTests {
         final RoomSessions.Session session = mock(RoomSessions.Session.class);
         Runnable duringFirstOutput = () -> {};
 
-        HostConnection() {
+        HostConnection() throws java.io.IOException {
             var admission = mock(RoomSessions.class);
             when(admission.join(any(), any())).thenReturn(session);
             when(socket.getId()).thenReturn("host");

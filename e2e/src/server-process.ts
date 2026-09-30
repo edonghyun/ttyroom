@@ -16,7 +16,15 @@ export interface TestPolicy {
 }
 
 const WORKSPACE_ROOT = resolve(import.meta.dirname, "../..");
-interface LaunchOptions {
+export interface TestCapacity {
+  rooms: number;
+  connections: number;
+  terminals: number;
+  retainedHistoryBytes: number;
+}
+
+export interface LaunchOptions {
+  capacity?: Partial<TestCapacity>;
   command?: readonly [string, ...string[]];
   startupTimeoutMs?: number;
   protocolVersion?: 7 | 8;
@@ -37,6 +45,7 @@ export class ServerProcess {
     private readonly command: readonly [string, ...string[]],
     private readonly startupTimeoutMs: number,
     private readonly protocolVersion?: 7 | 8,
+    private readonly capacity?: Partial<TestCapacity>,
   ) {}
 
   static async start(
@@ -51,6 +60,7 @@ export class ServerProcess {
       command,
       options.startupTimeoutMs ?? 10_000,
       options.protocolVersion,
+      options.capacity,
     );
     try {
       await server.launch(0);
@@ -113,6 +123,7 @@ export class ServerProcess {
         port,
         statePath,
         policy: this.policy,
+        capacity: this.capacity,
         protocolVersion: this.protocolVersion,
       }),
     );

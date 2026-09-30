@@ -25,6 +25,7 @@
 - [v8 입장과 연결 교체](#v8-입장과-연결-교체)
 - [성능 기준선과 수신 버퍼](#성능-기준선과-수신-버퍼)
 - [수신 자원 한도와 참가자 부하](#수신-자원-한도와-참가자-부하)
+- [전역 자원 예약과 초과 요청 격리](#전역-자원-예약과-초과-요청-격리)
 
 ## 초기 구성과 검증 경계
 
@@ -452,3 +453,20 @@ room monitor 안에서 네트워크 drain을 기다리지 않는다. 기존 byte
 비교 조건이 불안정했다. 원인을 확정하지 않고 실패 로그를 보존했으며, 불변 JAR로 전체 suite를 다시
 실행해 24개 통과를 확인했다. 최종 검증과 같은 recovery profile의 재측정은 [검증 기록](VERIFICATION.md),
 [성능 안내](PERFORMANCE.md)에 기록한다.
+
+## 전역 자원 예약과 초과 요청 격리
+
+T10.5 ([작업 #15](https://github.com/edonghyun/ttyroom/issues/15)). 방과 terminal 예약은
+RoomDirectory가 저장 경계와 함께 소유하고, 물리 WebSocket 슬롯은 transport adapter가 소유한다.
+credential 수와 연결 수를 섞지 않는다. 빈 방·복원된 방, 종료됐지만 기록이 남는 terminal,
+인증 전·닫히는 중인 연결도 수명에 맞게 센다. 짧은 전역 예약만 동기화하고 저장/네트워크 중에는
+전역 monitor를 잡지 않는다. 실패한 저장은 증가분을 반환하고 성공한 삭제만 예약을 해제한다.
+
+방 초과와 인증 전 연결 초과의 행동 assertion RED를 먼저 확인했다. 이후 동시 마지막 슬롯,
+저장 실패, 중복/늦은 종료, 복원된 상태, history 예산, 실제 Spring 거절·정상 사용자 격리는
+추가 회귀 테스트로 검증했다. 컴파일 오류와 테스트 준비/기대값 오류를 TDD RED로 세지 않는다.
+
+4 room·16 connection·16 terminal·16 MiB retained payload에서 로컬 경계 시험 3회 완료.
+12명 순차 복구를 초기+churn 10회씩 확인하고 host 취소 후 terminal 예약 재사용도 확인했다.
+[성능 기록](PERFORMANCE.md#t105--전역-admission-경계)에 결과와 한계를 모았다.
+배포 사양 검증은 미완료다. credential 누적과 grace metadata·HTTP/TCP 제한은 별도 후속 대상이다.

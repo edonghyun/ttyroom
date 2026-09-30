@@ -13,9 +13,13 @@ export type ProbePacket =
 /** Raw protocol peer: preserves control/binary arrival order without projection or deduplication. */
 export class SocketProbe {
   private readonly messages: ProbePacket[] = [];
+  private opened = false;
   private closeCode: number | undefined;
   private failure: Error | undefined;
   private constructor(private readonly socket: WebSocket) {
+    socket.on("open", () => {
+      this.opened = true;
+    });
     socket.on("message", (raw, binary) => {
       if (binary) {
         const bytes =
@@ -48,7 +52,7 @@ export class SocketProbe {
     try {
       await waitUntil(() => {
         probe.check();
-        return probe.socket.readyState === WebSocket.OPEN;
+        return probe.opened;
       });
       return probe;
     } catch (error) {

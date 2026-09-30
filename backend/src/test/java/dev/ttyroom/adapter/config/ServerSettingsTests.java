@@ -19,6 +19,66 @@ class ServerSettingsTests {
     @TempDir Path directory;
 
     @Test
+    void capacityUsesEnvironmentThenFileThenDefaults() throws Exception {
+        var environment =
+                configuredFile(
+                                """
+                                {"capacity":{"rooms":2,"connections":3,"terminals":8,"retainedHistoryBytes":3145728}}
+                                """)
+                        .withProperty("TTYROOM_MAX_CONNECTIONS", "5");
+
+        var settings = ServerSettings.load(environment);
+        var defaults = ServerSettings.load(configuredFile("{}"));
+
+        assertThat(settings.capacity().rooms()).isEqualTo(2);
+        assertThat(settings.capacity().connections()).isEqualTo(5);
+        assertThat(settings.capacity().terminals()).isEqualTo(8);
+        assertThat(settings.capacity().retainedHistoryBytes()).isEqualTo(3145728);
+        assertThat(settings.roomLimits().terminals()).isEqualTo(3);
+        assertThat(defaults.capacity().rooms()).isEqualTo(4);
+        assertThat(defaults.capacity().connections()).isEqualTo(16);
+        assertThat(defaults.capacity().terminals()).isEqualTo(16);
+        assertThat(defaults.capacity().retainedHistoryBytes()).isEqualTo(16777216);
+    }
+
+    @Test
+    void historyReservationRoundsDownAndDisabledHistoryUsesOnlyTheTerminalCount() throws Exception {
+        var tooSmall =
+                configuredFile(
+                        """
+                        {"capacity":{"retainedHistoryBytes":1048575}}
+                        """);
+        var disabled =
+                configuredFile(
+                        """
+                        {"policy":{"scrollbackBytesPerTerminal":0},"capacity":{"retainedHistoryBytes":0}}
+                        """);
+
+        var noRoomForHistory = ServerSettings.load(tooSmall).roomLimits();
+        var withoutHistory = ServerSettings.load(disabled).roomLimits();
+
+        assertThat(noRoomForHistory.terminals()).isZero();
+        assertThat(withoutHistory.terminals()).isEqualTo(16);
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+            strings = {
+                "{\"rooms\":0}",
+                "{\"connections\":-1}",
+                "{\"terminals\":1.5}",
+                "{\"retainedHistoryBytes\":-1}",
+                "{\"unknown\":1}"
+            })
+    void invalidCapacityFailsStartup(String capacity) throws Exception {
+        var environment = configuredFile("{\"capacity\":" + capacity + "}");
+
+        var failure = catchThrowable(() -> ServerSettings.load(environment));
+
+        assertThat(failure).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
     void protocolSelectionUsesEnvironmentThenFileThenTheCredentialDefault() throws Exception {
         var fromFile = configuredFile("{\"protocolVersion\":8}");
         var overridden =

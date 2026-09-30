@@ -1,5 +1,7 @@
 package dev.ttyroom.adapter.config;
 
+import dev.ttyroom.application.RoomDirectory;
+
 import org.springframework.core.env.Environment;
 
 import tools.jackson.databind.DeserializationFeature;
@@ -21,10 +23,22 @@ public record ServerSettings(
         long hostGraceMs,
         long scrollbackBytesPerTerminal,
         long sendBufferDropThresholdBytes,
-        long maxQueuedDataBytesPerConnection) {
+        long maxQueuedDataBytesPerConnection,
+        Capacity capacity) {
+    public record Capacity(int rooms, int connections, int terminals, long retainedHistoryBytes) {}
+
+    public RoomDirectory.Limits roomLimits() {
+        long histories =
+                scrollbackBytesPerTerminal == 0
+                        ? capacity.terminals()
+                        : capacity.retainedHistoryBytes() / scrollbackBytesPerTerminal;
+        return new RoomDirectory.Limits(
+                capacity.rooms(), (int) Math.min(capacity.terminals(), histories));
+    }
+
     private static final long MAX_SAFE_INTEGER = 9_007_199_254_740_991L;
     private static final Set<String> ROOT_FIELDS =
-            Set.of("port", "protocolVersion", "statePath", "policy");
+            Set.of("port", "protocolVersion", "statePath", "policy", "capacity");
     private static final Set<String> POLICY_FIELDS =
             Set.of(
                     "participantGraceMs",
@@ -40,6 +54,11 @@ public record ServerSettings(
         var policy = file.path("policy");
         if (policy.isMissingNode()) policy = JsonMapper.builder().build().createObjectNode();
         requireFields(policy, POLICY_FIELDS);
+        var capacity = file.path("capacity");
+        if (capacity.isMissingNode()) capacity = JsonMapper.builder().build().createObjectNode();
+        requireFields(
+                capacity, Set.of("rooms", "connections", "terminals", "retainedHistoryBytes"));
+        var capacityValues = new SettingsSource(environment, capacity);
         var root = new SettingsSource(environment, file);
         var policyValues = new SettingsSource(environment, policy);
         long outputRate =
@@ -69,7 +88,19 @@ public record ServerSettings(
                 policyValues.positive(
                         "maxQueuedDataBytesPerConnection",
                         "TTYROOM_MAX_QUEUED_DATA_BYTES_PER_CONNECTION",
-                        1048576));
+                        1048576),
+                new Capacity(
+                        (int) capacityValues.number("rooms", "TTYROOM_MAX_ROOMS", 4, 1, 1_000_000),
+                        (int)
+                                capacityValues.number(
+                                        "connections", "TTYROOM_MAX_CONNECTIONS", 16, 1, 1_000_000),
+                        (int)
+                                capacityValues.number(
+                                        "terminals", "TTYROOM_MAX_TERMINALS", 16, 1, 1_000_000),
+                        capacityValues.nonNegative(
+                                "retainedHistoryBytes",
+                                "TTYROOM_MAX_RETAINED_HISTORY_BYTES",
+                                16_777_216)));
     }
 
     private static JsonNode readFile(String explicitPath) {

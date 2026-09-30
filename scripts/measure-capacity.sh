@@ -8,7 +8,7 @@ if [ "$#" -ne 1 ] || [ -z "${JAVA_HOME:-}" ]; then
   exit 2
 fi
 TTYROOM_CAPACITY_PROFILE=${TTYROOM_CAPACITY_PROFILE:-full}
-case "$TTYROOM_CAPACITY_PROFILE" in smoke|full|recovery) ;; *) echo 'Unknown capacity profile' >&2; exit 2 ;; esac
+case "$TTYROOM_CAPACITY_PROFILE" in smoke|full|recovery|admission) ;; *) echo 'Unknown capacity profile' >&2; exit 2 ;; esac
 export TTYROOM_CAPACITY_PROFILE
 mkdir -p "$(dirname -- "$1")"
 mkdir "$1"
@@ -31,4 +31,6 @@ const hash = path => createHash('sha256').update(readFileSync(path)).digest('hex
 const paths = git('ls-files','-co','--exclude-standard','-z').split('\0').filter(Boolean);
 writeFileSync(join(dir,'manifest.json'),JSON.stringify({startedAt:new Date().toISOString(),revision:git('rev-parse','HEAD'),dirty:git('status','--porcelain')!=='',profile:process.env.TTYROOM_CAPACITY_PROFILE,node:process.version,java:execFileSync(join(process.env.JAVA_HOME,'bin/java'),['--version'],{encoding:'utf8'}).trim(),jvmArguments:['-Xms256m','-Xmx512m','-XX:+UseG1GC'],jarSha256:hash(join(dir,'ttyroom-backend.jar')),jfcSha256:hash(join(dir,'capacity.jfc')),sourceSha256:Object.fromEntries(paths.map(p=>[p,hash(p)]))},null,2)+'\n');
 JS
-pnpm --filter @ttyroom/e2e exec tsx src/performance/capacity-run.ts > "$TTYROOM_CAPACITY_DIR/run.log" 2>&1
+runner=src/performance/capacity-run.ts
+if [ "$TTYROOM_CAPACITY_PROFILE" = admission ]; then runner=src/performance/admission-run.ts; fi
+pnpm --filter @ttyroom/e2e exec tsx "$runner" > "$TTYROOM_CAPACITY_DIR/run.log" 2>&1

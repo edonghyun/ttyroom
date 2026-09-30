@@ -191,6 +191,11 @@ public final class RoomController {
         return error(403, "revocation forbidden");
     }
 
+    @ExceptionHandler(RoomDirectory.CapacityExceeded.class)
+    ResponseEntity<?> capacityUnavailable(RoomDirectory.CapacityExceeded full) {
+        return error(503, full.getMessage());
+    }
+
     @ExceptionHandler(IllegalStateException.class)
     ResponseEntity<?> unavailable(HttpServletRequest request) {
         return error(

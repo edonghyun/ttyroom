@@ -132,6 +132,21 @@ describe("제어 메시지 스키마 — 역할: JSON 제어 프레임의 검증
     expect(JSON.parse(json)).toEqual({ type: "sync", terminalId: 3, seq: 10 });
   });
 
+  it("자원 한도 거절을 정상적인 서버 오류 메시지로 읽는다", () => {
+    const result = parseServerMessage(
+      JSON.stringify({
+        type: "error",
+        code: "capacity-exhausted",
+        message: "terminals",
+      }),
+    );
+
+    expect(result).toMatchObject({
+      kind: "ok",
+      message: { type: "error", code: "capacity-exhausted" },
+    });
+  });
+
   it("parseServerMessage는 JSON이 아니거나 스키마 불일치인 입력에 bad-message를 돌려준다 (throw하지 않는다)", () => {
     expect(parseServerMessage("not-json")).toMatchObject({ kind: "bad-message" });
     expect(parseServerMessage(JSON.stringify({ type: "nope" }))).toMatchObject({

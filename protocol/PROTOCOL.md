@@ -165,7 +165,7 @@ hello 외의 메시지·binary 형식은 두 버전이 공유한다.
 `lease-invalid.reason`은 `not-holder` · `terminal-closed` · `remote-input-disabled`.
 `terminal-request-rejected.request`는 `close` · `set-mode` · `resync-output`, `reason`은
 `terminal-not-found` · `terminal-not-open` · `host-offline`이다.
-v7 서버의 `error.code`는 `room-not-found` · `invalid-token` · `unsupported-protocol-version` · `bad-message`.
+Node v7 비교 서버의 `error.code`는 `room-not-found` · `invalid-token` · `unsupported-protocol-version` · `bad-message`.
 공통 TS 디코더는 v8 서버의 `invalid-credential`도 해석한다.
 
 host는 `terminal-opened` 확인을 출력보다 먼저 보낸다. Spring은 이 확인을 비동기로 처리하더라도
@@ -245,3 +245,12 @@ Room bootstrap HTTP 계약:
   방송한다. 동시 갱신은 서버 수신 순서의 last-write-wins이며 이후 welcome snapshot도 최신값을 담는다.
 - `rename-terminal`은 participant가 trim 후 1..80자인 표시 이름을 보낸다. 서버는 Room의 최신
   이름을 교체하고 `terminal-renamed`를 참가자 전체에 방송한다. 이후 welcome snapshot도 최신값을 담는다.
+
+## Spring 자원 한도 거절
+
+Spring v7/v8은 terminal/inventory 증가가 전역 예산을 넘으면
+`{"type":"error","code":"capacity-exhausted","message":"terminals"}`를 반환한다.
+변경 전체를 거절하고 기존 상태와 연결을 유지한다. 기록 예산도 terminal 예약으로 계산하므로
+같은 오류 코드를 사용한다. WebSocket 슬롯 초과는 hello 이전에 close 1013, 입장 미완료 5초는
+close 1008이다. 방 생성 초과는 OpenAPI의 HTTP 503 응답이다.
+[수명과 설정](../docs/DEVELOPMENT.md#전역-admission-예산-spring)을 참고한다.

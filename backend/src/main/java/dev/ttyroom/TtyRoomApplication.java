@@ -5,6 +5,7 @@ import dev.ttyroom.adapter.sqlite.SqliteRoomStore;
 import dev.ttyroom.adapter.ws.RoomSocketHandler;
 import dev.ttyroom.application.RoomDirectory;
 import dev.ttyroom.application.RoomSessions;
+import dev.ttyroom.application.RoomStore;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -39,9 +40,11 @@ public class TtyRoomApplication {
     @Bean
     RoomDirectory roomDirectory(ServerSettings settings) {
         var statePath = settings.statePath();
-        return statePath.isEmpty()
-                ? new RoomDirectory()
-                : new RoomDirectory(new SqliteRoomStore(Path.of(statePath)));
+        return new RoomDirectory(
+                statePath.isEmpty()
+                        ? RoomStore.transientOnly()
+                        : new SqliteRoomStore(Path.of(statePath)),
+                settings.roomLimits());
     }
 
     @Bean
@@ -65,7 +68,8 @@ public class TtyRoomApplication {
                 json,
                 new RoomSocketHandler.Limits(
                         settings.sendBufferDropThresholdBytes(),
-                        settings.maxQueuedDataBytesPerConnection()));
+                        settings.maxQueuedDataBytesPerConnection(),
+                        settings.capacity().connections()));
     }
 
     // Public process-runner contract; announce only after application initialization finishes.

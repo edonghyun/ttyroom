@@ -61,14 +61,16 @@ async function trial(scenario: Scenario) {
   let endMs = 0;
   let recordingStarted = false;
   try {
-    room = await registeredRoom(8, [
-      resolve(javaHome!, "bin/java"),
-      "-Xms256m",
-      "-Xmx512m",
-      "-XX:+UseG1GC",
-      "-jar",
-      resolve(directory, "ttyroom-backend.jar"),
-    ]);
+    room = await registeredRoom(8, {
+      command: [
+        resolve(javaHome!, "bin/java"),
+        "-Xms256m",
+        "-Xmx512m",
+        "-XX:+UseG1GC",
+        "-jar",
+        resolve(directory, "ttyroom-backend.jar"),
+      ],
+    });
     if (!room.server.pid) throw new Error("Missing server PID");
     observation = new JvmObservation(room.server.pid, javaHome!, output);
     const invitation = room.invitation;

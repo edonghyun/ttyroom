@@ -1,4 +1,4 @@
-import { ServerProcess } from "./server-process.js";
+import { ServerProcess, type LaunchOptions } from "./server-process.js";
 import { SocketProbe } from "./socket-probe.js";
 
 interface Credential {
@@ -8,13 +8,13 @@ interface Credential {
 
 export async function registeredRoom(
   protocolVersion: 7 | 8 = 8,
-  command?: readonly [string, ...string[]],
+  options: Pick<LaunchOptions, "command" | "capacity"> = {},
 ) {
-  if (!command && !process.env.TTYROOM_E2E_SERVER_COMMAND)
+  if (!options.command && !process.env.TTYROOM_E2E_SERVER_COMMAND)
     throw new Error("Run with ./scripts/test-spring.sh authentication to select the Spring JAR");
   const server = await ServerProcess.start(
     {},
-    { protocolVersion, startupTimeoutMs: 30_000, command },
+    { protocolVersion, startupTimeoutMs: 30_000, ...options },
   );
   const peers: SocketProbe[] = [];
   async function post(path: string, body: unknown, bearer?: string) {

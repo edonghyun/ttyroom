@@ -28,6 +28,118 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 class RoomSocketHandlerTests {
     @Test
+    void aLateDuplicateCloseCannotReleaseTheReplacementConnectionSlot() throws Exception {
+        var old = socket("reused-id");
+        var replacement = socket("reused-id");
+        var excess = socket("excess");
+        try (var handler = limitedHandler()) {
+            handler.afterConnectionEstablished(old);
+            handler.afterConnectionClosed(old, CloseStatus.NORMAL);
+            handler.afterConnectionEstablished(replacement);
+
+            handler.afterConnectionClosed(old, CloseStatus.NORMAL);
+            handler.afterConnectionEstablished(excess);
+
+            verify(excess).close(argThat(status -> status.getCode() == 1013));
+            verify(replacement, never()).close(any());
+        }
+    }
+
+    @Test
+    void aClosingConnectionKeepsItsSlotUntilTheTransportReportsClosure() throws Exception {
+        var closing = socket("closing");
+        var excess = socket("excess");
+        var next = socket("next");
+        try (var handler = limitedHandler()) {
+            handler.afterConnectionEstablished(closing);
+            // No open transport: a rejected message makes the sender close logically.
+            handler.handleTextMessage(closing, new TextMessage("invalid JSON"));
+
+            handler.afterConnectionEstablished(excess);
+            handler.afterConnectionClosed(closing, CloseStatus.NORMAL);
+            handler.afterConnectionEstablished(next);
+
+            verify(excess).close(argThat(status -> status.getCode() == 1013));
+            verify(next, never()).close(any());
+            verify(next).setTextMessageSizeLimit(anyInt());
+        }
+    }
+
+    @Test
+    void simultaneousConnectionsCannotBothClaimTheLastSlot() throws Exception {
+        var first = socket("first");
+        var second = socket("second");
+        var start = new CountDownLatch(1);
+        try (var handler = limitedHandler();
+                var workers = Executors.newFixedThreadPool(2)) {
+            var a =
+                    workers.submit(
+                            () -> {
+                                awaitGate(start);
+                                handler.afterConnectionEstablished(first);
+                                return null;
+                            });
+            var b =
+                    workers.submit(
+                            () -> {
+                                awaitGate(start);
+                                handler.afterConnectionEstablished(second);
+                                return null;
+                            });
+
+            start.countDown();
+            a.get(3, TimeUnit.SECONDS);
+            b.get(3, TimeUnit.SECONDS);
+            long closures =
+                    java.util.stream.Stream.of(first, second)
+                            .flatMap(socket -> mockingDetails(socket).getInvocations().stream())
+                            .filter(call -> call.getMethod().getName().equals("close"))
+                            .count();
+
+            assertThat(closures).isEqualTo(1);
+        }
+    }
+
+    private static WebSocketSession socket(String id) {
+        var socket = mock(WebSocketSession.class);
+        when(socket.getId()).thenReturn(id);
+        return socket;
+    }
+
+    private static RoomSocketHandler limitedHandler() {
+        return new RoomSocketHandler(
+                mock(RoomSessions.class),
+                JsonMapper.builder().build(),
+                new RoomSocketHandler.Limits(1024, 1024, 1));
+    }
+
+    private static void awaitGate(CountDownLatch gate) throws InterruptedException {
+        if (!gate.await(3, TimeUnit.SECONDS)) throw new AssertionError("Connection gate timed out");
+    }
+
+    @Test
+    void unauthenticatedConnectionsAlreadyConsumeTheConnectionBudget() throws Exception {
+        var admission = mock(RoomSessions.class);
+        var first = mock(WebSocketSession.class);
+        var excess = mock(WebSocketSession.class);
+        when(first.getId()).thenReturn("first");
+        when(excess.getId()).thenReturn("excess");
+        try (var handler =
+                new RoomSocketHandler(
+                        admission,
+                        JsonMapper.builder().build(),
+                        new RoomSocketHandler.Limits(1024, 1024, 1))) {
+            handler.afterConnectionEstablished(first);
+
+            handler.afterConnectionEstablished(excess);
+
+            verify(excess).close(argThat(status -> status.getCode() == 1013));
+            verify(first, never()).close(any());
+            verifyNoInteractions(admission);
+        }
+    }
+
+    @Test
     void fragmentedInputRunsOnceOnlyAfterTheCompleteHeaderAndPayloadArrive() throws Exception {
         var admission = mock(RoomSessions.class);
         var session = mock(RoomSessions.Session.class);
@@ -256,7 +368,7 @@ class RoomSocketHandlerTests {
     }
 
     @Test
-    void closingDuringAdmissionRunsTheLateDisconnectCallbackExactlyOnce() {
+    void closingDuringAdmissionRunsTheLateDisconnectCallbackExactlyOnce() throws Exception {
         var admission = mock(RoomSessions.class);
         var socket = mock(WebSocketSession.class);
         when(socket.getId()).thenReturn("peer");

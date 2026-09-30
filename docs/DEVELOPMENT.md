@@ -184,3 +184,39 @@ Connector 명령에는 fragment 없는 방 주소만 넣고, 표시되지 않는
 관리 권한은 방 생성 탭의 sessionStorage에 보관되며, 이를 잃으면 기존 방의 관리 권한을 복구하는 API는 없다. [HTTP 등록](../protocol/HTTP.md#spring-등록-api) 후
 [v8 hello](../protocol/AUTHENTICATION_V8.md)로 연결한다. 자동 검증은 서버를 직접 띄울 필요 없이
 `./scripts/test-spring.sh authentication`으로 실행한다. 의존성·JAR 빌드를 먼저 마치고 테스트 중 재빌드하지 않는다.
+
+## 전역 admission 예산 (Spring)
+
+`capacity`는 Spring 전용 설정이며 환경변수가 JSON보다 우선한다. 시작 시 읽고, 변경 후 재시작한다.
+
+| JSON 필드                     | 환경변수                           | 기본값            |
+| ----------------------------- | ---------------------------------- | ----------------- |
+| capacity.rooms                | TTYROOM_MAX_ROOMS                  | 4                 |
+| capacity.connections          | TTYROOM_MAX_CONNECTIONS            | 16                |
+| capacity.terminals            | TTYROOM_MAX_TERMINALS              | 16                |
+| capacity.retainedHistoryBytes | TTYROOM_MAX_RETAINED_HISTORY_BYTES | 16777216 (16 MiB) |
+
+개수는 1..1000000의 정수, 기록 bytes는 0 이상의 안전한 정수다. 기본값은 로컬 검증용 후보이며
+배포 수용량 보장이 아니다. `capacity`를 생략한 기존 설정에도 적용된다.
+
+- 방: 저장된 방 전체가 대상이다. 비어 있거나 재시작으로 복원한 방도 포함한다. 생성 전 예약하고
+  저장 실패 시 반환한다. 삭제 저장이 성공한 뒤에만 반환한다.
+- 연결: 인증 전과 인증 후 WebSocket을 함께 센다. upgrade 후 application 상태 할당 전에 검사한다.
+  초과 연결은 1013으로 종료한다. 실제 transport 종료 callback에서 반환하므로 논리적 퇴장이나
+  close 요청만으로 새 연결을 허용하지 않는다. hello/입장이 5초 안에 끝나지 않으면 1008로 종료한다.
+  이는 HTTP 요청·TCP 연결·Tomcat 전체 connection 제한이나 upgrade 전 rate limit이 아니다.
+- 터미널: 모든 방의 저장된 inventory를 합산한다. 생성 대기·offline·exited 항목도 기록을 소유하므로
+  포함한다. 종료만으로 반환하지 않고 host 제거·취소 또는 방 삭제가 저장된 후 반환한다.
+  증가분을 저장 전에 원자적으로 예약하고 저장 실패 시 반환한다. 초과한 inventory 변경은 전체 거절한다.
+- 기록: 터미널마다 `policy.scrollbackBytesPerTerminal`만큼 미리 예약한다. 실제 허용 터미널 수는
+  `min(capacity.terminals, floor(capacity.retainedHistoryBytes / scrollbackBytesPerTerminal))`다.
+  terminal당 기록이 0이면 터미널 개수만 적용한다. 전체 기록 예산이 한 terminal보다 작으면 새 terminal을
+  허용하지 않는다. 설정을 줄여 기존 저장 상태가 한도를 넘으면 데이터 삭제 없이 시작을 실패시킨다.
+
+방 생성 초과는 HTTP 503 `{"error":"rooms capacity exhausted"}`다. 터미널 증가 초과는
+`error { code: "capacity-exhausted", message: "terminals" }`이며 기존 연결·저장 상태는 유지한다.
+로그에 credential이나 요청 payload를 추가하지 않는다.
+
+이 예산은 논리 payload와 admission 대상 개수를 제한한다. replay snapshot, frame 객체, native memory,
+credential 누적, grace 기간의 membership metadata, HTTP 부하는 별도다. heap/RSS 전체 상한으로
+해석하지 않는다. [측정 조건과 한계](PERFORMANCE.md#t105--전역-admission-경계)를 함께 읽는다.
