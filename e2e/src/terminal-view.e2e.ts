@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { protocolWorkspaceFixture } from "./protocol-fixture.js";
-import { SocketProbe } from "./socket-probe.js";
+import { SocketProbe } from "@ttyroom/test-support/socket-probe";
 
 const geometry = { x: -65535, y: 65535, width: 0.5, height: 65535 };
 const rename = (title: unknown, terminalId = 7) => ({ type: "rename-terminal", terminalId, title });

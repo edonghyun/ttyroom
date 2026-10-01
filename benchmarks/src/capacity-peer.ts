@@ -5,7 +5,7 @@ import {
   parseServerMessage,
   type ServerMessage,
 } from "@ttyroom/protocol";
-import { waitUntil } from "../wait-until.js";
+import { waitUntil } from "@ttyroom/test-support/wait-until";
 import { Latencies } from "./capacity-report.js";
 
 /** Synthetic wire endpoint: counts payloads without retaining terminal output or unbounded messages. */

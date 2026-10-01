@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { protocolRoomFixture, protocolWorkspaceFixture } from "./protocol-fixture.js";
 import { inputFixture, sharedInputFixture } from "./protocol-input-fixture.js";
 import { controlledTerminalFixture } from "./fixtures.js";
-import { SocketProbe } from "./socket-probe.js";
+import { SocketProbe } from "@ttyroom/test-support/socket-probe";
 import { printMarker } from "./shell-commands.js";
 import { captureOutputReplay } from "./actions.js";
 

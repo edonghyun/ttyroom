@@ -1,0 +1,27 @@
+{
+  "name": "@ttyroom/test-support",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@ttyroom/protocol": "workspace:*",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.1",
+    "@types/ws": "^8.5.12",
+    "typescript": "^5.6.0",
+    "vitest": "^3.0.0"
+  },
+  "exports": {
+    "./server-process": "./src/server-process.ts",
+    "./test-process": "./src/test-process.ts",
+    "./socket-probe": "./src/socket-probe.ts",
+    "./registered-room": "./src/registered-room.ts",
+    "./wait-until": "./src/wait-until.ts"
+  }
+}

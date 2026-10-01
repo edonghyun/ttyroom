@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { ServerProcess } from "./server-process.js";
+import { ServerProcess } from "@ttyroom/test-support/server-process";
 
 if (!process.env.TTYROOM_E2E_SERVER_COMMAND) {
   throw new Error("Set TTYROOM_E2E_SERVER_COMMAND to the Java executable and built JAR argv");

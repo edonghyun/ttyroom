@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { roomFixture } from "./fixtures.js";
-import { SocketProbe } from "./socket-probe.js";
+import { SocketProbe } from "@ttyroom/test-support/socket-probe";
 import {
   protocolRoomFixture as hostFixture,
   protocolWorkspaceFixture as readyHostFixture,

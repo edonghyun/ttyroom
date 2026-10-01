@@ -1,0 +1,27 @@
+{
+  "name": "@ttyroom/benchmarks",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "bench:local": "../scripts/measure-capacity.sh",
+    "bench:docker": "tsx src/docker-run.ts"
+  },
+  "dependencies": {
+    "@ttyroom/protocol": "workspace:*",
+    "ws": "^8.18.0",
+    "@ttyroom/test-support": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.1",
+    "@types/ws": "^8.5.12",
+    "tsx": "^4.20.0",
+    "typescript": "^5.6.0",
+    "vitest": "^3.0.0"
+  },
+  "exports": {
+    "./report": "./src/performance-report.ts"
+  }
+}

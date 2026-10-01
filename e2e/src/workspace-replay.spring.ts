@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { encodeDataFrame } from "@ttyroom/protocol";
-import { registeredRoom } from "./registered-room.js";
-import { SocketProbe } from "./socket-probe.js";
+import { registeredRoom } from "@ttyroom/test-support/registered-room";
+import { SocketProbe } from "@ttyroom/test-support/socket-probe";
 
 describe("Spring workspace 복구", () => {
   it.each([4, 16])(

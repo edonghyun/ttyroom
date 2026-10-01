@@ -1,8 +1,8 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { HttpContract, type HttpObservation } from "./http-contract.js";
 import { readFileSync } from "node:fs";
-import { SocketProbe } from "./socket-probe.js";
-import { ServerProcess } from "./server-process.js";
+import { SocketProbe } from "@ttyroom/test-support/socket-probe";
+import { ServerProcess } from "@ttyroom/test-support/server-process";
 
 let contract: HttpContract;
 beforeAll(async () => {

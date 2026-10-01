@@ -1,5 +1,5 @@
 import { expect, type Browser } from "@playwright/test";
-import { ServerProcess } from "../../../e2e/src/server-process.js";
+import { ServerProcess } from "@ttyroom/test-support/server-process";
 import { resolve } from "node:path";
 import * as pty from "node-pty";
 import { BrowserParticipantActor } from "./participant-actor.js";

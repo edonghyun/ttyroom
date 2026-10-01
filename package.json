@@ -14,7 +14,7 @@
     "test:visual": "pnpm --filter @ttyroom/web run test:visual",
     "typecheck": "pnpm -r --if-present run typecheck",
     "format": "prettier --check .",
-    "depcruise": "depcruise web/src connector/src protocol/src e2e/src legacy/node-server/src"
+    "depcruise": "depcruise web/src connector/src protocol/src e2e/src test-support/src benchmarks/src legacy/node-server/src"
   },
   "devDependencies": {
     "@ttyroom/connector": "workspace:*",

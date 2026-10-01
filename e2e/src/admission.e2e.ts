@@ -1,7 +1,7 @@
 import { setTimeout as delay } from "node:timers/promises";
 import { describe, expect, it } from "vitest";
 import { roomFixture } from "./fixtures.js";
-import { SocketProbe } from "./socket-probe.js";
+import { SocketProbe } from "@ttyroom/test-support/socket-probe";
 import type { TestRoom } from "./harness.js";
 
 function hello(room: TestRoom, clientId = "alice", role = "participant") {

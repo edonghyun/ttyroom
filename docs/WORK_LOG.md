@@ -524,3 +524,11 @@ HTTP host credential 발급과 첫 host 입장의 보관 예약을 구분한다.
 삭제·취소·중복 반납, 동시 입장·저장 대기, 복원 초과와 기존 host의 workspace 복구는 추가 회귀다.
 제어 가능한 Peer 전송 실패·만료 callback과 실제 Spring/SQLite 프로세스 재시작을 별도 근거로 남겼다.
 [유한 누적·정리 관측](PERFORMANCE.md#t108--저장-host-identity-보관)은 성능 최대치 측정이 아니다.
+
+## 벤치마크 패키지와 환경 경계
+
+성능 시나리오·JVM 관측·결과 집계를 `benchmarks`로, 실제로 공유하던 서버·소켓 fixture를
+`test-support`로 이동했다. 기능 E2E는 `e2e`, 브라우저 성능 시나리오는 `web`에 남긴다.
+공유 fixture의 OS matrix와 제품 PTY 지원을 구분하고, Linux 컨테이너 smoke는 부하 측정과 구분한다.
+개발 데이터와 분리된 DB volume·네트워크·자원 예산·실행별 증거·정리 계약은
+[벤치마크 안내](../benchmarks/README.md)에 둔다. 제품 프로토콜이나 한도 값은 바꾸지 않았다.

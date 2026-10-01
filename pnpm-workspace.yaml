@@ -4,6 +4,8 @@ packages:
   - "connector"
   - "protocol"
   - "e2e"
+  - "test-support"
+  - "benchmarks"
   - "legacy/node-server"
 
 # node-pty 네이티브 빌드 허용 — pnpm 10은 기본으로 의존성 빌드 스크립트를 차단한다 (T3.2, lead 승인)

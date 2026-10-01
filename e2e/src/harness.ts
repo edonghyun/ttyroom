@@ -11,10 +11,10 @@ import {
   type RoomSnapshot,
   type ServerMessage,
 } from "@ttyroom/protocol";
-import { ServerProcess, type TestPolicy } from "./server-process.js";
-import { TestProcess } from "./test-process.js";
-import { waitUntil } from "./wait-until.js";
-export { waitUntil } from "./wait-until.js";
+import { ServerProcess, type TestPolicy } from "@ttyroom/test-support/server-process";
+import { TestProcess } from "@ttyroom/test-support/test-process";
+import { waitUntil } from "@ttyroom/test-support/wait-until";
+export { waitUntil } from "@ttyroom/test-support/wait-until";
 import WebSocket, { type RawData } from "ws";
 
 type Policy = TestPolicy;

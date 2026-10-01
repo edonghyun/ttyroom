@@ -4,7 +4,7 @@ import {
   protocolRoomFixture as recoveryFixture,
   protocolWorkspaceFixture,
 } from "./protocol-fixture.js";
-import { SocketProbe, type ProbePacket } from "./socket-probe.js";
+import { SocketProbe, type ProbePacket } from "@ttyroom/test-support/socket-probe";
 
 function runtime(terminalId: number, runtimeId = `runtime-${terminalId}`, lastOutputSeq = 0) {
   return { terminalId, runtimeId, firstRetainedSeq: 0, lastOutputSeq };

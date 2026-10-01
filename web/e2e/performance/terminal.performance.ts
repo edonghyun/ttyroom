@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { cpus, release, totalmem } from "node:os";
-import { Timings, distribution } from "../../../e2e/src/performance-report.js";
+import { Timings, distribution } from "@ttyroom/benchmarks/report";
 import { TestSystem } from "../fixtures/test-system.js";
 import { ProcessMemory } from "./process-memory.js";
 import type { BrowserParticipantActor } from "../fixtures/participant-actor.js";

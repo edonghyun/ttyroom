@@ -16,13 +16,15 @@ web/                   React 화면
 connector/             사용자 PC의 PTY 실행 프로그램
 protocol/              TS 코덱·통신 명세·언어 공통 fixture
 e2e/                   HTTP/WS 기반 프로세스 인수 테스트
+test-support/          E2E·브라우저·벤치마크 공용 프로세스/소켓 도구
+benchmarks/            부하 생성·계측·보고 및 Docker 격리 환경
 legacy/node-server/    프로토콜 회귀 비교용 Node 서버
 scripts/               제품 빌드·Spring 실행·E2E 보조 도구
 docs/                  설계·검증 문서
 artifacts/             로컬 검증 증거
 ```
 
-`backend/`는 독립 Gradle 프로젝트이고 `web`, `connector`, `protocol`, `e2e`, `legacy/node-server`는 pnpm workspace에 속합니다. 루트 `package.json`은 TypeScript 패키지와 E2E 도구를 관리합니다. Spring 빌드·실행을 pnpm으로 감싸지 않습니다.
+`backend/`는 독립 Gradle 프로젝트이고 `web`, `connector`, `protocol`, `e2e`, `test-support`, `benchmarks`, `legacy/node-server`는 pnpm workspace에 속합니다. 루트 `package.json`은 TypeScript 패키지와 E2E 도구를 관리합니다. Spring 빌드·실행을 pnpm으로 감싸지 않습니다.
 
 Spring은 HTTP 방 생성·입장 인증, 터미널 inventory·생성·종료·resize·메타데이터·제목·창 배치, exclusive/shared 입력, 참여자 focus/cursor를 지원합니다. `TTYROOM_STATE_PATH`를 지정하면 SQLite에 방을 저장하고 새 서버 프로세스에서도 복원합니다. 실제 Connector의 PTY 유지·재접속 replay도 검증합니다. `TTYROOM_CONFIG_PATH`의 설정과 환경변수 우선순위·정책 적용도 지원합니다. React 빌드 결과를 JAR에 포함해 서버에서 화면을 제공합니다. 기본 실행 안내는 Spring을 기준으로 합니다. 프로토콜 회귀 비교용 Node 서버도 보관합니다. `pnpm test:e2e`는 Node 비교 서버, `pnpm test:browser`는 Spring v8을 대상으로 합니다. Spring 프로세스 검증에는 아래 스크립트를 사용합니다.
 
@@ -312,3 +314,9 @@ v7에서 welcome 실패 뒤 live member가 없는 host는 같은 ID로 재접속
 
 이 정책은 항목 수를 제한한다. DB 파일 크기·메모리 bytes·HTTP 요청률의 상한이나 불필요한 모든
 host의 자동 만료 정책은 아니다. [실패 주입과 프로세스 검증](PERFORMANCE.md#t108--저장-host-identity-보관)을 참고한다.
+
+## 검증 환경과 OS 구분
+
+[벤치마크 환경 안내](../benchmarks/README.md)에 개발·기능 E2E·로컬 JVM 측정·Docker smoke의
+데이터/네트워크/자원 경계와 OS별 검증 범위를 정리했다. Linux 컨테이너 검증과 Windows 네이티브
+PTY 검증은 별개다. 부하 실험은 명시적으로 실행하며 일반 `pnpm test`에 포함하지 않는다.

@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { ServerProcess } from "./server-process.js";
+import { ServerProcess } from "@ttyroom/test-support/server-process";
 
 describe("배포 웹 파일 — Node·Spring 공통", () => {
   let server: ServerProcess;

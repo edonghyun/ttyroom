@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { protocolWorkspaceFixture } from "./protocol-fixture.js";
-import { SocketProbe } from "./socket-probe.js";
+import { SocketProbe } from "@ttyroom/test-support/socket-probe";
 
 const focus = (terminalId: unknown) => ({ type: "focus-terminal", terminalId });
 const cursor = (position: unknown) => ({ type: "move-cursor", position });

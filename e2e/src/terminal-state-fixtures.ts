@@ -1,4 +1,4 @@
-import type { SocketProbe } from "./socket-probe.js";
+import type { SocketProbe } from "@ttyroom/test-support/socket-probe";
 
 type WorkspacePeers = { host: SocketProbe; observer: SocketProbe };
 

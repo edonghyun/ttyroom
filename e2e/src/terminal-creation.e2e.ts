@@ -3,7 +3,7 @@ import {
   protocolRoomFixture,
   protocolWorkspaceFixture as creationFixture,
 } from "./protocol-fixture.js";
-import { SocketProbe } from "./socket-probe.js";
+import { SocketProbe } from "@ttyroom/test-support/socket-probe";
 
 function runtime(terminalId: number, runtimeId = `runtime-${terminalId}`) {
   return { terminalId, runtimeId, firstRetainedSeq: 0, lastOutputSeq: 0 };

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { ServerProcess } from "./server-process.js";
+import { ServerProcess } from "@ttyroom/test-support/server-process";
 
 // Each case owns its process and stored rooms, including the global room budget.
 describe("방 생성 HTTP 계약 — Node/Spring 공통", () => {

@@ -194,3 +194,9 @@ protocol·Connector와 JAR를 먼저 빌드하고, 테스트가 끝날 때까지
 브라우저 실패 보고서에는 참여자별 `alice-wire-order`·`bob-wire-order`를 첨부한다.
 최근 1,024개 메시지의 송수신 방향·종류와 binary header만 보관하며 credential·터미널 payload는 기록하지 않는다.
 연결 성공과 실제 출력 전달을 구분하고, 초기 출력이 생성 알림을 앞지르는 경합을 진단하는 용도다.
+
+## 공용 도구와 성능 측정
+
+프로세스·소켓 fixture는 [`@ttyroom/test-support`](../test-support/README.md)를 사용한다.
+부하 생성·JVM 관측·보고는 [`@ttyroom/benchmarks`](../benchmarks/README.md)가 소유한다.
+기능 E2E는 벤치마크 내부를 import하지 않고, 장시간 부하는 일반 테스트 명령에 섞지 않는다.

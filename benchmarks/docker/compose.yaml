@@ -1,0 +1,39 @@
+services:
+  server:
+    image: ${BENCH_SERVER_IMAGE:?Run bench:docker}
+    cpus: 2
+    mem_limit: 1g
+    memswap_limit: 1g
+    pids_limit: 256
+    read_only: true
+    tmpfs:
+      - /tmp:size=67108864,mode=1777,exec
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    environment:
+      SERVER_ADDRESS: 0.0.0.0
+      TTYROOM_PORT: "3000"
+      TTYROOM_STATE_PATH: /data/rooms.sqlite
+      TTYROOM_PROTOCOL_VERSION: "8"
+      TTYROOM_MAX_ROOMS: "1"
+      TTYROOM_MAX_CONNECTIONS: "2"
+    volumes:
+      - state:/data
+    networks: [experiment]
+  generator:
+    image: ${BENCH_GENERATOR_IMAGE:?Run bench:docker}
+    cpus: 1
+    mem_limit: 512m
+    memswap_limit: 512m
+    pids_limit: 128
+    read_only: true
+    tmpfs:
+      - /tmp:size=67108864,mode=1777
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    networks: [experiment]
+networks:
+  experiment:
+    internal: true
+volumes:
+  state:

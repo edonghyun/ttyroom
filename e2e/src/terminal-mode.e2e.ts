@@ -4,7 +4,7 @@ import { acquire, inputFixture, sharedInputFixture, sendInput } from "./protocol
 import { terminalFixture } from "./fixtures.js";
 import { printOutput } from "./actions.js";
 import { assertOutputContains } from "./assertions.js";
-import { SocketProbe } from "./socket-probe.js";
+import { SocketProbe } from "@ttyroom/test-support/socket-probe";
 
 async function changeMode(peer: SocketProbe, mode: "shared" | "exclusive", terminalId = 7) {
   peer.send({ type: "set-terminal-mode", terminalId, mode });

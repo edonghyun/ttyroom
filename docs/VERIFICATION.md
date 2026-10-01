@@ -1,5 +1,18 @@
 # 검증 기록
 
+## 2026-10-01 벤치마크 패키지와 실행 환경 분리
+
+- 기존 E2E 단위 18개 통과 후 성능 집계 9개를 `benchmarks`로 이동했다. 이동 후 TS 전체 592개
+  (기존 591개 + 공유 프로세스 격리 1개), 타입·포맷·의존성 검사 통과.
+- 이동한 `bench:local` smoke도 완료했다. 실행 경로 회귀 확인이며 새 용량 근거로 사용하지 않는다.
+- Spring 인증·복구·한도 40개가 이동한 공용 fixture로 통과했다. Java 제품 코드는 바꾸지 않았다.
+- Docker Linux ARM64 격리 smoke가 통과했다. 서버 CPU 2개 분량·1 GiB, generator CPU 1개 분량·512 MiB,
+  swap 0과 HTTP/WS 동작·방 한도 거절을 확인했다. 종료 후 해당 project의 container/network/volume은 0개다.
+- 최초 Docker 실행은 executable mapping이 금지된 tmpfs에서 SQLite native library를 로드하지 못했다.
+  서버 `/tmp` 설정을 수정한 후 통과했으며, 실패 로그도 `artifacts/docker-isolation-01/`에 보존했다.
+- 이 smoke는 성능·운영 수용량 측정이 아니다. OS CI는 protocol·프로세스 fixture만 Linux/macOS/Windows에서
+  검증하며 Windows Connector/PTY 지원을 뜻하지 않는다. 실제 CI 결과는 해당 커밋의 Actions를 기준으로 확인한다.
+
 ## 2026-09-30 저장 host identity 보관 T10.8
 
 - Java **573개 통과**, 실패·오류·skip 0. 방별/전역 저장 host 예산, 저장 실패·취소·삭제·복원,

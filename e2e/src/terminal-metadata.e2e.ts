@@ -2,7 +2,7 @@ import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { protocolWorkspaceFixture } from "./protocol-fixture.js";
-import type { SocketProbe } from "./socket-probe.js";
+import type { SocketProbe } from "@ttyroom/test-support/socket-probe";
 import { terminalFixture } from "./fixtures.js";
 import { given, waitUntil } from "./harness.js";
 

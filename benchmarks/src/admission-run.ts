@@ -1,9 +1,9 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { cpus, release } from "node:os";
-import { ServerProcess } from "../server-process.js";
-import { SocketProbe } from "../socket-probe.js";
-import { waitUntil } from "../wait-until.js";
+import { ServerProcess } from "@ttyroom/test-support/server-process";
+import { SocketProbe } from "@ttyroom/test-support/socket-probe";
+import { waitUntil } from "@ttyroom/test-support/wait-until";
 import { CapacityPeer } from "./capacity-peer.js";
 import { JvmObservation } from "./jvm-observation.js";
 import { encodeDataFrame } from "@ttyroom/protocol";

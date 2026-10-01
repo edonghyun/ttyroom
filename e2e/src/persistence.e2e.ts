@@ -1,7 +1,7 @@
 import { encodeDataFrame } from "@ttyroom/protocol";
 import { describe, expect, it } from "vitest";
 import { protocolWorkspaceFixture } from "./protocol-fixture.js";
-import type { SocketProbe } from "./socket-probe.js";
+import type { SocketProbe } from "@ttyroom/test-support/socket-probe";
 
 async function request(peer: SocketProbe, command: unknown) {
   peer.send(command);

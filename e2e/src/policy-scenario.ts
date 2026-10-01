@@ -1,7 +1,7 @@
 import { encodeDataFrame } from "@ttyroom/protocol";
 import { protocolWorkspaceFixture } from "./protocol-fixture.js";
-import type { TestPolicy } from "./server-process.js";
-import { type ProbePacket, SocketProbe } from "./socket-probe.js";
+import type { TestPolicy } from "@ttyroom/test-support/server-process";
+import { type ProbePacket, SocketProbe } from "@ttyroom/test-support/socket-probe";
 
 /** One recovered terminal; owns output sequencing and the replay completion boundary. */
 export async function outputPolicyScenario(policy: Partial<TestPolicy>) {

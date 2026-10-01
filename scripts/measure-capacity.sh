@@ -31,7 +31,7 @@ const hash = path => createHash('sha256').update(readFileSync(path)).digest('hex
 const paths = git('ls-files','-co','--exclude-standard','-z').split('\0').filter(Boolean);
 writeFileSync(join(dir,'manifest.json'),JSON.stringify({startedAt:new Date().toISOString(),revision:git('rev-parse','HEAD'),dirty:git('status','--porcelain')!=='',profile:process.env.TTYROOM_CAPACITY_PROFILE,node:process.version,java:execFileSync(join(process.env.JAVA_HOME,'bin/java'),['--version'],{encoding:'utf8'}).trim(),jvmArguments:['-Xms256m','-Xmx512m','-XX:+UseG1GC'],jarSha256:hash(join(dir,'ttyroom-backend.jar')),jfcSha256:hash(join(dir,'capacity.jfc')),sourceSha256:Object.fromEntries(paths.map(p=>[p,hash(p)]))},null,2)+'\n');
 JS
-runner=src/performance/capacity-run.ts
-if [ "$TTYROOM_CAPACITY_PROFILE" = admission ]; then runner=src/performance/admission-run.ts; fi
-if [ "$TTYROOM_CAPACITY_PROFILE" = credentials ]; then runner=src/performance/credential-run.ts; fi
-pnpm --filter @ttyroom/e2e exec tsx "$runner" > "$TTYROOM_CAPACITY_DIR/run.log" 2>&1
+runner=src/capacity-run.ts
+if [ "$TTYROOM_CAPACITY_PROFILE" = admission ]; then runner=src/admission-run.ts; fi
+if [ "$TTYROOM_CAPACITY_PROFILE" = credentials ]; then runner=src/credential-run.ts; fi
+pnpm --filter @ttyroom/benchmarks exec tsx "$runner" > "$TTYROOM_CAPACITY_DIR/run.log" 2>&1

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { registeredRoom } from "./registered-room.js";
-import { SocketProbe } from "./socket-probe.js";
+import { registeredRoom } from "@ttyroom/test-support/registered-room";
+import { SocketProbe } from "@ttyroom/test-support/socket-probe";
 
 describe("Spring 전역 자원 한도", () => {
   it("재시작으로 복원된 방도 한도에 포함하고 기존 방의 입장은 유지한다", async () => {

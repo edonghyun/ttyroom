@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ServerProcess } from "./server-process.js";
+import { ServerProcess } from "@ttyroom/test-support/server-process";
 
 interface ManagedRoom {
   roomId: string;

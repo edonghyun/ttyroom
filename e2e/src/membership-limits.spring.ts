@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { ServerProcess, type TestCapacity } from "./server-process.js";
-import { SocketProbe } from "./socket-probe.js";
-import { registeredRoom } from "./registered-room.js";
+import { ServerProcess, type TestCapacity } from "@ttyroom/test-support/server-process";
+import { SocketProbe } from "@ttyroom/test-support/socket-probe";
+import { registeredRoom } from "@ttyroom/test-support/registered-room";
 
 describe("Spring membership 수명과 한도", () => {
   it.each([

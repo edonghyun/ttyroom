@@ -3,8 +3,8 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { expect, test } from "@playwright/test";
-import { ServerProcess } from "../../e2e/src/server-process.js";
-import { TestProcess } from "../../e2e/src/test-process.js";
+import { ServerProcess } from "@ttyroom/test-support/server-process";
+import { TestProcess } from "@ttyroom/test-support/test-process";
 import { ConnectionFault } from "../e2e/fixtures/connection-fault.js";
 import { RoomPage } from "../e2e/pages/room.page.js";
 

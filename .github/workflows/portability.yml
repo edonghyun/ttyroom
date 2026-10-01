@@ -1,0 +1,28 @@
+name: portable-contracts
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  contracts:
+    name: Protocol and process fixtures — ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      # This matrix covers protocol and child-process fixtures, not native PTY or a Java server.
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - run: pnpm --filter @ttyroom/protocol build
+      - run: pnpm --filter @ttyroom/protocol --filter @ttyroom/test-support typecheck
+      - run: pnpm --filter @ttyroom/protocol --filter @ttyroom/test-support test

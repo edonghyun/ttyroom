@@ -1,7 +1,7 @@
 import { runUntilOutput } from "./actions.js";
 import { printMarker } from "./shell-commands.js";
 import { given, type ParticipantClient } from "./harness.js";
-import type { TestPolicy } from "./server-process.js";
+import type { TestPolicy } from "@ttyroom/test-support/server-process";
 
 interface RoomOptions {
   name?: string;

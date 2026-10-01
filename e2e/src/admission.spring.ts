@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { registeredRoom } from "./registered-room.js";
-import { SocketProbe } from "./socket-probe.js";
+import { registeredRoom } from "@ttyroom/test-support/registered-room";
+import { SocketProbe } from "@ttyroom/test-support/socket-probe";
 
 describe("Spring v8 입장 인증", () => {
   it.each([65_536, 262_144])(

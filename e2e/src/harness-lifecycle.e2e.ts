@@ -3,8 +3,8 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { given, waitUntil } from "./harness.js";
-import { ServerProcess } from "./server-process.js";
-import { TestProcess } from "./test-process.js";
+import { ServerProcess } from "@ttyroom/test-support/server-process";
+import { TestProcess } from "@ttyroom/test-support/test-process";
 
 const WORKSPACE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const TSX_LOADER = createRequire(import.meta.url).resolve("tsx");

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { registeredRoom } from "./registered-room.js";
+import { registeredRoom } from "@ttyroom/test-support/registered-room";
 
 const invalidCredential = {
   type: "error",

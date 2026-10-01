@@ -123,6 +123,7 @@ sessionStorage에, 참가자 credential은 각 탭에, Host credential은 Connec
 
 - [백엔드 상세 안내](backend/README.md)
 - [E2E 실행·작성 기준](e2e/README.md)
+- [벤치마크 환경과 OS별 검증 범위](benchmarks/README.md)
 - [현재 통신 규약](protocol/PROTOCOL.md)
 - [HTTP API 계약](protocol/HTTP.md)
 

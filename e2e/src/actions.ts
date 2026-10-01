@@ -1,5 +1,5 @@
 import type { ParticipantClient } from "./harness.js";
-import { waitUntil } from "./wait-until.js";
+import { waitUntil } from "@ttyroom/test-support/wait-until";
 import { printMarker } from "./shell-commands.js";
 
 /** Executes shell output whose marker cannot be mistaken for input echo. Does not await output. */

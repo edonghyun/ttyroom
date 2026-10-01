@@ -1,6 +1,6 @@
 import { encodeDataFrame } from "@ttyroom/protocol";
 import { protocolWorkspaceFixture } from "./protocol-fixture.js";
-import type { SocketProbe } from "./socket-probe.js";
+import type { SocketProbe } from "@ttyroom/test-support/socket-probe";
 
 export async function acquire(peer: SocketProbe, terminalId = 7) {
   peer.send({ type: "acquire-lease", terminalId });

@@ -1,8 +1,8 @@
 import type { ServerMessage } from "@ttyroom/protocol";
 import { roomFixture } from "./fixtures.js";
-import { SocketProbe } from "./socket-probe.js";
+import { SocketProbe } from "@ttyroom/test-support/socket-probe";
 import type { TestRoom } from "./harness.js";
-import type { TestPolicy } from "./server-process.js";
+import type { TestPolicy } from "@ttyroom/test-support/server-process";
 
 export async function protocolRoomFixture(policy: Partial<TestPolicy> = {}) {
   const fixture = await roomFixture({ policy });
