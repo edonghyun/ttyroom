@@ -16,7 +16,7 @@ services:
       TTYROOM_STATE_PATH: /data/rooms.sqlite
       TTYROOM_PROTOCOL_VERSION: "8"
       TTYROOM_MAX_ROOMS: "1"
-      TTYROOM_MAX_CONNECTIONS: "2"
+      TTYROOM_MAX_CONNECTIONS: "${BENCH_MAX_CONNECTIONS:?Run bench:docker}"
     volumes:
       - state:/data
     networks: [experiment]

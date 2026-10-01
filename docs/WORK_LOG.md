@@ -532,3 +532,18 @@ HTTP host credential 발급과 첫 host 입장의 보관 예약을 구분한다.
 공유 fixture의 OS matrix와 제품 PTY 지원을 구분하고, Linux 컨테이너 smoke는 부하 측정과 구분한다.
 개발 데이터와 분리된 DB volume·네트워크·자원 예산·실행별 증거·정리 계약은
 [벤치마크 안내](../benchmarks/README.md)에 둔다. 제품 프로토콜이나 한도 값은 바꾸지 않았다.
+
+## 컨테이너 출력 단계와 외부 watchdog
+
+Docker `pilot`·`output` 프로필을 추가했다. 방 1개·host 1개·터미널 1개·관전자 5명을 고정하고
+64/256/1,024 KiB/s만 변경한다. 단계별 새 JVM·DB와 첫 실패 뒤 중단을 유지한다.
+기존 로컬 runner의 paced 출력·sequence 검증·histogram 집계를 공유해 판정 구현을 복제하지 않았다.
+
+watchdog은 generator 밖에서 cgroup·JVM RSS·OOM·CPU throttling을 관찰하고 최초 관측 후 부하를
+허용한다. 메모리·관측 실패 시 부하를 먼저 정지하고, 진단 실패도 원래 사유와 함께 남긴다.
+32 MiB 한도의 JFR과 실행 후 heap snapshot은 계측 기록이며 메모리 최대 용량이나 retained heap 측정은 아니다.
+
+메모리·OOM·counter reset·관측 공백 판정의 실제 assertion RED 10개를 먼저 확인한 뒤 구현했다.
+누락된 값, CPU 집계, 시작 전 관측, 실패 후 stop과 진단 보존은 추가 회귀로 검증했다.
+Docker tmpfs 파일을 `docker cp`로 수집하지 못한 실패를 보존하고 container exec 읽기로 수정했다.
+검증 범위와 실행 방법은 [벤치마크 안내](../benchmarks/README.md)에 둔다.

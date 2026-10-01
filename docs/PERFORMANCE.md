@@ -3,6 +3,37 @@
 현재 실행 환경·패키지·OS별 검증 범위는 [벤치마크 안내](../benchmarks/README.md)를 따른다.
 아래 기존 측정은 당시 환경의 결과이며 새 Docker 환경의 용량 결과가 아니다.
 
+## Docker 출력 단계의 계측 검증 (2026-10-01)
+
+Linux ARM64 Docker VM, 서버 2 CPU 분량·1 GiB·Java 21 G1 heap 512 MiB,
+generator 1 CPU 분량·512 MiB, swap 없음. 방 1개·host 1개·터미널 1개·관전자 5명,
+4 KiB 반복 문자 payload와 압축 ON으로 고정했다. 각 단계는 새 JVM·DB에서 3초 예열·5초 측정했다.
+JFR과 약 1초 간격의 외부 cgroup 관측을 켰다. 다른 컨테이너가 함께 실행 중인 로컬 환경이다.
+
+| 계획 출력 (KiB/s) | 실제 출력¹ (KiB/s) | 출력 p95 상한 | 제어 p95 상한 | 수신 frame / 기대 frame |
+| ----------------- | ------------------ | ------------- | ------------- | ----------------------- |
+| 64                | 63.81              | 6 ms          | 7 ms          | 400 / 400               |
+| 256               | 255.25             | 4 ms          | 5 ms          | 1,600 / 1,600           |
+| 1,024             | 1,020.80           | 4 ms          | 4 ms          | 6,400 / 6,400           |
+
+¹ 계획 payload를 전량 전송했으며, 실제 값의 분모에는 마지막 출력·제어 응답을 기다린 시간도 포함한다.
+모든 단계에서 gap·sequence 오류 0, JFR DataLoss 0, 제어 큐 대기 p95 상한 1 ms였다.
+단계 전체 관측의 최대 서버 cgroup memory는 약 302 MiB, JVM RSS는 약 317 MiB였다.
+두 값은 서로 다른 메모리 범위이며 합산하지 않는다. 시작·예열 구간도 포함하므로 정상 부하의
+retained heap이나 운영 메모리 상한으로 사용하지 않는다. CPU throttling도 시작/예열/측정 구간을
+구분해서 봐야 하며, 지연 기준을 함께 만족하는지 확인한다.
+
+`artifacts/docker-output-pilot-final/`에 source/JAR/image hash, 원시 관측, JFR, 판정과 정리를 보존했다.
+부하 허용 직후 generator SIGKILL을 주입한 별도 실행은 첫 단계 실패로 종료하고 다음 단계를 실행하지 않았다.
+서버 진단 수집 뒤 두 실행 모두 해당 project의 container/network/volume이 0개임을 확인했다.
+실패 주입은 `artifacts/docker-output-generator-fault/`, tmpfs 수집 결함의 최초 실패는
+`artifacts/docker-output-pilot-01/`에 남겼다.
+
+**이 결과는 짧은 pilot이며 용량 검증 완료가 아니다.** 30초 예열·60초 측정 3회인 `output` 프로필은
+구현했지만 아직 전체 실행하지 않았다. fan-out·다중 터미널·느린 소비자·동시 재접속·15분 지속 부하는
+Docker 후속 범위다. 최대 수용량, 실제 배포 사양, Windows Connector/PTY 지원으로 확대 해석하지 않는다.
+실행 및 중단 계약은 [벤치마크 안내](../benchmarks/README.md#출력-단계와-중단-기준)를 따른다.
+
 성능 주장은 아래 조건의 원시 결과가 있을 때만 한다. 이 문서는 T10.1의 실행 전 측정 계획이며,
 운영 SLO나 최대 동시 사용자 수를 정하지 않는다. 제품 코드를 바꾸기 전에 기준선을 남긴다.
 

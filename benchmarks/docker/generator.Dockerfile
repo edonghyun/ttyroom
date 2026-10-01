@@ -5,4 +5,5 @@ COPY . .
 RUN pnpm install --frozen-lockfile --ignore-scripts \
     && pnpm --filter @ttyroom/protocol build
 USER node
-ENTRYPOINT ["./benchmarks/node_modules/.bin/tsx", "benchmarks/src/docker-smoke.ts"]
+ENTRYPOINT ["./benchmarks/node_modules/.bin/tsx"]
+CMD ["benchmarks/src/docker-smoke.ts"]

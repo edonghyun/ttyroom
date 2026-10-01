@@ -1,5 +1,21 @@
 # 검증 기록
 
+## 2026-10-01 컨테이너 연속 관측과 출력 단계
+
+- 실제 assertion RED 10개를 보존한 뒤 계측 단위·watchdog 경계 테스트 20개를 추가했다.
+  TS 전체 **612개**, benchmarks **29개**, 타입·포맷·의존성 검사 통과. 제품 코드는 변경하지 않았다.
+- 공유 출력 루틴을 추출한 뒤 기존 로컬 JVM smoke와 Docker 격리 smoke도 다시 통과했다.
+- Docker `pilot`은 64/256/1,024 KiB/s, 각 3초 예열·5초 측정으로 통과했다.
+  이는 실행 도구 검증이며 30초 예열·60초 측정 3회인 `output` 완료 근거가 아니다.
+- 부하 허용 직후 generator에 SIGKILL을 보낸 실행은 실패로 기록되고 첫 단계에서 중단됐다.
+  서버 JFR·로그를 보존했고, 해당 project container/network/volume 잔여는 모두 0개였다.
+- 정상 실행과 실패 주입의 원시 증거는 `artifacts/docker-output-pilot-final/`,
+  `artifacts/docker-output-generator-fault/`, RED와 명령 로그는 `artifacts/docker-watchdog-tests/`에 둔다.
+- 최초 시도는 tmpfs 결과 파일의 `docker cp` 수집 실패였다. 계측 도구 결함이며 제품 용량 실패로
+  해석하지 않는다. 실패 기록은 `artifacts/docker-output-pilot-01/`에 보존했다.
+- OS 지원 범위는 이전과 같다. 로컬 Linux ARM64 Docker 결과이며 Windows PTY나 실제 배포 사양을
+  검증한 것으로 표시하지 않는다.
+
 ## 2026-10-01 벤치마크 패키지와 실행 환경 분리
 
 - 기존 E2E 단위 18개 통과 후 성능 집계 9개를 `benchmarks`로 이동했다. 이동 후 TS 전체 592개
