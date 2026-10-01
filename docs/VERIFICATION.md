@@ -1,5 +1,18 @@
 # 검증 기록
 
+## 2026-10-01 Docker 출력 본측정
+
+- clean `58e3e28`에서 64/256/1,024 KiB/s 각각 30초 예열·60초 측정 3회, **9회 모두 통과**했다.
+  서버·벤치마크 구현은 변경하지 않았다. 해당 실행 소스의 기존 CI 5개 job과 OS matrix 3개 job도 통과 상태다.
+- 302,400 / 302,400 frame, 각 관전자 frame 수·지연, 계획한 payload 전량 전송을 원시 결과와 대조했다.
+  gap·순서 오류·OOM·JFR DataLoss 0, 제어 큐 대기 p95 상한 1–2 ms를 확인했다.
+- 전체 출력 p95 상한 4–6 ms, 제어 p95 상한 4–7 ms. 실제 측정 구간 CPU interval에서
+  서버·generator throttled period 0. 시작·예열 구간과 구분해서 집계했다.
+- 원시 자료 `artifacts/docker-output-20261001/`의 source/JAR hash와 반복별 판정·JSON·JFR hash,
+  기대 byte/frame 수, 정리 로그를 교차 검증했다. 해당 project container/network/volume 잔여는 0개다.
+- 공개 요약은 [docker-output.json](performance/docker-output.json), 해석은 [성능 기록](PERFORMANCE.md)에 둔다.
+  각각 새 JVM의 60초 측정이며, 단일 JVM 15분 지속이나 운영 최대 용량을 검증한 것은 아니다.
+
 ## 2026-10-01 컨테이너 연속 관측과 출력 단계
 
 - 실제 assertion RED 10개를 보존한 뒤 계측 단위·watchdog 경계 테스트 21개를 추가했다.

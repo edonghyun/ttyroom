@@ -549,3 +549,15 @@ watchdog은 generator 밖에서 cgroup·JVM RSS·OOM·CPU throttling을 관찰�
 시작·성공 판정 직전에 관측 최신성과 deadline을 다시 확인한다.
 Docker tmpfs 파일을 `docker cp`로 수집하지 못한 실패를 보존하고 container exec 읽기로 수정했다.
 검증 범위와 실행 방법은 [벤치마크 안내](../benchmarks/README.md)에 둔다.
+
+## Docker 출력 본측정
+
+기존 `output` 프로필을 clean `58e3e28`에서 실행했다. 64/256/1,024 KiB/s 각각 30초 예열·60초 측정을
+3회 반복했고 9회 모두 통과했다. 제품·벤치마크 코드는 바꾸지 않았다.
+
+시작·예열을 제외한 interval의 CPU 사용량과 throttling, 전체/측정 구간 메모리 관측을 구분해서 집계했다.
+302,400개 frame의 일치, 관전자별 지연, 출력 payload byte, OOM·JFR DataLoss, 원시 hash와 자원 정리를
+검증하고 공개 요약을 [docker-output.json](performance/docker-output.json)에 저장했다.
+
+현재 조건의 실패 경계는 발견하지 않았다. 다음은 출력·터미널 수를 고정하고 관전자 수만 바꾸는
+fan-out 비교이며, 배포 사양과 15분 지속 실험은 별도 후속 범위로 유지한다.

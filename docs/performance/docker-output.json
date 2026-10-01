@@ -1,0 +1,1358 @@
+{
+  "schemaVersion": 1,
+  "scope": "Local Linux Docker output ladder, not production capacity or real PTY/browser performance.",
+  "startedAt": "2026-10-01T05:57:57.009Z",
+  "revision": "58e3e28850375a61641c3dd8b1955931e5f37b8d",
+  "dirty": false,
+  "sourceSha256": {
+    "benchmarks/src/docker-run.ts": "f7adfdb08f9fcd89a9cc373085fa6c93bbc1954456bec6dfe646ecd3cc90510e",
+    "benchmarks/src/docker-smoke.ts": "ff60b740268a598f84ca6bbf1aa22e51931c75cbfb32163a1b2335e9196f2997",
+    "benchmarks/src/docker-load.ts": "5755b5e97db771efee5ad0429610083c8d5d71f3369c0084bcfab9e2425a8290",
+    "benchmarks/src/docker-measurement.ts": "ef4549a53f50a76a7b77444f4fe162f108205c462ba294f696db8276e10f2120",
+    "benchmarks/src/container-observation.ts": "91e0cbc6290a0722e24634af887a5f423534de35dccd93d204018f77d29f3d9c",
+    "benchmarks/src/capacity-peer.ts": "229e2f4e206dbe25f2811560cb0d0b4f3e866ce27f77b771cc1bc95b8a4624c4",
+    "benchmarks/src/capacity-traffic.ts": "d9af37de10445b64ec1dfb05753320cba45d01b02211bf4fe5d2f263880f3564",
+    "benchmarks/src/capacity-report.ts": "0213b9167b8b9195b17b6bc5a05e50d8fc75901ebec92fedb1a74667a85ec171",
+    "benchmarks/docker/compose.yaml": "a6672edaa6e4157e0b0f7a5f82f6f77c3051a1ebee7e8f9e70fefed82775656f",
+    "benchmarks/docker/server.Dockerfile": "baeb9e00e9b0397124ab09f06354f55de2b32bb097913f58544e73e1dce649b2",
+    "benchmarks/docker/generator.Dockerfile": "e67e248c83480e3525b90a5bc55f81aae016e73a858eb0836dddf0a9c460f6a7",
+    "benchmarks/docker/generator.Dockerfile.dockerignore": "ae7a325a70d99ad56bcfdf741d869594711fb0e704475d2ce11b30a01ea8eec8",
+    "pnpm-lock.yaml": "4cadf4b943305c8f8350376e00a980ffc53f335807e08e0f98a840c8905e61db"
+  },
+  "jarSha256": "ea0c6c8c507d0c4bdf14234f4223112a271f19c4c71758199c659f7a0a5d0100",
+  "environment": {
+    "OSType": "linux",
+    "Architecture": "aarch64",
+    "NCPU": 16,
+    "MemTotal": 8217059328,
+    "KernelVersion": "6.11.11-linuxkit",
+    "ServerVersion": "28.5.1"
+  },
+  "images": {
+    "server": "sha256:2c14717e296fe845491ded2ce1c27fbe1785b6d271e42acda4d41a252b188ec2 linux/arm64",
+    "generator": "sha256:2a48c6f6a9db7ef918239bba13c2f4ce80d7e611918ab3eb9a7d98dc7c035af2 linux/arm64"
+  },
+  "otherRunningContainerCountAtStart": 6,
+  "scenario": {
+    "warmupSeconds": 30,
+    "seconds": 60,
+    "terminals": 1,
+    "hosts": 1,
+    "observers": 5,
+    "compression": true,
+    "payload": "4096 bytes, repeated x plus timestamp/sequence",
+    "ratesKiBPerSecond": [64, 256, 1024],
+    "repetitionsPerRate": 3
+  },
+  "limits": {
+    "serverCpu": 2,
+    "serverMemoryBytes": 1073741824,
+    "jvmMaxHeapBytes": 536870912,
+    "generatorCpu": 1,
+    "generatorMemoryBytes": 536870912,
+    "swapBytes": 0
+  },
+  "method": {
+    "cpu": "Differences of counters with both interval endpoints inside the measured window; usage divided by elapsed monotonic time and CPU quota. Sampling processes are included.",
+    "throttling": "Throttled periods / total periods in the same contained intervals. A separate counter from CPU use and from throttled time.",
+    "memory": "Snapshot maxima. Observed covers startup/warmup/load/holding; timed covers only measurement. PID 1 RSS is JVM RSS only for server; generator PID 1 is its launcher, so generator cgroup memory is used for assessment.",
+    "latency": "1 ms histogram upper bounds, output timestamps share generator clock. Control probes do not write to SQLite.",
+    "throughput": "Logical uncompressed payload bytes; denominator includes final response drain.",
+    "limits": "Compressible fixed payload, JFR/sampler overhead not calibrated, shared VM. No post-GC retained heap or sustained 15-minute workload in one JVM."
+  },
+  "trials": [
+    {
+      "name": "output-64-1",
+      "rateKiBPerSecond": 64,
+      "repetition": 1,
+      "completed": true,
+      "measuredAt": {
+        "start": "2026-10-01T05:58:39.476Z",
+        "end": "2026-10-01T05:59:39.493Z"
+      },
+      "plannedPayloadBytes": 3932160,
+      "sentPayloadBytes": 3932160,
+      "payloadKiBPerSecondIncludingDrain": 63.98400561419259,
+      "elapsedMsIncludingDrain": 60014.998485000004,
+      "expectedFrames": 4800,
+      "receivedFrames": 4800,
+      "gaps": 0,
+      "sequenceErrors": 0,
+      "output": {
+        "count": 4800,
+        "p95UpperMs": 6,
+        "maxMs": 18.971083000011276,
+        "over1000Ms": 0
+      },
+      "control": {
+        "count": 601,
+        "p95UpperMs": 5,
+        "maxMs": 18.59937500000524,
+        "over1000Ms": 0
+      },
+      "observers": [
+        {
+          "receivedFrames": 960,
+          "gaps": 0,
+          "sequenceErrors": 0,
+          "output": {
+            "count": 960,
+            "p95UpperMs": 5,
+            "maxMs": 18.90099999999802,
+            "over1000Ms": 0
+          }
+        },
+        {
+          "receivedFrames": 960,
+          "gaps": 0,
+          "sequenceErrors": 0,
+          "output": {
+            "count": 960,
+            "p95UpperMs": 6,
+            "maxMs": 18.736250000001746,
+            "over1000Ms": 0
+          }
+        },
+        {
+          "receivedFrames": 960,
+          "gaps": 0,
+          "sequenceErrors": 0,
+          "output": {
+            "count": 960,
+            "p95UpperMs": 6,
+            "maxMs": 18.971083000011276,
+            "over1000Ms": 0
+          }
+        },
+        {
+          "receivedFrames": 960,
+          "gaps": 0,
+          "sequenceErrors": 0,
+          "output": {
+            "count": 960,
+            "p95UpperMs": 6,
+            "maxMs": 18.7532910000009,
+            "over1000Ms": 0
+          }
+        },
+        {
+          "receivedFrames": 960,
+          "gaps": 0,
+          "sequenceErrors": 0,
+          "output": {
+            "count": 960,
+            "p95UpperMs": 6,
+            "maxMs": 18.749250000008033,
+            "over1000Ms": 0
+          }
+        }
+      ],
+      "maxScheduleLagMs": 30.674294999997073,
+      "resources": {
+        "server": {
+          "timedSamples": 60,
+          "cpuIntervalSeconds": 59.039310666999995,
+          "meanCpuQuotaUsedFraction": 0.03522326864094584,
+          "maxIntervalCpuQuotaUsedFraction": 0.07358281493249617,
+          "cpuPeriods": 591,
+          "throttledPeriods": 0,
+          "throttledPeriodFraction": 0.0,
+          "throttledUsec": 0,
+          "maxTimedMemoryBytes": 308117504,
+          "maxObservedMemoryBytes": 308117504,
+          "maxTimedPid1RssBytes": 323792896,
+          "maxObservedPid1RssBytes": 323923968,
+          "oom": 0,
+          "oomKills": 0
+        },
+        "generator": {
+          "timedSamples": 60,
+          "cpuIntervalSeconds": 59.056614833,
+          "meanCpuQuotaUsedFraction": 0.06520612484967896,
+          "maxIntervalCpuQuotaUsedFraction": 0.08788223950685425,
+          "cpuPeriods": 590,
+          "throttledPeriods": 0,
+          "throttledPeriodFraction": 0.0,
+          "throttledUsec": 0,
+          "maxTimedMemoryBytes": 70885376,
+          "maxObservedMemoryBytes": 70885376,
+          "maxTimedPid1RssBytes": 54947840,
+          "maxObservedPid1RssBytes": 56815616,
+          "oom": 0,
+          "oomKills": 0
+        }
+      },
+      "jfr": {
+        "controlQueue": {
+          "count": 601,
+          "p95UpperMs": 1,
+          "maxMs": 2.459959,
+          "over1000Ms": 0
+        },
+        "pressure": {},
+        "gcCount": 1,
+        "gcSumOfPausesMs": 13.246457999999999,
+        "maxGcSumOfPausesMs": 13.246457999999999,
+        "cpuSamples": 59,
+        "lostBytes": 0
+      },
+      "rawSha256": {
+        "load.json": "b93b444662129586637d0f66676a7529c246499d282ace4137353d853008a3e7",
+        "watchdog.json": "9b1b63eb77825593e15f4deb16e2bae58aec1efb8014666da622922872f2946d",
+        "samples.jsonl": "94b7cafb07eba09479078362df837ace36804acfa900abb66c14da1c7fce3e7c",
+        "flight.json": "eb8641577ec9524338f14d45ddb110f57a80d893680594a474ee8b3b3210af47",
+        "load.jfr": "54ab76e8488561b1ec49149096e408d0cdcd023c4f10f7cfd92c6603cf02256a"
+      }
+    },
+    {
+      "name": "output-64-2",
+      "rateKiBPerSecond": 64,
+      "repetition": 2,
+      "completed": true,
+      "measuredAt": {
+        "start": "2026-10-01T06:00:14.102Z",
+        "end": "2026-10-01T06:01:14.120Z"
+      },
+      "plannedPayloadBytes": 3932160,
+      "sentPayloadBytes": 3932160,
+      "payloadKiBPerSecondIncludingDrain": 63.98256170103465,
+      "elapsedMsIncludingDrain": 60016.352861,
+      "expectedFrames": 4800,
+      "receivedFrames": 4800,
+      "gaps": 0,
+      "sequenceErrors": 0,
+      "output": {
+        "count": 4800,
+        "p95UpperMs": 6,
+        "maxMs": 23.023125000006985,
+        "over1000Ms": 0
+      },
+      "control": {
+        "count": 601,
+        "p95UpperMs": 4,
+        "maxMs": 30.813584000003175,
+        "over1000Ms": 0
+      },
+      "observers": [
+        {
+          "receivedFrames": 960,
+          "gaps": 0,
+          "sequenceErrors": 0,
+          "output": {
+            "count": 960,
+            "p95UpperMs": 6,
+            "maxMs": 10.880833999995957,
+            "over1000Ms": 0
+          }
+        },
+        {
+          "receivedFrames": 960,
+          "gaps": 0,
+          "sequenceErrors": 0,
+          "output": {
+            "count": 960,
+            "p95UpperMs": 6,
+            "maxMs": 10.851999999998952,
+            "over1000Ms": 0
+          }
+        },
+        {
+          "receivedFrames": 960,
+          "gaps": 0,
+          "sequenceErrors": 0,
+          "output": {
+            "count": 960,
+            "p95UpperMs": 6,
+            "maxMs": 22.91287500000908,
+            "over1000Ms": 0
+          }
+        },
+        {
+          "receivedFrames": 960,
+          "gaps": 0,
+          "sequenceErrors": 0,
+          "output": {
+            "count": 960,
+            "p95UpperMs": 6,
+            "maxMs": 23.023125000006985,
+            "over1000Ms": 0
+          }
+        },
+        {
+          "receivedFrames": 960,
+          "gaps": 0,
+          "sequenceErrors": 0,
+          "output": {
+            "count": 960,
+            "p95UpperMs": 6,
+            "maxMs": 22.93583300001046,
+            "over1000Ms": 0
+          }
+        }
+      ],
+      "maxScheduleLagMs": 28.63109500000428,
+      "resources": {
+        "server": {
+          "timedSamples": 60,
+          "cpuIntervalSeconds": 59.02398208300001,
+          "meanCpuQuotaUsedFraction": 0.032467531541758646,
+          "maxIntervalCpuQuotaUsedFraction": 0.0584651157289602,
+          "cpuPeriods": 589,
+          "throttledPeriods": 0,
+          "throttledPeriodFraction": 0.0,
+          "throttledUsec": 0,
+          "maxTimedMemoryBytes": 307261440,
+          "maxObservedMemoryBytes": 314281984,
+          "maxTimedPid1RssBytes": 322187264,
+          "maxObservedPid1RssBytes": 329789440,
+          "oom": 0,
+          "oomKills": 0
+        },
+        "generator": {
+          "timedSamples": 60,
+          "cpuIntervalSeconds": 59.026898249999995,
+          "meanCpuQuotaUsedFraction": 0.06847168189123,
+          "maxIntervalCpuQuotaUsedFraction": 0.0924319727842305,
+          "cpuPeriods": 590,
+          "throttledPeriods": 0,
+          "throttledPeriodFraction": 0.0,
+          "throttledUsec": 0,
+          "maxTimedMemoryBytes": 73805824,
+          "maxObservedMemoryBytes": 73805824,
+          "maxTimedPid1RssBytes": 55001088,
+          "maxObservedPid1RssBytes": 56709120,
+          "oom": 0,
+          "oomKills": 0
+        }
+      },
+      "jfr": {
+        "controlQueue": {
+          "count": 601,
+          "p95UpperMs": 1,
+          "maxMs": 1.887,
+          "over1000Ms": 0
+        },
+        "pressure": {},
+        "gcCount": 1,
+        "gcSumOfPausesMs": 19.787375,
+        "maxGcSumOfPausesMs": 19.787375,
+        "cpuSamples": 60,
+        "lostBytes": 0
+      },
+      "rawSha256": {
+        "load.json": "fb0624af4640100cb0206a8c00075ca91b368840772c71494dcbcbcb946091db",
+        "watchdog.json": "9b1b63eb77825593e15f4deb16e2bae58aec1efb8014666da622922872f2946d",
+        "samples.jsonl": "a2e34c6962f7c0469019d1f7917072835b87c7de06ca9ad79c176a9110d2ebad",
+        "flight.json": "99b3717a2666e5b6db02fe37e8a9fe009301b59819fe6ea61c706ec2ef402bac",
+        "load.jfr": "420a8c28d97d127dafab6e28c6c402b86d899ac1137ad88680ed5d6b1b9b3243"
+      }
+    },
+    {
+      "name": "output-64-3",
+      "rateKiBPerSecond": 64,
+      "repetition": 3,
+      "completed": true,
+      "measuredAt": {
+        "start": "2026-10-01T06:01:49.706Z",
+        "end": "2026-10-01T06:02:49.707Z"
+      },
+      "plannedPayloadBytes": 3932160,
+      "sentPayloadBytes": 3932160,
+      "payloadKiBPerSecondIncludingDrain": 63.98175819397856,
+      "elapsedMsIncludingDrain": 60017.106568999996,
+      "expectedFrames": 4800,
+      "receivedFrames": 4800,
+      "gaps": 0,
+      "sequenceErrors": 0,
+      "output": {
+        "count": 4800,
+        "p95UpperMs": 5,
+        "maxMs": 18.71600000000035,
+        "over1000Ms": 0
+      },
+      "control": {
+        "count": 601,
+        "p95UpperMs": 4,
+        "maxMs": 12.857040999999299,
+        "over1000Ms": 0
+      },
+      "observers": [
+        {
+          "receivedFrames": 960,
+          "gaps": 0,
+          "sequenceErrors": 0,
+          "output": {
+            "count": 960,
+            "p95UpperMs": 5,
+            "maxMs": 11.176542000001064,
+            "over1000Ms": 0
+          }
+        },
+        {
+          "receivedFrames": 960,
+          "gaps": 0,
+          "sequenceErrors": 0,
+          "output": {
+            "count": 960,
+            "p95UpperMs": 5,
+            "maxMs": 11.891791000001831,
+            "over1000Ms": 0
+          }
+        },
+        {
+          "receivedFrames": 960,
+          "gaps": 0,
+          "sequenceErrors": 0,
+          "output": {
+            "count": 960,
+            "p95UpperMs": 5,
+            "maxMs": 11.869416000001365,
+            "over1000Ms": 0
+          }
+        },
+        {
+          "receivedFrames": 960,
+          "gaps": 0,
+          "sequenceErrors": 0,
+          "output": {
+            "count": 960,
+            "p95UpperMs": 5,
+            "maxMs": 11.954458000007435,
+            "over1000Ms": 0
+          }
+        },
+        {
+          "receivedFrames": 960,
+          "gaps": 0,
+          "sequenceErrors": 0,
+          "output": {
+            "count": 960,
+            "p95UpperMs": 5,
+            "maxMs": 18.71600000000035,
+            "over1000Ms": 0
+          }
+        }
+      ],
+      "maxScheduleLagMs": 27.093925000001036,
+      "resources": {
+        "server": {
+          "timedSamples": 60,
+          "cpuIntervalSeconds": 59.04820045800004,
+          "meanCpuQuotaUsedFraction": 0.030159649001779556,
+          "maxIntervalCpuQuotaUsedFraction": 0.054763034191788,
+          "cpuPeriods": 591,
+          "throttledPeriods": 0,
+          "throttledPeriodFraction": 0.0,
+          "throttledUsec": 0,
+          "maxTimedMemoryBytes": 305881088,
+          "maxObservedMemoryBytes": 305881088,
+          "maxTimedPid1RssBytes": 321077248,
+          "maxObservedPid1RssBytes": 321077248,
+          "oom": 0,
+          "oomKills": 0
+        },
+        "generator": {
+          "timedSamples": 60,
+          "cpuIntervalSeconds": 59.06104383300001,
+          "meanCpuQuotaUsedFraction": 0.0621331720850759,
+          "maxIntervalCpuQuotaUsedFraction": 0.09397162770006263,
+          "cpuPeriods": 590,
+          "throttledPeriods": 0,
+          "throttledPeriodFraction": 0.0,
+          "throttledUsec": 0,
+          "maxTimedMemoryBytes": 80384000,
+          "maxObservedMemoryBytes": 80384000,
+          "maxTimedPid1RssBytes": 54730752,
+          "maxObservedPid1RssBytes": 56815616,
+          "oom": 0,
+          "oomKills": 0
+        }
+      },
+      "jfr": {
+        "controlQueue": {
+          "count": 600,
+          "p95UpperMs": 1,
+          "maxMs": 3.864958,
+          "over1000Ms": 0
+        },
+        "pressure": {},
+        "gcCount": 1,
+        "gcSumOfPausesMs": 16.433291,
+        "maxGcSumOfPausesMs": 16.433291,
+        "cpuSamples": 60,
+        "lostBytes": 0
+      },
+      "rawSha256": {
+        "load.json": "e6822ecbc167a8377089cb7980fa8db8ac505233d7ce344f35681fcca1e48449",
+        "watchdog.json": "9b1b63eb77825593e15f4deb16e2bae58aec1efb8014666da622922872f2946d",
+        "samples.jsonl": "309b51d6375b4ab2fa308a65b569fc2d9c4e8e58b18c7ea9c52e9d94b6f73934",
+        "flight.json": "7a733a915a9818a0e505d084d133020e7fd2e31ec03528103639311e64753871",
+        "load.jfr": "0f2dadb72d7de140b2c570f19f21faabddf871b261e5a211cf8a471c520cc862"
+      }
+    },
+    {
+      "name": "output-256-1",
+      "rateKiBPerSecond": 256,
+      "repetition": 1,
+      "completed": true,
+      "measuredAt": {
+        "start": "2026-10-01T06:03:29.996Z",
+        "end": "2026-10-01T06:04:30.015Z"
+      },
+      "plannedPayloadBytes": 15728640,
+      "sentPayloadBytes": 15728640,
+      "payloadKiBPerSecondIncludingDrain": 255.92693842975464,
+      "elapsedMsIncludingDrain": 60017.12869400001,
+      "expectedFrames": 19200,
+      "receivedFrames": 19200,
+      "gaps": 0,
+      "sequenceErrors": 0,
+      "output": {
+        "count": 19200,
+        "p95UpperMs": 4,
+        "maxMs": 24.808124999995925,
+        "over1000Ms": 0
+      },
+      "control": {
+        "count": 601,
+        "p95UpperMs": 5,
+        "maxMs": 25.097084000000905,
+        "over1000Ms": 0
+      },
+      "observers": [
+        {
+          "receivedFrames": 3840,
+          "gaps": 0,
+          "sequenceErrors": 0,
+          "output": {
+            "count": 3840,
+            "p95UpperMs": 4,
+            "maxMs": 24.79558299999917,
+            "over1000Ms": 0
+          }
+        },
+        {
+          "receivedFrames": 3840,
+          "gaps": 0,
+          "sequenceErrors": 0,
+          "output": {
+            "count": 3840,
+            "p95UpperMs": 4,
+            "maxMs": 24.71404199999961,
+            "over1000Ms": 0
+          }
+        },
+        {
+          "receivedFrames": 3840,
+          "gaps": 0,
+          "sequenceErrors": 0,
+          "output": {
+            "count": 3840,
+            "p95UpperMs": 4,
+            "maxMs": 24.709332999998878,
+            "over1000Ms": 0
+          }
+        },
+        {
+          "receivedFrames": 3840,
+          "gaps": 0,
+          "sequenceErrors": 0,
+          "output": {
+            "count": 3840,
+            "p95UpperMs": 4,
+            "maxMs": 24.79245799999626,
+            "over1000Ms": 0
+          }
+        },
+        {
+          "receivedFrames": 3840,
+          "gaps": 0,
+          "sequenceErrors": 0,
+          "output": {
+            "count": 3840,
+            "p95UpperMs": 4,
+            "maxMs": 24.808124999995925,
+            "over1000Ms": 0
+          }
+        }
+      ],
+      "maxScheduleLagMs": 28.243514000001596,
+      "resources": {
+        "server": {
+          "timedSamples": 60,
+          "cpuIntervalSeconds": 58.987154583,
+          "meanCpuQuotaUsedFraction": 0.06131096720237946,
+          "maxIntervalCpuQuotaUsedFraction": 0.09091385387073536,
+          "cpuPeriods": 590,
+          "throttledPeriods": 0,
+          "throttledPeriodFraction": 0.0,
+          "throttledUsec": 0,
+          "maxTimedMemoryBytes": 313540608,
+          "maxObservedMemoryBytes": 318771200,
+          "maxTimedPid1RssBytes": 328912896,
+          "maxObservedPid1RssBytes": 334680064,
+          "oom": 0,
+          "oomKills": 0
+        },
+        "generator": {
+          "timedSamples": 60,
+          "cpuIntervalSeconds": 58.994584499999995,
+          "meanCpuQuotaUsedFraction": 0.12229241143312063,
+          "maxIntervalCpuQuotaUsedFraction": 0.16469340711103989,
+          "cpuPeriods": 589,
+          "throttledPeriods": 0,
+          "throttledPeriodFraction": 0.0,
+          "throttledUsec": 0,
+          "maxTimedMemoryBytes": 78528512,
+          "maxObservedMemoryBytes": 79302656,
+          "maxTimedPid1RssBytes": 54681600,
+          "maxObservedPid1RssBytes": 56430592,
+          "oom": 0,
+          "oomKills": 0
+        }
+      },
+      "jfr": {
+        "controlQueue": {
+          "count": 601,
+          "p95UpperMs": 1,
+          "maxMs": 22.952209,
+          "over1000Ms": 0
+        },
+        "pressure": {},
+        "gcCount": 3,
+        "gcSumOfPausesMs": 26.316166000000003,
+        "maxGcSumOfPausesMs": 10.061708000000001,
+        "cpuSamples": 60,
+        "lostBytes": 0
+      },
+      "rawSha256": {
+        "load.json": "f7e945be20e1f33280cc588eaa0c9809577b6369e2fe822243920850fdcb095b",
+        "watchdog.json": "9b1b63eb77825593e15f4deb16e2bae58aec1efb8014666da622922872f2946d",
+        "samples.jsonl": "d9355c7f73a143a7be1c7fdab48d4fc496feb9f881116fbea66ab9d2ee05ca71",
+        "flight.json": "4a0fe63c3d8eb89a0bef9063c244ce93f0db2ca1ad0bc60e362aabf8002b8999",
+        "load.jfr": "9c725bcbfc4a521f2a5efe6fcc45cb622a21dfd96c1fde33e9ecb484b579b040"
+      }
+    },
+    {
+      "name": "output-256-2",
+      "rateKiBPerSecond": 256,
+      "repetition": 2,
+      "completed": true,
+      "measuredAt": {
+        "start": "2026-10-01T06:05:05.145Z",
+        "end": "2026-10-01T06:06:05.164Z"
+      },
+      "plannedPayloadBytes": 15728640,
+      "sentPayloadBytes": 15728640,
+      "payloadKiBPerSecondIncludingDrain": 255.9288989252639,
+      "elapsedMsIncludingDrain": 60016.668944,
+      "expectedFrames": 19200,
+      "receivedFrames": 19200,
+      "gaps": 0,
+      "sequenceErrors": 0,
+      "output": {
+        "count": 19200,
+        "p95UpperMs": 5,
+        "maxMs": 15.970707999993465,
+        "over1000Ms": 0
+      },
+      "control": {
+        "count": 601,
+        "p95UpperMs": 7,
+        "maxMs": 14.633125000000291,
+        "over1000Ms": 0
+      },
+      "observers": [
+        {
+          "receivedFrames": 3840,
+          "gaps": 0,
+          "sequenceErrors": 0,
+          "output": {
+            "count": 3840,
+            "p95UpperMs": 5,
+            "maxMs": 15.843250000005355,
+            "over1000Ms": 0
+          }
+        },
+        {
+          "receivedFrames": 3840,
+          "gaps": 0,
+          "sequenceErrors": 0,
+          "output": {
+            "count": 3840,
+            "p95UpperMs": 5,
+            "maxMs": 15.920499999992899,
+            "over1000Ms": 0
+          }
+        },
+        {
+          "receivedFrames": 3840,
+          "gaps": 0,
+          "sequenceErrors": 0,
+          "output": {
+            "count": 3840,
+            "p95UpperMs": 5,
+            "maxMs": 15.854208000004292,
+            "over1000Ms": 0
+          }
+        },
+        {
+          "receivedFrames": 3840,
+          "gaps": 0,
+          "sequenceErrors": 0,
+          "output": {
+            "count": 3840,
+            "p95UpperMs": 5,
+            "maxMs": 15.926707999999053,
+            "over1000Ms": 0
+          }
+        },
+        {
+          "receivedFrames": 3840,
+          "gaps": 0,
+          "sequenceErrors": 0,
+          "output": {
+            "count": 3840,
+            "p95UpperMs": 5,
+            "maxMs": 15.970707999993465,
+            "over1000Ms": 0
+          }
+        }
+      ],
+      "maxScheduleLagMs": 10.348354999994626,
+      "resources": {
+        "server": {
+          "timedSamples": 60,
+          "cpuIntervalSeconds": 59.027432499999996,
+          "meanCpuQuotaUsedFraction": 0.06761014889136506,
+          "maxIntervalCpuQuotaUsedFraction": 0.09862311241256408,
+          "cpuPeriods": 591,
+          "throttledPeriods": 0,
+          "throttledPeriodFraction": 0.0,
+          "throttledUsec": 0,
+          "maxTimedMemoryBytes": 316358656,
+          "maxObservedMemoryBytes": 316358656,
+          "maxTimedPid1RssBytes": 328499200,
+          "maxObservedPid1RssBytes": 328630272,
+          "oom": 0,
+          "oomKills": 0
+        },
+        "generator": {
+          "timedSamples": 60,
+          "cpuIntervalSeconds": 59.022661625000005,
+          "meanCpuQuotaUsedFraction": 0.12897785003947623,
+          "maxIntervalCpuQuotaUsedFraction": 0.16032556458522645,
+          "cpuPeriods": 590,
+          "throttledPeriods": 0,
+          "throttledPeriodFraction": 0.0,
+          "throttledUsec": 0,
+          "maxTimedMemoryBytes": 74121216,
+          "maxObservedMemoryBytes": 75075584,
+          "maxTimedPid1RssBytes": 54964224,
+          "maxObservedPid1RssBytes": 56815616,
+          "oom": 0,
+          "oomKills": 0
+        }
+      },
+      "jfr": {
+        "controlQueue": {
+          "count": 601,
+          "p95UpperMs": 1,
+          "maxMs": 9.441625,
+          "over1000Ms": 0
+        },
+        "pressure": {},
+        "gcCount": 3,
+        "gcSumOfPausesMs": 19.544707,
+        "maxGcSumOfPausesMs": 10.044374999999999,
+        "cpuSamples": 59,
+        "lostBytes": 0
+      },
+      "rawSha256": {
+        "load.json": "a550f21d9e0b004269701dd614524a8c984161daf4b5652ad8623b80baead4d0",
+        "watchdog.json": "9b1b63eb77825593e15f4deb16e2bae58aec1efb8014666da622922872f2946d",
+        "samples.jsonl": "a158e602e653d48d2f9d689cbec099a0caee7482c8ec029ca5663aa7259e22e5",
+        "flight.json": "09e0b561c347f2deb5d4cd78ce51b5b7300dd0989640e211c4bb581b84815a08",
+        "load.jfr": "8b015bc338b3c5e784cf9b85c809c5f64db3dd8102899552f5e885f8a21c6e28"
+      }
+    },
+    {
+      "name": "output-256-3",
+      "rateKiBPerSecond": 256,
+      "repetition": 3,
+      "completed": true,
+      "measuredAt": {
+        "start": "2026-10-01T06:06:39.901Z",
+        "end": "2026-10-01T06:07:39.914Z"
+      },
+      "plannedPayloadBytes": 15728640,
+      "sentPayloadBytes": 15728640,
+      "payloadKiBPerSecondIncludingDrain": 255.9469065443377,
+      "elapsedMsIncludingDrain": 60012.44636,
+      "expectedFrames": 19200,
+      "receivedFrames": 19200,
+      "gaps": 0,
+      "sequenceErrors": 0,
+      "output": {
+        "count": 19200,
+        "p95UpperMs": 5,
+        "maxMs": 43.27399999999761,
+        "over1000Ms": 0
+      },
+      "control": {
+        "count": 601,
+        "p95UpperMs": 6,
+        "maxMs": 53.20037500000035,
+        "over1000Ms": 0
+      },
+      "observers": [
+        {
+          "receivedFrames": 3840,
+          "gaps": 0,
+          "sequenceErrors": 0,
+          "output": {
+            "count": 3840,
+            "p95UpperMs": 5,
+            "maxMs": 43.27399999999761,
+            "over1000Ms": 0
+          }
+        },
+        {
+          "receivedFrames": 3840,
+          "gaps": 0,
+          "sequenceErrors": 0,
+          "output": {
+            "count": 3840,
+            "p95UpperMs": 5,
+            "maxMs": 43.21991700000217,
+            "over1000Ms": 0
+          }
+        },
+        {
+          "receivedFrames": 3840,
+          "gaps": 0,
+          "sequenceErrors": 0,
+          "output": {
+            "count": 3840,
+            "p95UpperMs": 5,
+            "maxMs": 43.25829199999862,
+            "over1000Ms": 0
+          }
+        },
+        {
+          "receivedFrames": 3840,
+          "gaps": 0,
+          "sequenceErrors": 0,
+          "output": {
+            "count": 3840,
+            "p95UpperMs": 5,
+            "maxMs": 43.239667000001646,
+            "over1000Ms": 0
+          }
+        },
+        {
+          "receivedFrames": 3840,
+          "gaps": 0,
+          "sequenceErrors": 0,
+          "output": {
+            "count": 3840,
+            "p95UpperMs": 5,
+            "maxMs": 43.24312500000087,
+            "over1000Ms": 0
+          }
+        }
+      ],
+      "maxScheduleLagMs": 37.535469000002195,
+      "resources": {
+        "server": {
+          "timedSamples": 60,
+          "cpuIntervalSeconds": 58.98742641700001,
+          "meanCpuQuotaUsedFraction": 0.06939132199231439,
+          "maxIntervalCpuQuotaUsedFraction": 0.10691886126740668,
+          "cpuPeriods": 590,
+          "throttledPeriods": 0,
+          "throttledPeriodFraction": 0.0,
+          "throttledUsec": 0,
+          "maxTimedMemoryBytes": 308428800,
+          "maxObservedMemoryBytes": 308498432,
+          "maxTimedPid1RssBytes": 324296704,
+          "maxObservedPid1RssBytes": 324296704,
+          "oom": 0,
+          "oomKills": 0
+        },
+        "generator": {
+          "timedSamples": 60,
+          "cpuIntervalSeconds": 58.98158908300003,
+          "meanCpuQuotaUsedFraction": 0.1313138916806894,
+          "maxIntervalCpuQuotaUsedFraction": 0.1929809891832444,
+          "cpuPeriods": 590,
+          "throttledPeriods": 0,
+          "throttledPeriodFraction": 0.0,
+          "throttledUsec": 0,
+          "maxTimedMemoryBytes": 74219520,
+          "maxObservedMemoryBytes": 75677696,
+          "maxTimedPid1RssBytes": 54493184,
+          "maxObservedPid1RssBytes": 56741888,
+          "oom": 0,
+          "oomKills": 0
+        }
+      },
+      "jfr": {
+        "controlQueue": {
+          "count": 601,
+          "p95UpperMs": 1,
+          "maxMs": 7.189832999999999,
+          "over1000Ms": 0
+        },
+        "pressure": {},
+        "gcCount": 3,
+        "gcSumOfPausesMs": 66.830626,
+        "maxGcSumOfPausesMs": 51.575917,
+        "cpuSamples": 60,
+        "lostBytes": 0
+      },
+      "rawSha256": {
+        "load.json": "f14dbe84b99c87cf2ba648b18d18373f62f207e2a534bc9b0ee2e260ab0a10c2",
+        "watchdog.json": "9b1b63eb77825593e15f4deb16e2bae58aec1efb8014666da622922872f2946d",
+        "samples.jsonl": "58defde4778643df17e6e8af3538a6b6e869f7615df351a92d368082b4b6f751",
+        "flight.json": "af44ad1a70ed4d3b6e10346c9ae2292bb43d05d543cf7c5e4309f5e292691eed",
+        "load.jfr": "91a69d688b432bca09684e7664eb045829c134fa4ef2cd45f07b48f26bc01949"
+      }
+    },
+    {
+      "name": "output-1024-1",
+      "rateKiBPerSecond": 1024,
+      "repetition": 1,
+      "completed": true,
+      "measuredAt": {
+        "start": "2026-10-01T06:08:14.925Z",
+        "end": "2026-10-01T06:09:14.942Z"
+      },
+      "plannedPayloadBytes": 62914560,
+      "sentPayloadBytes": 62914560,
+      "payloadKiBPerSecondIncludingDrain": 1023.761385637717,
+      "elapsedMsIncludingDrain": 60013.98456899999,
+      "expectedFrames": 76800,
+      "receivedFrames": 76800,
+      "gaps": 0,
+      "sequenceErrors": 0,
+      "output": {
+        "count": 76800,
+        "p95UpperMs": 5,
+        "maxMs": 15.172333000002254,
+        "over1000Ms": 0
+      },
+      "control": {
+        "count": 601,
+        "p95UpperMs": 5,
+        "maxMs": 8.320083999991766,
+        "over1000Ms": 0
+      },
+      "observers": [
+        {
+          "receivedFrames": 15360,
+          "gaps": 0,
+          "sequenceErrors": 0,
+          "output": {
+            "count": 15360,
+            "p95UpperMs": 5,
+            "maxMs": 14.804000000003725,
+            "over1000Ms": 0
+          }
+        },
+        {
+          "receivedFrames": 15360,
+          "gaps": 0,
+          "sequenceErrors": 0,
+          "output": {
+            "count": 15360,
+            "p95UpperMs": 5,
+            "maxMs": 15.157583000000159,
+            "over1000Ms": 0
+          }
+        },
+        {
+          "receivedFrames": 15360,
+          "gaps": 0,
+          "sequenceErrors": 0,
+          "output": {
+            "count": 15360,
+            "p95UpperMs": 5,
+            "maxMs": 15.172333000002254,
+            "over1000Ms": 0
+          }
+        },
+        {
+          "receivedFrames": 15360,
+          "gaps": 0,
+          "sequenceErrors": 0,
+          "output": {
+            "count": 15360,
+            "p95UpperMs": 5,
+            "maxMs": 15.100749999997788,
+            "over1000Ms": 0
+          }
+        },
+        {
+          "receivedFrames": 15360,
+          "gaps": 0,
+          "sequenceErrors": 0,
+          "output": {
+            "count": 15360,
+            "p95UpperMs": 5,
+            "maxMs": 15.084875000000466,
+            "over1000Ms": 0
+          }
+        }
+      ],
+      "maxScheduleLagMs": 24.702380999995512,
+      "resources": {
+        "server": {
+          "timedSamples": 60,
+          "cpuIntervalSeconds": 59.01100787500001,
+          "meanCpuQuotaUsedFraction": 0.11462978253699244,
+          "maxIntervalCpuQuotaUsedFraction": 0.14023807526516138,
+          "cpuPeriods": 590,
+          "throttledPeriods": 0,
+          "throttledPeriodFraction": 0.0,
+          "throttledUsec": 0,
+          "maxTimedMemoryBytes": 315502592,
+          "maxObservedMemoryBytes": 315629568,
+          "maxTimedPid1RssBytes": 330657792,
+          "maxObservedPid1RssBytes": 330788864,
+          "oom": 0,
+          "oomKills": 0
+        },
+        "generator": {
+          "timedSamples": 60,
+          "cpuIntervalSeconds": 58.98679475,
+          "meanCpuQuotaUsedFraction": 0.26087182843580425,
+          "maxIntervalCpuQuotaUsedFraction": 0.30289392480067345,
+          "cpuPeriods": 589,
+          "throttledPeriods": 0,
+          "throttledPeriodFraction": 0.0,
+          "throttledUsec": 0,
+          "maxTimedMemoryBytes": 79798272,
+          "maxObservedMemoryBytes": 81395712,
+          "maxTimedPid1RssBytes": 55377920,
+          "maxObservedPid1RssBytes": 56823808,
+          "oom": 0,
+          "oomKills": 0
+        }
+      },
+      "jfr": {
+        "controlQueue": {
+          "count": 601,
+          "p95UpperMs": 1,
+          "maxMs": 5.899667,
+          "over1000Ms": 0
+        },
+        "pressure": {},
+        "gcCount": 11,
+        "gcSumOfPausesMs": 37.254126,
+        "maxGcSumOfPausesMs": 4.5297920000000005,
+        "cpuSamples": 59,
+        "lostBytes": 0
+      },
+      "rawSha256": {
+        "load.json": "1bd0fc2e74957d9fc05b33989465c173173a6b7d8223fec9dbc1e3546907835e",
+        "watchdog.json": "9b1b63eb77825593e15f4deb16e2bae58aec1efb8014666da622922872f2946d",
+        "samples.jsonl": "d44e7398587383727c5e969df063acf384898b1f53d34a2af411f127d266836a",
+        "flight.json": "98a46f5187be530174bac510ecc20e09018c37e962517645d9af5423b805db32",
+        "load.jfr": "946f49df0b836664d2a632d34e77e7482a7523607e046767906e62fe216b915d"
+      }
+    },
+    {
+      "name": "output-1024-2",
+      "rateKiBPerSecond": 1024,
+      "repetition": 2,
+      "completed": true,
+      "measuredAt": {
+        "start": "2026-10-01T06:09:49.549Z",
+        "end": "2026-10-01T06:10:49.565Z"
+      },
+      "plannedPayloadBytes": 62914560,
+      "sentPayloadBytes": 62914560,
+      "payloadKiBPerSecondIncludingDrain": 1023.7521441629492,
+      "elapsedMsIncludingDrain": 60014.526319000004,
+      "expectedFrames": 76800,
+      "receivedFrames": 76800,
+      "gaps": 0,
+      "sequenceErrors": 0,
+      "output": {
+        "count": 76800,
+        "p95UpperMs": 5,
+        "maxMs": 31.209915999992518,
+        "over1000Ms": 0
+      },
+      "control": {
+        "count": 601,
+        "p95UpperMs": 7,
+        "maxMs": 12.329916999995476,
+        "over1000Ms": 0
+      },
+      "observers": [
+        {
+          "receivedFrames": 15360,
+          "gaps": 0,
+          "sequenceErrors": 0,
+          "output": {
+            "count": 15360,
+            "p95UpperMs": 5,
+            "maxMs": 28.97620900000038,
+            "over1000Ms": 0
+          }
+        },
+        {
+          "receivedFrames": 15360,
+          "gaps": 0,
+          "sequenceErrors": 0,
+          "output": {
+            "count": 15360,
+            "p95UpperMs": 5,
+            "maxMs": 31.05587499999092,
+            "over1000Ms": 0
+          }
+        },
+        {
+          "receivedFrames": 15360,
+          "gaps": 0,
+          "sequenceErrors": 0,
+          "output": {
+            "count": 15360,
+            "p95UpperMs": 5,
+            "maxMs": 30.875665999992634,
+            "over1000Ms": 0
+          }
+        },
+        {
+          "receivedFrames": 15360,
+          "gaps": 0,
+          "sequenceErrors": 0,
+          "output": {
+            "count": 15360,
+            "p95UpperMs": 5,
+            "maxMs": 31.209915999992518,
+            "over1000Ms": 0
+          }
+        },
+        {
+          "receivedFrames": 15360,
+          "gaps": 0,
+          "sequenceErrors": 0,
+          "output": {
+            "count": 15360,
+            "p95UpperMs": 5,
+            "maxMs": 31.099874999999884,
+            "over1000Ms": 0
+          }
+        }
+      ],
+      "maxScheduleLagMs": 14.903085999998439,
+      "resources": {
+        "server": {
+          "timedSamples": 60,
+          "cpuIntervalSeconds": 59.045318959000056,
+          "meanCpuQuotaUsedFraction": 0.12009526961695133,
+          "maxIntervalCpuQuotaUsedFraction": 0.1542237511418532,
+          "cpuPeriods": 590,
+          "throttledPeriods": 0,
+          "throttledPeriodFraction": 0.0,
+          "throttledUsec": 0,
+          "maxTimedMemoryBytes": 314826752,
+          "maxObservedMemoryBytes": 315031552,
+          "maxTimedPid1RssBytes": 330698752,
+          "maxObservedPid1RssBytes": 331091968,
+          "oom": 0,
+          "oomKills": 0
+        },
+        "generator": {
+          "timedSamples": 60,
+          "cpuIntervalSeconds": 59.093919250000035,
+          "meanCpuQuotaUsedFraction": 0.27727428148201544,
+          "maxIntervalCpuQuotaUsedFraction": 0.3027542531629368,
+          "cpuPeriods": 591,
+          "throttledPeriods": 0,
+          "throttledPeriodFraction": 0.0,
+          "throttledUsec": 0,
+          "maxTimedMemoryBytes": 76820480,
+          "maxObservedMemoryBytes": 76820480,
+          "maxTimedPid1RssBytes": 54587392,
+          "maxObservedPid1RssBytes": 56295424,
+          "oom": 0,
+          "oomKills": 0
+        }
+      },
+      "jfr": {
+        "controlQueue": {
+          "count": 601,
+          "p95UpperMs": 2,
+          "maxMs": 6.141083,
+          "over1000Ms": 0
+        },
+        "pressure": {},
+        "gcCount": 11,
+        "gcSumOfPausesMs": 45.575331,
+        "maxGcSumOfPausesMs": 5.665540999999999,
+        "cpuSamples": 60,
+        "lostBytes": 0
+      },
+      "rawSha256": {
+        "load.json": "5c160cd075eb55e40c82cb5ed982db15e173eb186cd8053dd6a6d6bd639ae560",
+        "watchdog.json": "9b1b63eb77825593e15f4deb16e2bae58aec1efb8014666da622922872f2946d",
+        "samples.jsonl": "226b247a936ddb1a2d76c2eb89c8e02ae6e5c23f081a76e44a9e12ed94406dd5",
+        "flight.json": "d035abd048996425c245e25fab95552f84c8ada7c780f21a8d12b28a83aad8da",
+        "load.jfr": "e92bedddb627d69c9cc47cf5dc853e9560b8e2b15de9610583a709d87934f509"
+      }
+    },
+    {
+      "name": "output-1024-3",
+      "rateKiBPerSecond": 1024,
+      "repetition": 3,
+      "completed": true,
+      "measuredAt": {
+        "start": "2026-10-01T06:11:24.870Z",
+        "end": "2026-10-01T06:12:24.883Z"
+      },
+      "plannedPayloadBytes": 62914560,
+      "sentPayloadBytes": 62914560,
+      "payloadKiBPerSecondIncludingDrain": 1023.7829746117296,
+      "elapsedMsIncludingDrain": 60012.719027,
+      "expectedFrames": 76800,
+      "receivedFrames": 76800,
+      "gaps": 0,
+      "sequenceErrors": 0,
+      "output": {
+        "count": 76800,
+        "p95UpperMs": 5,
+        "maxMs": 14.591375000003609,
+        "over1000Ms": 0
+      },
+      "control": {
+        "count": 601,
+        "p95UpperMs": 5,
+        "maxMs": 10.17041700000118,
+        "over1000Ms": 0
+      },
+      "observers": [
+        {
+          "receivedFrames": 15360,
+          "gaps": 0,
+          "sequenceErrors": 0,
+          "output": {
+            "count": 15360,
+            "p95UpperMs": 5,
+            "maxMs": 14.047917000003508,
+            "over1000Ms": 0
+          }
+        },
+        {
+          "receivedFrames": 15360,
+          "gaps": 0,
+          "sequenceErrors": 0,
+          "output": {
+            "count": 15360,
+            "p95UpperMs": 5,
+            "maxMs": 13.982709000003524,
+            "over1000Ms": 0
+          }
+        },
+        {
+          "receivedFrames": 15360,
+          "gaps": 0,
+          "sequenceErrors": 0,
+          "output": {
+            "count": 15360,
+            "p95UpperMs": 5,
+            "maxMs": 14.000916999997571,
+            "over1000Ms": 0
+          }
+        },
+        {
+          "receivedFrames": 15360,
+          "gaps": 0,
+          "sequenceErrors": 0,
+          "output": {
+            "count": 15360,
+            "p95UpperMs": 5,
+            "maxMs": 14.591375000003609,
+            "over1000Ms": 0
+          }
+        },
+        {
+          "receivedFrames": 15360,
+          "gaps": 0,
+          "sequenceErrors": 0,
+          "output": {
+            "count": 15360,
+            "p95UpperMs": 5,
+            "maxMs": 14.078125,
+            "over1000Ms": 0
+          }
+        }
+      ],
+      "maxScheduleLagMs": 8.543141000001924,
+      "resources": {
+        "server": {
+          "timedSamples": 60,
+          "cpuIntervalSeconds": 59.05003954199993,
+          "meanCpuQuotaUsedFraction": 0.11960660068612708,
+          "maxIntervalCpuQuotaUsedFraction": 0.16096373144193102,
+          "cpuPeriods": 591,
+          "throttledPeriods": 0,
+          "throttledPeriodFraction": 0.0,
+          "throttledUsec": 0,
+          "maxTimedMemoryBytes": 315207680,
+          "maxObservedMemoryBytes": 315207680,
+          "maxTimedPid1RssBytes": 331493376,
+          "maxObservedPid1RssBytes": 331493376,
+          "oom": 0,
+          "oomKills": 0
+        },
+        "generator": {
+          "timedSamples": 60,
+          "cpuIntervalSeconds": 59.02130725000007,
+          "meanCpuQuotaUsedFraction": 0.27544850762349016,
+          "maxIntervalCpuQuotaUsedFraction": 0.32218180023652043,
+          "cpuPeriods": 590,
+          "throttledPeriods": 0,
+          "throttledPeriodFraction": 0.0,
+          "throttledUsec": 0,
+          "maxTimedMemoryBytes": 76001280,
+          "maxObservedMemoryBytes": 77475840,
+          "maxTimedPid1RssBytes": 54816768,
+          "maxObservedPid1RssBytes": 56954880,
+          "oom": 0,
+          "oomKills": 0
+        }
+      },
+      "jfr": {
+        "controlQueue": {
+          "count": 601,
+          "p95UpperMs": 1,
+          "maxMs": 6.985542,
+          "over1000Ms": 0
+        },
+        "pressure": {},
+        "gcCount": 11,
+        "gcSumOfPausesMs": 53.278292,
+        "maxGcSumOfPausesMs": 6.628458,
+        "cpuSamples": 60,
+        "lostBytes": 0
+      },
+      "rawSha256": {
+        "load.json": "b1d01eb4e2db56e12ea85815ddfa33351c946bbfd63c88a05d870d87d8a89eab",
+        "watchdog.json": "9b1b63eb77825593e15f4deb16e2bae58aec1efb8014666da622922872f2946d",
+        "samples.jsonl": "974bfaa3d55b8527a05518fb6b181195c69ebcbdd4ad5c2c71893c13d988dc9b",
+        "flight.json": "9ca1175f4fdd0811fcdd3e7c213158ebe4addf17d360f3ef96ada8af27d0bff3",
+        "load.jfr": "c1eaf36de323b7a08b980b3daf9ec10daefb35995c01f991dfd4dd914519c71a"
+      }
+    }
+  ],
+  "completed": true,
+  "cleanup": {
+    "remainingContainers": 0,
+    "remainingNetworks": 0,
+    "remainingVolumes": 0
+  }
+}

@@ -104,6 +104,7 @@ Docker Desktop의 tmpfs는 `docker cp`로 읽히지 않는 경우가 있어 실�
 
 기존 로컬 `full/recovery/admission/credentials`와 Docker `output`은 서로 다른 프로필이다.
 Docker fan-out·다중 터미널·한도 거절·느린 소비자·동시 재접속·15분 지속 실험은 아직 연결하지 않았다.
+30초 예열·60초 측정 3회씩의 [출력 본측정 결과](../docs/PERFORMANCE.md#docker-출력-본측정-2026-10-01)를 기록했다.
 모든 출력 단계가 통과해도 최대 용량을 발견했다는 의미는 아니다.
 [측정 조건과 과거 결과](../docs/PERFORMANCE.md)를 참고한다.
 
