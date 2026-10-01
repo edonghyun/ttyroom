@@ -545,5 +545,7 @@ watchdog은 generator 밖에서 cgroup·JVM RSS·OOM·CPU throttling을 관찰�
 
 메모리·OOM·counter reset·관측 공백 판정의 실제 assertion RED 10개를 먼저 확인한 뒤 구현했다.
 누락된 값, CPU 집계, 시작 전 관측, 실패 후 stop과 진단 보존은 추가 회귀로 검증했다.
+리뷰에서 최초 관측 이후 Docker 명령 지연으로 오래된 값이 부하를 허용하는 RED를 추가했다.
+시작·성공 판정 직전에 관측 최신성과 deadline을 다시 확인한다.
 Docker tmpfs 파일을 `docker cp`로 수집하지 못한 실패를 보존하고 container exec 읽기로 수정했다.
 검증 범위와 실행 방법은 [벤치마크 안내](../benchmarks/README.md)에 둔다.

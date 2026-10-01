@@ -2,7 +2,7 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { measureDockerOutput, type DockerCommand } from "./docker-measurement.js";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { checkContainerSample, parseContainerSample } from "./container-observation.js";
 
 const MiB = 1024 ** 2;
@@ -138,6 +138,17 @@ describe("external load watchdog", () => {
     expect(trial.actions.at(-1)).toBe("watchdog-stop-load");
   });
 
+  it("keeps load blocked when successful commands have made the first observations stale", async () => {
+    await using trial = await givenTrial({ delayedCommands: true });
+
+    const result = await trial.measure();
+
+    expect(result.completed).toBe(false);
+    expect(trial.actions).not.toContain("release-load");
+    expect(result.failures).toEqual(["Error: Container observations became stale"]);
+    expect(trial.actions.at(-1)).toBe("watchdog-stop-load");
+  });
+
   it("stops a running workload when sampling becomes unavailable", async () => {
     await using trial = await givenTrial({ loseSamplerAfterRelease: true });
 
@@ -170,6 +181,7 @@ describe("external load watchdog", () => {
 async function givenTrial(
   options: {
     serverSample?: string;
+    delayedCommands?: boolean;
     loseSamplerAfterRelease?: boolean;
     loadFailures?: string[];
     cannotStop?: boolean;
@@ -178,14 +190,20 @@ async function givenTrial(
   const directory = await mkdtemp(join(tmpdir(), "ttyroom-watchdog-"));
   const actions: string[] = [];
   let released = false;
+  let elapsedMs = 0;
+  const clock = options.delayedCommands
+    ? vi.spyOn(performance, "now").mockImplementation(() => elapsedMs)
+    : undefined;
   const run: DockerCommand = async (_args, label) => {
     actions.push(label);
     if (label === "server-sample") {
       if (released && options.loseSamplerAfterRelease) throw new Error("container disappeared");
       return options.serverSample ?? raw;
     }
+    if (label === "generator-sample" && options.delayedCommands) elapsedMs += 1600;
     if (label === "generator-sample")
       return raw.replace("200000 100000", "100000 100000").replace("1073741824", "536870912");
+    if (label === "load-state" && options.delayedCommands) elapsedMs += 1600;
     if (label === "load-state") return released ? "done" : "ready";
     if (label === "release-load") released = true;
     if (label === "load-result")
@@ -202,6 +220,9 @@ async function givenTrial(
     actions,
     measure: () => measureDockerOutput(run, "server", "generator", output, 10_000),
     savedResult: async () => JSON.parse(await readFile(join(output, "watchdog.json"), "utf8")),
-    [Symbol.asyncDispose]: () => rm(directory, { recursive: true, force: true }),
+    [Symbol.asyncDispose]: async () => {
+      clock?.mockRestore();
+      await rm(directory, { recursive: true, force: true });
+    },
   };
 }

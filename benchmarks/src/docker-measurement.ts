@@ -68,6 +68,10 @@ export async function measureDockerOutput(
         "load-state",
         2500,
       );
+      const observedAt = performance.now();
+      if (observedAt >= deadline) throw new Error("Trial deadline exceeded");
+      if (Object.values(previous).some((sample) => observedAt - sample.atMs > 3000))
+        throw new Error("Container observations became stale");
       if (state === "done") {
         if (!released) throw new Error("Load finished before watchdog release");
         const rawResult = await docker(
